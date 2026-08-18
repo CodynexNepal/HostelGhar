@@ -1,1 +1,10 @@
 node_modules
+
+#ENV
+.env
+.env.local
+.env.*.local
+
+#Docker
+docker-compose.yml
+Dockerfile
