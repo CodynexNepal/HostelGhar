@@ -5,19 +5,11 @@ import { AuthService } from '../../services/auth/auth.services';
 export class AuthFactory {
   private constructor() {}
 
-  public static AuthController(): AuthController {
+  public static create(): AuthController {
     const userRepository = new UserRepository();
-    const loginService = new AuthService(userRepository);
-    const loginController = new AuthController(loginService);
 
-    return loginController;
-  }
+    const authService = new AuthService(userRepository);
 
-  public static RegisterController(): AuthController {
-    const userRepository = new UserRepository();
-    const registerService = new AuthService(userRepository);
-    const registerController = new AuthController(registerService);
-
-    return registerController;
+    return new AuthController(authService);
   }
 }

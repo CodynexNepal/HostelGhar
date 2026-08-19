@@ -36,7 +36,7 @@ export class PasswordHasher {
   // Loaded securely from environment variables via dotEnvConfig:
   // `private static readonly` ensures this value cannot be accessed or modified
   // outside this class.
-  private static readonly SALT_ROUNDS = parseInt(dotEnvConfig.SALT_ROUNDS);
+  private static readonly SALT_ROUNDS = dotEnvConfig.SALT_ROUNDS;
 
   // ─── Private Constructor ──────────────────────────────────────────────
 

@@ -41,8 +41,6 @@ import cors from 'cors';
 // `req.cookies` would be `undefined` and we couldn't read auth tokens.
 import cookieParser from 'cookie-parser';
 
-
-
 import routes from '../routes/index.routes';
 import { errorHandler } from '../middleware/error-handler.middleware';
 

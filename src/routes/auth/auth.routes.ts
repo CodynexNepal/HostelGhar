@@ -27,11 +27,15 @@ import { Router } from 'express';
 import { validateDto } from '../../middleware/validate-dto.middleware';
 
 // Import the DTOs for registration and login input validation.
-import { RegisterUserDto } from '../../dto/register.dto';
-import { LoginUserDto } from '../../dto/login.dto';
+import { RegisterUserDto } from '../../dto/auth/register.dto';
+import { LoginUserDto } from '../../dto/auth/login.dto';
 
 // Import the controller classes that handle the HTTP request/response cycle.
 import { AuthFactory } from '../../factory/auth/auth.factory';
+
+//Import the Rate Limit
+
+import { authRateLimiter } from '../../configs/rateLimiter.config';
 
 // ─── Create Router Instance ─────────────────────────────────────────────────
 
@@ -41,30 +45,16 @@ import { AuthFactory } from '../../factory/auth/auth.factory';
 //   POST /api/auth/login
 const authRouter: Router = Router();
 
-// ─── Instantiate Controllers ────────────────────────────────────────────────
+const authController = AuthFactory.create();
 
-// Create controller instances. Each controller wires up its own service
-// and repository in its constructor (manual dependency injection).
-const authController = AuthFactory.AuthController();
+authRouter.post('/login', validateDto(LoginUserDto), authRateLimiter, authController.login);
 
-// ─── Define Routes ──────────────────────────────────────────────────────────
-
-// POST /register
-// Pipeline: validateDto(RegisterUserDto) → registerController.register
-//
-// The middleware pipeline runs left-to-right:
-// 1. `validateDto(RegisterUserDto)` — validates req.body against the DTO.
-//    If validation fails, it returns 422 and STOPS — the controller never runs.
-// 2. `registerController.register` — runs ONLY if validation passes.
-//    It delegates to RegisterService, sets cookies, and returns JSON.
-authRouter.post('/register', validateDto(RegisterUserDto), authController.register);
-
-// POST /login
-// Pipeline: validateDto(LoginUserDto) → loginController.login
-//
-// Same pattern: validate first, then authenticate.
-// The LoginUserDto only requires email + password (no name fields).
-authRouter.post('/login', validateDto(LoginUserDto), authController.login);
+authRouter.post(
+  '/register',
+  validateDto(RegisterUserDto),
+  authRateLimiter,
+  authController.register,
+);
 
 // ─── Export ─────────────────────────────────────────────────────────────────
 

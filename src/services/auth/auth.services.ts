@@ -1,5 +1,5 @@
-import { LoginUserDto } from '../../dto/login.dto';
-import { RegisterUserDto } from '../../dto/register.dto';
+import { LoginUserDto } from '../../dto/auth/login.dto';
+import { RegisterUserDto } from '../../dto/auth/register.dto';
 import { UserRepository } from '../../repository/auth/user.repository';
 import { MESSAGES } from '../../constant/message.interface';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
@@ -23,7 +23,10 @@ const toSafeUserResponse = (user: {
 });
 
 export class AuthService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(private readonly userRepository: UserRepository) {
+    this.Login = this.Login.bind(this);
+    this.register = this.register.bind(this);
+  }
 
   public async Login(dto: LoginUserDto): Promise<ILoginResult> {
     const user = await this.userRepository.findByEmail(dto.email);
