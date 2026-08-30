@@ -29,13 +29,17 @@ import { validateDto } from '../../middleware/validate-dto.middleware';
 // Import the DTOs for registration and login input validation.
 import { RegisterUserDto } from '../../dto/auth/register.dto';
 import { LoginUserDto } from '../../dto/auth/login.dto';
+import { ForgotPasswordDto } from '../../dto/auth/forgot-password.dto';
+import { ResetPasswordDto } from '../../dto/auth/reset-password.dto';
+import { ChangePasswordDto } from '../../dto/auth/change-password.dto';
 
 // Import the controller classes that handle the HTTP request/response cycle.
 import { AuthFactory } from '../../factory/auth/auth.factory';
 
 //Import the Rate Limit
 
-import { authRateLimiter } from '../../configs/rateLimiter.config';
+import { authRateLimiter, sensitiveActionLimiter } from '../../configs/rateLimiter.config';
+import { authenticate } from '../../middleware/auth.middleware';
 
 // ─── Create Router Instance ─────────────────────────────────────────────────
 
@@ -54,6 +58,28 @@ authRouter.post(
   validateDto(RegisterUserDto),
   authRateLimiter,
   authController.register,
+);
+
+authRouter.post(
+  '/forgot-password',
+  sensitiveActionLimiter,
+  validateDto(ForgotPasswordDto),
+  authController.forgotPassword,
+);
+
+authRouter.patch(
+  '/reset-password',
+  sensitiveActionLimiter,
+  validateDto(ResetPasswordDto),
+  authController.resetPassword,
+);
+
+authRouter.put(
+  '/change-password',
+  authenticate,
+  sensitiveActionLimiter,
+  validateDto(ChangePasswordDto),
+  authController.changePassword,
 );
 
 // ─── Export ─────────────────────────────────────────────────────────────────

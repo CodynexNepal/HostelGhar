@@ -20,6 +20,14 @@ export interface CleanEnvConfig {
   ACCESS_TOKEN_EXPIRY: string;
   REFRESH_TOKEN_EXPIRY: string;
   SALT_ROUNDS: number;
+  CORS_ORIGIN: string;
+  SOCKET_CORS_ORIGIN: string;
+  SMTP_HOST: string;
+  SMTP_PORT: number;
+  SMTP_SECURE: boolean;
+  SMTP_USER: string;
+  SMTP_PASS: string;
+  SMTP_FROM: string;
 }
 
 /**
@@ -40,6 +48,7 @@ export function cleanEnvConfig(): CleanEnvConfig {
   // Validate and parse required values
   const port = parseInt(process.env.PORT || '3000', 10);
   const saltRounds = parseInt(process.env.SALT_ROUND || process.env.SALT_ROUNDS || '10', 10);
+  const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
 
   const config: CleanEnvConfig = {
     PORT: Number.isNaN(port) ? 3000 : port,
@@ -57,6 +66,15 @@ export function cleanEnvConfig(): CleanEnvConfig {
     ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY || '15m',
     REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || '7d',
     SALT_ROUNDS: Number.isNaN(saltRounds) ? 10 : saltRounds,
+    CORS_ORIGIN: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*',
+    SOCKET_CORS_ORIGIN:
+      process.env.SOCKET_CORS_ORIGIN || process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*',
+    SMTP_HOST: process.env.SMTP_HOST || '',
+    SMTP_PORT: Number.isNaN(smtpPort) ? 587 : smtpPort,
+    SMTP_SECURE: process.env.SMTP_SECURE === 'true',
+    SMTP_USER: process.env.SMTP_USER || '',
+    SMTP_PASS: process.env.SMTP_PASS || '',
+    SMTP_FROM: process.env.SMTP_FROM || 'HostelGhar <no-reply@hostelghar.local>',
   };
 
   return Object.freeze(config);
@@ -86,5 +104,13 @@ export function getSanitizedEnvSummary(config: CleanEnvConfig): Record<string, s
     ACCESS_TOKEN_EXPIRY: config.ACCESS_TOKEN_EXPIRY,
     REFRESH_TOKEN_EXPIRY: config.REFRESH_TOKEN_EXPIRY,
     SALT_ROUNDS: '[REDACTED_NUMBER]',
+    CORS_ORIGIN: config.CORS_ORIGIN,
+    SOCKET_CORS_ORIGIN: config.SOCKET_CORS_ORIGIN,
+    SMTP_HOST: config.SMTP_HOST ? '[CONFIGURED]' : '[NOT_SET]',
+    SMTP_PORT: config.SMTP_PORT,
+    SMTP_SECURE: String(config.SMTP_SECURE),
+    SMTP_USER: maskString(config.SMTP_USER),
+    SMTP_PASS: '[REDACTED_SECRET]',
+    SMTP_FROM: config.SMTP_FROM,
   };
 }

@@ -4,11 +4,11 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import {
-    ISafeUserResponse,
-    IAuthResult,
-    ITokenPayload,
-    ILoginResult,
-    IRegisterResult,
+  ISafeUserResponse,
+  IAuthResult,
+  ITokenPayload,
+  ILoginResult,
+  IRegisterResult,
 } from '../inteface';
 
 export type SafeUserResponse = ISafeUserResponse;

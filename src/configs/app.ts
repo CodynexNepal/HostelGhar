@@ -43,12 +43,17 @@ import cookieParser from 'cookie-parser';
 
 import routes from '../routes/index.routes';
 import { errorHandler } from '../middleware/error-handler.middleware';
+import { socketContextMiddleware } from '../middleware/socket.middleware';
+import { globalRateLimiter } from './rateLimiter.config';
+import { corsConfig } from './cors.config';
 
 // ─── createApp() Factory Function ───────────────────────────────────────────
 
 export const createApp = (): Express => {
   // Create a new Express application instance.
   const app: Express = express();
+  app.disable('x-powered-by');
+  app.set('trust proxy', 1);
 
   // ─── Security Middleware ──────────────────────────────────────────────
 
@@ -60,31 +65,7 @@ export const createApp = (): Express => {
   // ─── CORS Configuration ──────────────────────────────────────────────
 
   // Configure CORS to allow the frontend to make requests to this API.
-  app.use(
-    cors({
-      // `origin: true` reflects the request's Origin header back in the
-      // Access-Control-Allow-Origin response header. In production, replace
-      // this with your specific frontend URL (e.g., 'https://hostelghar.com')
-      // to prevent unauthorized domains from making API calls.
-      origin: true,
-
-      // `credentials: true` is MANDATORY for cookie-based auth.
-      // It adds `Access-Control-Allow-Credentials: true` to responses,
-      // which tells the browser "yes, you may include cookies in
-      // cross-origin requests to this API".
-      // Without this, the browser silently strips cookies from requests,
-      // and authentication breaks.
-      credentials: true,
-
-      // Explicitly allow these HTTP methods. OPTIONS is needed for
-      // CORS preflight requests that browsers send automatically.
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-
-      // Allow the Content-Type header (needed for JSON requests) and
-      // Authorization (for any non-cookie auth fallback).
-      allowedHeaders: ['Content-Type', 'Authorization'],
-    }),
-  );
+  app.use(cors(corsConfig));
 
   // ─── Body Parsers ────────────────────────────────────────────────────
 
@@ -102,6 +83,12 @@ export const createApp = (): Express => {
   // This is REQUIRED for our auth system — without it, we cannot read
   // the access_token and refresh_token cookies from incoming requests.
   app.use(cookieParser());
+
+  // ─── Socket.io Context Middleware ────────────────────────────────────
+  // Injects `req.io`, `req.notifyUser`, `req.notifyHostel`, `req.broadcastEvent`
+  // so every single endpoint/controller can emit real-time updates directly.
+  app.use(socketContextMiddleware);
+  app.use(globalRateLimiter);
 
   // ─── API Routes ──────────────────────────────────────────────────────
 

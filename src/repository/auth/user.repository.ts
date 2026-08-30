@@ -93,4 +93,28 @@ export class UserRepository {
   ): Promise<void> {
     await this.repository.update(userId, { refreshToken: hashedRefreshToken });
   }
+
+  public async updatePassword(userId: string, hashedPassword: string): Promise<void> {
+    await this.repository.update(userId, {
+      password: hashedPassword,
+      refreshToken: null,
+      passwordResetToken: null,
+      passwordResetExpiresAt: null,
+    });
+  }
+
+  public async setPasswordResetToken(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.repository.update(userId, {
+      passwordResetToken: tokenHash,
+      passwordResetExpiresAt: expiresAt,
+    });
+  }
+
+  public async findByPasswordResetToken(tokenHash: string): Promise<User | null> {
+    return this.repository.findOne({ where: { passwordResetToken: tokenHash } });
+  }
 }

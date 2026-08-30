@@ -63,7 +63,7 @@ export const psqlDbConfig: DataSourceOptions = {
   },
 
   // ─── Cache Configuration (Optional TypeORM query result cache) ─────────────
-  cache: false,
+  cache: true,
 };
 
 export default psqlDbConfig;

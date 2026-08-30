@@ -87,6 +87,12 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true, default: null })
   refreshToken!: string | null;
 
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  passwordResetToken!: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true, default: null })
+  passwordResetExpiresAt!: Date | null;
+
   // ─── Timestamps ───────────────────────────────────────────────────────────
 
   // `@CreateDateColumn` is automatically set to `NOW()` on INSERT.

@@ -157,10 +157,23 @@ export const apiReadLimiter: RateLimitRequestHandler = rateLimit({
   handler: createRateLimitHandler(MESSAGES.REGISTRATION_LIMIT_EXCEEDED),
 });
 
+export const bookingCreationLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    const userId = req.user?.userId;
+    return userId ? `booking:${userId}` : `booking:${getClientIp(req)}`;
+  },
+  handler: createRateLimitHandler('Too many booking attempts. Please try again later.'),
+});
+
 export default {
   globalRateLimiter,
   authRateLimiter,
   sensitiveActionLimiter,
   apiReadLimiter,
+  bookingCreationLimiter,
   getClientIp,
 };
