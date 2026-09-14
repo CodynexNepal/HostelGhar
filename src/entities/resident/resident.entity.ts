@@ -43,6 +43,20 @@ export class Resident {
   @Column({ type: 'varchar', length: 20, nullable: false })
   roomNumber!: string;
 
+  // Cloudinary student profile photo metadata
+  @Column({ type: 'varchar', length: 500, nullable: true, default: null })
+  photoUrl!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  photoPublicId!: string | null;
+
+  // Cloudinary student identification document metadata
+  @Column({ type: 'varchar', length: 500, nullable: true, default: null })
+  documentUrl!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  documentPublicId!: string | null;
+
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;
 

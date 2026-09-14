@@ -35,6 +35,33 @@ Resets password using the emailed token.
 
 Authenticated password change.
 
+### GET `/auth/me`
+
+Returns the currently-authenticated user including `role`. Requires a valid
+access token (`Authorization: Bearer <token>` OR `access_token` cookie).
+
+```json
+{
+  "success": true,
+  "data": {
+    "user": { "id": "...", "email": "...", "firstName": "...", "lastName": "...", "role": "owner" }
+  }
+}
+```
+
+Frontend role redirect: after login/register, either use
+`data.user.role` from the login response OR call `GET /auth/me` on app boot,
+then redirect: `admin → /admin/dashboard`, `owner → /owner/dashboard`,
+`resident → /resident/dashboard`, `user → /dashboard`.
+
+### POST `/auth/refresh`
+
+Rotates tokens using the `refresh_token` cookie (or `refreshToken` body field).
+
+### POST `/auth/logout`
+
+Clears auth cookies and revokes the stored refresh token. Requires auth.
+
 ## Admin
 
 Requires role: `admin`.

@@ -1,0 +1,19 @@
+{
+  "title": "HostelGhar Infrastructure",
+  "uid": "hostelghar-infrastructure",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Host CPU",
+      "targets": [{ "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Host memory",
+      "targets": [
+        { "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)" }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}

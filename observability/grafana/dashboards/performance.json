@@ -1,0 +1,21 @@
+{
+  "title": "HostelGhar Performance",
+  "uid": "hostelghar-performance",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Request latency p95",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Active requests",
+      "targets": [{ "expr": "http_active_requests" }]
+    }
+  ],
+  "schemaVersion": 39
+}

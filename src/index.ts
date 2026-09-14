@@ -15,6 +15,10 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import http from 'http';
+import { startTelemetry, shutdownTelemetry } from './observability/telemetry';
+import { logger } from './observability/logger';
+
+startTelemetry();
 // Import the app factory function that creates a fully-configured Express app.
 import { createApp } from './configs/app';
 
@@ -51,17 +55,19 @@ const { PORT } = dotEnvConfig;
 
     // ── Step 6: Start the HTTP Server ───────────────────────────────────
     httpServer.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
-      console.log(`📋 Health check: http://localhost:${PORT}/health`);
-      console.log(`⚡ Socket.io listening for real-time connections`);
+      logger.info('HTTP server started', {
+        port: PORT,
+        cors_origin: dotEnvConfig.CORS_ORIGIN,
+      });
     });
 
     // ── Graceful Shutdown Handling ─────────────────────────────────────
     const handleShutdown = async (signal: string) => {
-      console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
+      logger.info('Starting graceful shutdown', { signal });
       await shutdownWorkers();
       httpServer.close(() => {
-        console.log('HTTP & WebSocket server closed.');
+        void shutdownTelemetry();
+        logger.info('HTTP and WebSocket server closed');
         process.exit(0);
       });
     };
@@ -69,7 +75,9 @@ const { PORT } = dotEnvConfig;
     process.on('SIGTERM', () => handleShutdown('SIGTERM'));
     process.on('SIGINT', () => handleShutdown('SIGINT'));
   } catch (error) {
-    console.error('❌ Failed to start application:', error);
+    logger.fatal('Failed to start application', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     process.exit(1);
   }
 })();

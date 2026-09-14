@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE: owner.controller.ts
 // PURPOSE: Owner controller handling hostel dashboard, resident creation, leave types,
-//          manual fee generation triggers, with Redis caching & isCached flag.
+//          manual fee generation triggers, with 3-tier caching & Cloudinary media upload.
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { Request, Response, NextFunction } from 'express';
@@ -17,6 +17,9 @@ import { JobType, SocketEvent } from '../../constant/queue.constants';
 import { feeService } from '../../services/fee/fee.service';
 import { optimizedHostelQueryService } from '../../services/hostel/hostel-query.service';
 import { OwnerRepository } from '../../repository/owner/owner.repository';
+import { getRequiredParam } from '../../decorators/http.decorator';
+import { imageUploadService } from '../../services/upload/image-upload.service';
+import { createHttpError } from '../../utils/createHttpError';
 
 export class OwnerController {
   constructor(private readonly ownerRepository: OwnerRepository) {}
@@ -33,17 +36,19 @@ export class OwnerController {
       const ownerId = req.user!.userId;
       const cacheKey = cacheService.generateKey('owner:dashboard', ownerId);
 
-      const { data, isCached } = await cacheService.wrap(
+      // 3-Level Caching: L1 Memory LRU -> L2 Redis -> L3 Database Loader
+      const { data, isCached, cacheLevel } = await cacheService.wrap(
         cacheKey,
         async () => {
           return await optimizedHostelQueryService.getOwnerHostelDashboard(ownerId);
         },
-        60, // Cache for 60 seconds
+        { l1TtlSeconds: 30, l2TtlSeconds: 60 },
       );
 
       res.status(STATUS_CODE.OK).json({
         success: true,
         isCached,
+        cacheLevel,
         data,
       });
     } catch (error) {
@@ -97,7 +102,7 @@ export class OwnerController {
         isActive: true,
       });
 
-      // Invalidate caches
+      // Invalidate caches across all tiers
       await cacheService.invalidatePattern(`owner:dashboard:${ownerId}`);
       await cacheService.invalidatePattern(`hostel:residents:${dto.hostelId}`);
 
@@ -118,6 +123,145 @@ export class OwnerController {
       res.status(STATUS_CODE.CREATED).json({
         success: true,
         message: 'Resident created and assigned to hostel successfully',
+        data: savedResident,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Upload or replace Hostel Logo (Owner restricted to own hostel)
+   */
+  public uploadHostelLogo = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const hostelId = getRequiredParam(req, 'id');
+      const ownerId = req.user!.userId;
+
+      const hostel = await this.ownerRepository.findHostelByIdAndOwner(hostelId, ownerId);
+      if (!hostel) {
+        throw createHttpError(STATUS_CODE.FORBIDDEN, 'Hostel not found or not owned by you');
+      }
+
+      if (!req.file) {
+        throw createHttpError(STATUS_CODE.BAD_REQUEST, 'Logo file is required in field "logo"');
+      }
+
+      const uploadResult = await imageUploadService.uploadHostelLogo(
+        req.file,
+        hostel.id,
+        hostel.logoPublicId,
+      );
+
+      hostel.logoUrl = uploadResult.url;
+      hostel.logoPublicId = uploadResult.publicId;
+      const savedHostel = await this.ownerRepository.saveHostel(hostel);
+
+      await cacheService.invalidatePattern('hostels');
+      await cacheService.invalidatePattern(`owner:dashboard:${ownerId}`);
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: 'Hostel logo uploaded successfully',
+        data: savedHostel,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Upload or replace Student / Resident Photo (with face-center cropping)
+   */
+  public uploadResidentPhoto = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const residentId = getRequiredParam(req, 'id');
+      const ownerId = req.user!.userId;
+
+      const resident = await this.ownerRepository.findResidentByIdAndOwner(residentId, ownerId);
+      if (!resident) {
+        throw createHttpError(
+          STATUS_CODE.FORBIDDEN,
+          'Resident not found or does not belong to your hostel',
+        );
+      }
+
+      if (!req.file) {
+        throw createHttpError(STATUS_CODE.BAD_REQUEST, 'Photo file is required in field "photo"');
+      }
+
+      const uploadResult = await imageUploadService.uploadStudentPhoto(
+        req.file,
+        resident.id,
+        resident.photoPublicId,
+      );
+
+      resident.photoUrl = uploadResult.url;
+      resident.photoPublicId = uploadResult.publicId;
+      const savedResident = await this.ownerRepository.saveResident(resident);
+
+      await cacheService.invalidatePattern(`hostel:residents:${resident.hostelId}`);
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: 'Student photo uploaded successfully',
+        data: savedResident,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Upload or replace Student / Resident Identification Document
+   */
+  public uploadResidentDocument = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const residentId = getRequiredParam(req, 'id');
+      const ownerId = req.user!.userId;
+
+      const resident = await this.ownerRepository.findResidentByIdAndOwner(residentId, ownerId);
+      if (!resident) {
+        throw createHttpError(
+          STATUS_CODE.FORBIDDEN,
+          'Resident not found or does not belong to your hostel',
+        );
+      }
+
+      if (!req.file) {
+        throw createHttpError(
+          STATUS_CODE.BAD_REQUEST,
+          'Document file is required in field "document"',
+        );
+      }
+
+      const uploadResult = await imageUploadService.uploadStudentDocument(
+        req.file,
+        resident.id,
+        resident.documentPublicId,
+      );
+
+      resident.documentUrl = uploadResult.url;
+      resident.documentPublicId = uploadResult.publicId;
+      const savedResident = await this.ownerRepository.saveResident(resident);
+
+      await cacheService.invalidatePattern(`hostel:residents:${resident.hostelId}`);
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: 'Student document uploaded successfully',
         data: savedResident,
       });
     } catch (error) {
@@ -155,7 +299,7 @@ export class OwnerController {
         requiresParentApproval: dto.requiresParentApproval || false,
       });
 
-      // Invalidate cache
+      // Invalidate cache across all tiers
       await cacheService.invalidatePattern(`leave:types:${dto.hostelId}`);
 
       res.status(STATUS_CODE.CREATED).json({

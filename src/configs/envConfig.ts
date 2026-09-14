@@ -11,9 +11,12 @@
 import { config } from 'dotenv';
 import { cleanEnvConfig, CleanEnvConfig } from '../functions/env-cleaner.function';
 
-// Execute the loader immediately — this MUST happen before any read of
-// `process.env` below, otherwise the values would be `undefined`.
-config({ path: '.env' });
+// Load environment files in a developer-friendly order.
+// - `.env` is the base template.
+// - `.env.local` should override it for local machine-specific values.
+// We explicitly override earlier values so local settings win deterministically.
+config({ path: '.env', override: true });
+config({ path: '.env.local', override: true });
 
 // Clean, validate, and freeze the configuration object
 export const dotEnvConfig: CleanEnvConfig = cleanEnvConfig();

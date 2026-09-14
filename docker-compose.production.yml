@@ -1,0 +1,59 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Hostel Ghar — Production Docker Compose
+# Deploys the pre-built GHCR image with health checks, resource limits,
+# log rotation, and restart policies.
+#
+# Usage:
+#   IMAGE_TAG=<commit-sha> docker compose -f docker-compose.production.yml up -d
+#
+# The .env file is read at runtime and NEVER baked into the Docker image.
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  app:
+    # Always deploy by immutable commit SHA — never use :latest in production
+    image: ghcr.io/codynexnepal/hostelghar:${IMAGE_TAG:?IMAGE_TAG must be set to a git commit SHA}
+    container_name: hostelghar-app
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3000}:3000'
+
+    # Runtime secrets are injected via .env file, never baked into the image
+    env_file:
+      - .env
+
+    environment:
+      - NODE_ENV=production
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-hostelghar-api}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+    # Resource limits prevent a single container from consuming all host resources
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.50'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+    # Log rotation prevents container logs from filling the disk
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+    networks:
+      - hostelghar-net
+
+networks:
+  hostelghar-net:
+    driver: bridge

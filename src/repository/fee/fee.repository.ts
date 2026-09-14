@@ -50,11 +50,17 @@ export class FeeRepository {
     });
   }
 
-  public async findByHostel(hostelId: string): Promise<Fee[]> {
-    return this.feeRepo.find({
+  public async findByHostel(
+    hostelId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<[Fee[], number]> {
+    return this.feeRepo.findAndCount({
       where: { hostelId },
       relations: { resident: { user: true } },
       order: { billingYear: 'DESC', billingMonth: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 }

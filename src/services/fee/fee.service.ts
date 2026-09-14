@@ -4,6 +4,7 @@
 //          - Generates monthly fee of 10500 + previous due amount
 //          - Queues emails via BullMQ with Circuit Breaker
 //          - Emits live WebSocket updates to residents and owners
+//          - 3-tier caching & pagination for fee lookups
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { FeeStatus, FeeType } from '../../enum/fee.enum';
@@ -12,6 +13,8 @@ import { JobType, SocketEvent } from '../../constant/queue.constants';
 import { socketServer } from '../../socket/socket.server';
 import { FeeRepository } from '../../repository/fee/fee.repository';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
+import { cacheService } from '../../utils/cache.util';
+import { createPaginatedResponse } from '../../utils/pagination.util';
 
 export class FeeService {
   constructor(private readonly feeRepository: FeeRepository = new FeeRepository()) {}
@@ -74,6 +77,10 @@ export class FeeService {
           generatedCount++;
         }
 
+        // Invalidate fee caches across all tiers
+        await cacheService.invalidatePattern(`resident:fees:${resident.id}`);
+        await cacheService.invalidatePattern(`hostel:fees:${resident.hostelId}`);
+
         // 3. Dispatch automated email notification via BullMQ with Circuit Breaker & Exponential Backoff
         const ownerName = resident.hostel.owner
           ? `${resident.hostel.owner.firstName} ${resident.hostel.owner.lastName}`
@@ -124,8 +131,25 @@ export class FeeService {
     return { generatedCount, errors };
   }
 
-  public async listHostelFees(hostelId: string) {
-    return { data: await this.feeRepository.findByHostel(hostelId) };
+  public async listHostelFees(hostelId: string, page: number = 1, limit: number = 20) {
+    const cacheKey = cacheService.generateKey('hostel:fees', { hostelId, page, limit });
+
+    // 3-Level Cache: L1 (LRU RAM) -> L2 (Redis) -> L3 (DB)
+    const { data, isCached, cacheLevel } = await cacheService.wrap(
+      cacheKey,
+      async () => {
+        const [fees, total] = await this.feeRepository.findByHostel(hostelId, page, limit);
+        return { fees, total };
+      },
+      { l1TtlSeconds: 30, l2TtlSeconds: 120 },
+    );
+
+    return createPaginatedResponse(
+      data.fees,
+      data.total,
+      { page, limit },
+      { isCached, cacheLevel },
+    );
   }
 
   public async recordPayment(feeId: string, paidAmount: number, actorId: string) {
@@ -144,6 +168,10 @@ export class FeeService {
     fee.status =
       fee.paidAmount >= Number(fee.totalPayable) ? FeeStatus.PAID : FeeStatus.PARTIALLY_PAID;
     const savedFee = await this.feeRepository.saveFee(fee);
+
+    // Invalidate fee caches across all tiers
+    await cacheService.invalidatePattern(`resident:fees:${fee.residentId}`);
+    await cacheService.invalidatePattern(`hostel:fees:${fee.hostelId}`);
 
     await eventDispatcher.dispatch({
       type: SocketEvent.PAYMENT_PROCESSED,

@@ -43,6 +43,27 @@ export class OwnerRepository {
     return await this.residentRepo.save(resident);
   }
 
+  public async saveResident(resident: Resident): Promise<Resident> {
+    return await this.residentRepo.save(resident);
+  }
+
+  public async saveHostel(hostel: Hostel): Promise<Hostel> {
+    return await this.hostelRepo.save(hostel);
+  }
+
+  public async findResidentByIdAndOwner(
+    residentId: string,
+    ownerId: string,
+  ): Promise<Resident | null> {
+    return await this.residentRepo.findOne({
+      where: {
+        id: residentId,
+        hostel: { ownerId },
+      },
+      relations: { hostel: true, user: true },
+    });
+  }
+
   public async createLeaveType(leaveTypeData: Partial<LeaveType>): Promise<LeaveType> {
     const leaveType = this.leaveTypeRepo.create(leaveTypeData);
     return await this.leaveTypeRepo.save(leaveType);

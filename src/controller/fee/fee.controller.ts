@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { FeeService } from '../../services/fee/fee.service';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { getRequiredParam } from '../../decorators/http.decorator';
+import { normalizePagination } from '../../utils/pagination.util';
 
 export class FeeController {
   constructor(private readonly feeService: FeeService) {}
@@ -26,9 +27,13 @@ export class FeeController {
   ): Promise<void> => {
     try {
       const hostelId = getRequiredParam(req, 'hostelId');
-      res
-        .status(STATUS_CODE.OK)
-        .json({ success: true, ...(await this.feeService.listHostelFees(hostelId)) });
+      const { page, limit } = normalizePagination({
+        page: req.query.page as string,
+        limit: req.query.limit as string,
+      });
+
+      const result = await this.feeService.listHostelFees(hostelId, page, limit);
+      res.status(STATUS_CODE.OK).json({ success: true, ...result });
     } catch (error) {
       next(error);
     }

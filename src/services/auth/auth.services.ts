@@ -171,4 +171,46 @@ export class AuthService {
       body: template.body,
     });
   }
+
+  /**
+   * Returns the currently-authenticated user's public profile.
+   * Used by the frontend (`GET /auth/me`) on app boot / after login
+   * to learn the user's `role` and redirect to the correct dashboard
+   * (admin | owner | resident | user) without a second login.
+   */
+  public async getMe(userId: string): Promise<SafeUserResponse> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw createHttpError(MESSAGES.USER_NOT_FOUND, STATUS_CODE.NOT_FOUND);
+    }
+    return toSafeUserResponse(user);
+  }
+
+  /**
+   * Rotates tokens from a valid refresh token. The caller passes the raw
+   * refresh token (cookie or body); we compare it against the stored
+   * bcrypt hash, then issue a fresh token pair.
+   */
+  public async refresh(refreshToken: string): Promise<ILoginResult> {
+    const payload = JwtTokenService.verifyRefreshToken(refreshToken);
+    if (!payload?.userId) {
+      throw createHttpError(MESSAGES.SESSION_INVALID, STATUS_CODE.UNAUTHORIZED);
+    }
+
+    const user = await this.userRepository.findById(payload.userId as string);
+    if (!user || !user.refreshToken) {
+      throw createHttpError(MESSAGES.SESSION_INVALID, STATUS_CODE.UNAUTHORIZED);
+    }
+
+    const matches = await PasswordHasher.compare(refreshToken, user.refreshToken);
+    if (!matches) {
+      throw createHttpError(MESSAGES.SESSION_INVALID, STATUS_CODE.UNAUTHORIZED);
+    }
+
+    return this.issueTokensForUser(user);
+  }
+
+  public async logout(userId: string): Promise<void> {
+    await this.userRepository.updateRefreshToken(userId, null);
+  }
 }

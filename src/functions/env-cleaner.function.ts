@@ -49,15 +49,21 @@ export function cleanEnvConfig(): CleanEnvConfig {
   const port = parseInt(process.env.PORT || '3000', 10);
   const saltRounds = parseInt(process.env.SALT_ROUND || process.env.SALT_ROUNDS || '10', 10);
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+  const nodeEnv = (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development';
+  const defaultDatabaseUrl =
+    nodeEnv === 'production'
+      ? undefined
+      : 'postgresql://hostelghar:hostelghar_dev_pass@127.0.0.1:5432/hostelghar_dev';
+  const defaultRedisUrl = nodeEnv === 'production' ? undefined : 'redis://127.0.0.1:6379';
 
   const config: CleanEnvConfig = {
     PORT: Number.isNaN(port) ? 3000 : port,
-    NODE_ENV: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
-    DATABASE_URL: getRequiredEnv('DATABASE_URL'),
-    REDIS_URL:
-      process.env.REDIS_URL?.replace(/^REDIS_URL=/, '')
-        .replace(/^"|"$/g, '')
-        .trim() || '',
+    NODE_ENV: nodeEnv,
+    DATABASE_URL: getRequiredEnv('DATABASE_URL', process.env.DATABASE_URL || defaultDatabaseUrl),
+    REDIS_URL: getRequiredEnv('REDIS_URL', process.env.REDIS_URL || defaultRedisUrl)
+      .replace(/^REDIS_URL=/, '')
+      .replace(/^"|"$/g, '')
+      .trim(),
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
@@ -66,7 +72,8 @@ export function cleanEnvConfig(): CleanEnvConfig {
     ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY || '15m',
     REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || '7d',
     SALT_ROUNDS: Number.isNaN(saltRounds) ? 10 : saltRounds,
-    CORS_ORIGIN: process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*',
+    CORS_ORIGIN:
+      process.env.CORS_ORIGIN || process.env.FRONTEND_URL || (nodeEnv === 'production' ? '' : '*'),
     SOCKET_CORS_ORIGIN:
       process.env.SOCKET_CORS_ORIGIN || process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*',
     SMTP_HOST: process.env.SMTP_HOST || '',

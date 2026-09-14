@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE: booking.controller.ts
-// PURPOSE: Controller allowing users with role 'USER' to book hostel accommodations.
+// PURPOSE: Controller allowing users to book accommodations with pagination & 3-tier caching.
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { Request, Response, NextFunction } from 'express';
@@ -8,6 +8,7 @@ import { CreateBookingDto } from '../../dto/booking/create-booking.dto';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { BookingService } from '../../services/booking/booking.service';
 import { getRequiredParam } from '../../decorators/http.decorator';
+import { normalizePagination } from '../../utils/pagination.util';
 
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
@@ -42,17 +43,21 @@ export class BookingController {
   };
 
   /**
-   * Get user's bookings with caching
+   * Get user's bookings with 3-tier caching and pagination
    */
   public getMyBookings = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = req.user!.userId;
-      const { data, isCached } = await this.bookingService.getUserBookings(userId);
+      const { page, limit } = normalizePagination({
+        page: req.query.page as string,
+        limit: req.query.limit as string,
+      });
+
+      const result = await this.bookingService.getUserBookings(userId, page, limit);
 
       res.status(STATUS_CODE.OK).json({
         success: true,
-        isCached,
-        data,
+        ...result,
       });
     } catch (error) {
       next(error);
@@ -66,9 +71,17 @@ export class BookingController {
   ): Promise<void> => {
     try {
       const hostelId = getRequiredParam(req, 'hostelId');
-      res
-        .status(STATUS_CODE.OK)
-        .json({ success: true, ...(await this.bookingService.getHostelBookings(hostelId)) });
+      const { page, limit } = normalizePagination({
+        page: req.query.page as string,
+        limit: req.query.limit as string,
+      });
+
+      const result = await this.bookingService.getHostelBookings(hostelId, page, limit);
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        ...result,
+      });
     } catch (error) {
       next(error);
     }

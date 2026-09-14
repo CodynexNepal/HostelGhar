@@ -51,12 +51,12 @@ const authRouter: Router = Router();
 
 const authController = AuthFactory.create();
 
-authRouter.post('/login', validateDto(LoginUserDto), authRateLimiter, authController.login);
+authRouter.post('/login', authRateLimiter, validateDto(LoginUserDto), authController.login);
 
 authRouter.post(
   '/register',
-  validateDto(RegisterUserDto),
   authRateLimiter,
+  validateDto(RegisterUserDto),
   authController.register,
 );
 
@@ -81,6 +81,17 @@ authRouter.put(
   validateDto(ChangePasswordDto),
   authController.changePassword,
 );
+
+// ─── Session helpers (frontend boot / role redirect) ───────────────────────
+
+// GET /api/v1/hostel-ghar/auth/me — current user incl. `role`.
+// Frontend calls this after login + on page reload to decide which
+// dashboard to redirect to (admin | owner | resident | user).
+authRouter.get('/me', authenticate, authController.me);
+
+// Token rotation + logout.
+authRouter.post('/refresh', authController.refresh);
+authRouter.post('/logout', authenticate, authController.logout);
 
 // ─── Export ─────────────────────────────────────────────────────────────────
 

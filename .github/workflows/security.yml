@@ -1,0 +1,84 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Hostel Ghar — Security Scanning
+#
+# Runs dependency audits, lockfile integrity checks, and secret scanning.
+# Executes on every PR and on a weekly schedule to catch newly disclosed CVEs.
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Security
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly scan every Monday at 06:00 UTC to catch new vulnerabilities
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ── Dependency Audit ─────────────────────────────────────────────────────
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fail on high and critical severity vulnerabilities
+      - name: npm audit
+        run: npm audit --audit-level=high
+
+  # ── Lockfile Integrity ──────────────────────────────────────────────────
+  lockfile-check:
+    name: Lockfile Integrity
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # npm ci will fail if package-lock.json is out of sync with package.json.
+      # This catches PRs that ran `npm install` but forgot to commit the lockfile.
+      - name: Verify lockfile is in sync
+        run: npm ci
+
+  # ── Secret Scanning ────────────────────────────────────────────────────
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog secret scan
+        uses: trufflesecurity/trufflehog@v3.88.0
+        with:
+          extra_args: --only-verified

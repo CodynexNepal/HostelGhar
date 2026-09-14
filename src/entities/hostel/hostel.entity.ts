@@ -4,15 +4,15 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  Index,
-  CreateDateColumn,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
-  JoinColumn,
 } from 'typeorm';
 import { User } from '../user.entity';
 import { HostelType } from '../../enum/hostel.enum';
@@ -31,6 +31,25 @@ export class Hostel {
 
   @Column({ type: 'enum', enum: HostelType, nullable: false })
   type!: HostelType;
+
+  @Column({ type: 'varchar', length: 120, nullable: true, default: null })
+  city!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  address!: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true, default: null })
+  phone!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  email!: string | null;
+
+  // Cloudinary hostel logo metadata
+  @Column({ type: 'varchar', length: 500, nullable: true, default: null })
+  logoUrl!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  logoPublicId!: string | null;
 
   @Column({ type: 'uuid', nullable: true })
   ownerId!: string | null;

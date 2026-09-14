@@ -3,16 +3,51 @@ import { LeaveStatus } from '../../enum/leave.enum';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { eventDispatcher } from '../../utils/event-dispatcher.util';
 import { SocketEvent } from '../../constant/queue.constants';
+import { cacheService } from '../../utils/cache.util';
+import { createPaginatedResponse } from '../../utils/pagination.util';
 
 export class LeaveService {
   constructor(private readonly leaveRepository: LeaveRepository) {}
 
-  public async listHostelLeaves(hostelId: string, status?: string) {
+  public async listHostelLeaves(
+    hostelId: string,
+    status?: string,
+    page: number = 1,
+    limit: number = 20,
+  ) {
     const parsedStatus =
       status && Object.values(LeaveStatus).includes(status as LeaveStatus)
         ? (status as LeaveStatus)
         : undefined;
-    return { data: await this.leaveRepository.findByHostel(hostelId, parsedStatus) };
+
+    const cacheKey = cacheService.generateKey('hostel:leaves', {
+      hostelId,
+      status: parsedStatus || 'ALL',
+      page,
+      limit,
+    });
+
+    // 3-Level Cache: L1 (LRU RAM) -> L2 (Redis) -> L3 (DB)
+    const { data, isCached, cacheLevel } = await cacheService.wrap(
+      cacheKey,
+      async () => {
+        const [leaves, total] = await this.leaveRepository.findByHostel(
+          hostelId,
+          parsedStatus,
+          page,
+          limit,
+        );
+        return { leaves, total };
+      },
+      { l1TtlSeconds: 30, l2TtlSeconds: 120 },
+    );
+
+    return createPaginatedResponse(
+      data.leaves,
+      data.total,
+      { page, limit },
+      { isCached, cacheLevel },
+    );
   }
 
   public async updateLeaveStatus(leaveId: string, status: string, actorId: string) {
@@ -27,6 +62,10 @@ export class LeaveService {
 
     leave.status = status as LeaveStatus;
     const savedLeave = await this.leaveRepository.save(leave);
+
+    // Invalidate leave caches across tiers
+    await cacheService.invalidatePattern(`hostel:leaves:${leave.resident.hostelId}`);
+    await cacheService.invalidatePattern(`resident:leaves:${leave.residentId}`);
 
     await eventDispatcher.dispatch({
       type: SocketEvent.LEAVE_STATUS_CHANGED,

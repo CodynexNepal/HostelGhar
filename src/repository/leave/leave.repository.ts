@@ -10,14 +10,21 @@ export class LeaveRepository {
     this.leaveRepo = AppDataSource.getRepository(LeaveRequest);
   }
 
-  public async findByHostel(hostelId: string, status?: LeaveStatus): Promise<LeaveRequest[]> {
-    return this.leaveRepo.find({
+  public async findByHostel(
+    hostelId: string,
+    status?: LeaveStatus,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<[LeaveRequest[], number]> {
+    return this.leaveRepo.findAndCount({
       where: {
         resident: { hostelId },
         ...(status ? { status } : {}),
       },
       relations: { resident: { user: true }, leaveType: true },
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 

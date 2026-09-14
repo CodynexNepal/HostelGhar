@@ -1,0 +1,21 @@
+{
+  "title": "HostelGhar PostgreSQL",
+  "uid": "hostelghar-database",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Active connections",
+      "targets": [{ "expr": "pg_stat_activity_count" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Transactions per second",
+      "targets": [
+        {
+          "expr": "rate(pg_stat_database_xact_commit[5m]) + rate(pg_stat_database_xact_rollback[5m])"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}

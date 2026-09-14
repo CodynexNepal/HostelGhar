@@ -6,7 +6,7 @@
 
 import { EventEmitter } from 'events';
 import { emailQueue, notificationQueue, auditLogQueue } from '../queue/queue.factory';
-import { JobType, SocketEvent } from '../constant/queue.constants';
+import { JobType } from '../constant/queue.constants';
 import { socketServer } from '../socket/socket.server';
 
 export interface AppDomainEvent<T = any> {

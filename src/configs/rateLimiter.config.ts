@@ -23,7 +23,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { Request, Response } from 'express';
-import rateLimit, { Options, RateLimitRequestHandler } from 'express-rate-limit';
+import rateLimit, { Options, RateLimitRequestHandler, ipKeyGenerator } from 'express-rate-limit';
 import { STATUS_CODE } from '../constant/statusCode.interface';
 import { MESSAGES } from '../constant/message.interface';
 import { dotEnvConfig } from './envConfig';
@@ -84,6 +84,18 @@ const createRateLimitHandler = (customMessage: string) => {
   };
 };
 
+// ─── Shared helpers ──────────────────────────────────────────────────────────
+
+/** Skip CORS preflight — browsers must never consume rate-limit budget. */
+const skipPreflight = (req: Request): boolean => {
+  if (req.method === 'OPTIONS') return true;
+  // Never throttle health check probes or internal monitoring
+  return req.path === '/health' || req.path === '/metrics';
+};
+
+/** IPv6-safe base key. MUST use ipKeyGenerator when trust proxy is enabled. */
+const baseIpKey = (req: Request): string => ipKeyGenerator(getClientIp(req));
+
 // ─── Core Rate Limiters ───────────────────────────────────────────────────────
 
 /**
@@ -96,11 +108,8 @@ export const globalRateLimiter: RateLimitRequestHandler = rateLimit({
   limit: dotEnvConfig.NODE_ENV === 'production' ? 100 : 1000,
   standardHeaders: 'draft-7', // draft-7: combined `RateLimit` header
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
-  keyGenerator: (req: Request) => getClientIp(req),
-  skip: (req: Request) => {
-    // Never throttle health check probes or internal monitoring
-    return req.path === '/health' || req.path === '/metrics';
-  },
+  keyGenerator: baseIpKey,
+  skip: skipPreflight,
   handler: createRateLimitHandler(
     'Too many requests from this IP address. Please try again later.',
   ),
@@ -109,19 +118,22 @@ export const globalRateLimiter: RateLimitRequestHandler = rateLimit({
 /**
  * 2. Auth / Brute-Force Rate Limiter:
  * Applied strictly to /auth/login, /auth/register to defend against credential stuffing and rainbow table attacks.
- * Default: 5 attempts per 15 minutes per IP.
+ * Production: 5 attempts per 15 minutes. Dev/test: relaxed so local testing never locks you out.
  */
 export const authRateLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes window
-  limit: 5, // 5 requests max
+  limit: dotEnvConfig.NODE_ENV === 'production' ? 5 : 100, // 5 requests max in prod
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   skipSuccessfulRequests: false, // Count all attempts to prevent password guessing
+  skip: skipPreflight,
   keyGenerator: (req: Request) => {
-    // Composite key: bind to IP + email if supplied in body for multi-vector defense
+    // Composite key: bind to IPv6-safe IP + email if supplied in body.
+    // NOTE: req.body may be undefined on preflight/CORS OPTIONS — guard it,
+    // and ALWAYS pass the IP through ipKeyGenerator (ERR_ERL_KEY_GEN_IPV6).
     const email =
       req.body && typeof req.body.email === 'string' ? req.body.email.toLowerCase().trim() : '';
-    const ip = getClientIp(req);
+    const ip = baseIpKey(req);
     return email ? `${ip}_${email}` : ip;
   },
   handler: createRateLimitHandler(MESSAGES.ACCOUNT_LOCKED),
@@ -134,10 +146,11 @@ export const authRateLimiter: RateLimitRequestHandler = rateLimit({
  */
 export const sensitiveActionLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  limit: 3,
+  limit: dotEnvConfig.NODE_ENV === 'production' ? 3 : 50,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  keyGenerator: (req: Request) => getClientIp(req),
+  skip: skipPreflight,
+  keyGenerator: baseIpKey,
   handler: createRateLimitHandler(
     'Too many sensitive action attempts. Please try again in an hour.',
   ),
@@ -153,7 +166,8 @@ export const apiReadLimiter: RateLimitRequestHandler = rateLimit({
   limit: 300,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  keyGenerator: (req: Request) => getClientIp(req),
+  skip: skipPreflight,
+  keyGenerator: baseIpKey,
   handler: createRateLimitHandler(MESSAGES.REGISTRATION_LIMIT_EXCEEDED),
 });
 
@@ -162,9 +176,10 @@ export const bookingCreationLimiter: RateLimitRequestHandler = rateLimit({
   limit: 10,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  skip: skipPreflight,
   keyGenerator: (req: Request) => {
     const userId = req.user?.userId;
-    return userId ? `booking:${userId}` : `booking:${getClientIp(req)}`;
+    return userId ? `booking:${userId}` : `booking:${baseIpKey(req)}`;
   },
   handler: createRateLimitHandler('Too many booking attempts. Please try again later.'),
 });

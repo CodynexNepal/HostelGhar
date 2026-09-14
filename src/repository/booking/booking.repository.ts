@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE: booking.repository.ts
-// PURPOSE: Data access layer for Hostel Bookings by users.
+// PURPOSE: Data access layer for Hostel Bookings with pagination.
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { Repository } from 'typeorm';
@@ -36,19 +36,31 @@ export class BookingRepository {
     return await this.bookingRepo.save(booking);
   }
 
-  public async findBookingsByUser(userId: string): Promise<Booking[]> {
-    return await this.bookingRepo.find({
+  public async findBookingsByUser(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<[Booking[], number]> {
+    return await this.bookingRepo.findAndCount({
       where: { userId },
       relations: { hostel: true },
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 
-  public async findBookingsByHostel(hostelId: string): Promise<Booking[]> {
-    return this.bookingRepo.find({
+  public async findBookingsByHostel(
+    hostelId: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<[Booking[], number]> {
+    return await this.bookingRepo.findAndCount({
       where: { hostelId },
       relations: { user: true, hostel: true },
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 

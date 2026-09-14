@@ -4,6 +4,7 @@ import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { cacheService } from '../../utils/cache.util';
 import { eventDispatcher } from '../../utils/event-dispatcher.util';
 import { SocketEvent } from '../../constant/queue.constants';
+import { createPaginatedResponse } from '../../utils/pagination.util';
 
 export class BookingService {
   constructor(private readonly bookingRepository: BookingRepository) {}
@@ -40,7 +41,10 @@ export class BookingService {
       status: BookingStatus.PENDING,
     });
 
+    // Invalidate caches across all tiers
     await cacheService.invalidatePattern(`user:bookings:${userId}`);
+    await cacheService.invalidatePattern(`hostel:bookings:${hostelId}`);
+
     if (hostel.ownerId) {
       await eventDispatcher.dispatch({
         type: SocketEvent.BOOKING_CONFIRMED,
@@ -53,18 +57,53 @@ export class BookingService {
     return { data: booking };
   }
 
-  public async getUserBookings(userId: string) {
-    const cacheKey = cacheService.generateKey('user:bookings', userId);
-    const { data, isCached } = await cacheService.wrap(
+  public async getUserBookings(userId: string, page: number = 1, limit: number = 20) {
+    const cacheKey = cacheService.generateKey('user:bookings', { userId, page, limit });
+
+    // 3-Level Cache: L1 (LRU RAM) -> L2 (Redis) -> L3 (DB)
+    const { data, isCached, cacheLevel } = await cacheService.wrap(
       cacheKey,
-      async () => this.bookingRepository.findBookingsByUser(userId),
-      60,
+      async () => {
+        const [bookings, total] = await this.bookingRepository.findBookingsByUser(
+          userId,
+          page,
+          limit,
+        );
+        return { bookings, total };
+      },
+      { l1TtlSeconds: 30, l2TtlSeconds: 120 },
     );
-    return { data, isCached };
+
+    return createPaginatedResponse(
+      data.bookings,
+      data.total,
+      { page, limit },
+      { isCached, cacheLevel },
+    );
   }
 
-  public async getHostelBookings(hostelId: string) {
-    return { data: await this.bookingRepository.findBookingsByHostel(hostelId) };
+  public async getHostelBookings(hostelId: string, page: number = 1, limit: number = 20) {
+    const cacheKey = cacheService.generateKey('hostel:bookings', { hostelId, page, limit });
+
+    const { data, isCached, cacheLevel } = await cacheService.wrap(
+      cacheKey,
+      async () => {
+        const [bookings, total] = await this.bookingRepository.findBookingsByHostel(
+          hostelId,
+          page,
+          limit,
+        );
+        return { bookings, total };
+      },
+      { l1TtlSeconds: 30, l2TtlSeconds: 120 },
+    );
+
+    return createPaginatedResponse(
+      data.bookings,
+      data.total,
+      { page, limit },
+      { isCached, cacheLevel },
+    );
   }
 
   public async updateBookingStatus(bookingId: string, status: string, actorId: string) {
@@ -79,7 +118,10 @@ export class BookingService {
 
     booking.status = status as BookingStatus;
     const savedBooking = await this.bookingRepository.save(booking);
+
+    // Invalidate caches
     await cacheService.invalidatePattern(`user:bookings:${booking.userId}`);
+    await cacheService.invalidatePattern(`hostel:bookings:${booking.hostelId}`);
 
     await eventDispatcher.dispatch({
       type: SocketEvent.BOOKING_CONFIRMED,
@@ -100,7 +142,10 @@ export class BookingService {
 
     booking.status = BookingStatus.CANCELLED;
     const savedBooking = await this.bookingRepository.save(booking);
+
+    // Invalidate caches
     await cacheService.invalidatePattern(`user:bookings:${userId}`);
+    await cacheService.invalidatePattern(`hostel:bookings:${booking.hostelId}`);
 
     await eventDispatcher.dispatch({
       type: SocketEvent.BOOKING_CONFIRMED,

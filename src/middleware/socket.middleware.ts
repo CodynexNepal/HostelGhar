@@ -26,6 +26,16 @@ declare global {
  * Express middleware to inject socket helpers into req object on all routes
  */
 export const socketContextMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
+  const noop = (): void => {
+    // Socket server not ready yet — real-time emit safely skipped.
+  };
+  // Always assign safe no-op fallbacks FIRST so downstream controllers can
+  // never crash on `req.notifyUser is not a function`, even pre-init.
+  req.notifyUser = noop;
+  req.notifyHostel = noop;
+  req.notifyRole = noop;
+  req.notifyRoom = noop;
+  req.broadcastEvent = noop;
   try {
     const io = socketServer.getIO();
     req.io = io;
@@ -39,7 +49,7 @@ export const socketContextMiddleware = (req: Request, _res: Response, next: Next
       socketServer.toRoom(room, event, data);
     req.broadcastEvent = (event: string, data: any) => socketServer.broadcast(event, data);
   } catch (err: any) {
-    // If socket server isn't initialized yet, provide safe no-op fallbacks
+    // If socket server isn't initialized yet, keep the no-op fallbacks above.
     console.warn(`[SocketMiddleware] Socket server not available: ${err.message}`);
   }
   next();

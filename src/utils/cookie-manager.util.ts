@@ -52,12 +52,17 @@ export class CookieManager {
 
   // Attaches both access and refresh tokens as HttpOnly cookies on the
   // Express response. Called after successful login or registration.
+  // sameSite MUST be 'none' in production when the dashboard lives on a
+  // DIFFERENT origin (e.g. Vercel frontend → Render backend), otherwise the
+  // browser silently drops the Set-Cookie and every later request looks
+  // "logged out". 'none' REQUIRES secure:true (HTTPS) per browser policy.
   public static setAuthCookies(res: Response, accessToken: string, refreshToken: string): void {
+    const isProduction = dotEnvConfig.NODE_ENV === 'production';
     // ─── Access Token Cookie ──────────────────────────────────────────
     res.cookie(CookieManager.ACCESS_TOKEN_COOKIE, accessToken, {
       httpOnly: true,
-      secure: dotEnvConfig.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 15 * 60 * 1000,
       path: '/',
     });
@@ -65,8 +70,8 @@ export class CookieManager {
     // ─── Refresh Token Cookie ─────────────────────────────────────────
     res.cookie(CookieManager.REFRESH_TOKEN_COOKIE, refreshToken, {
       httpOnly: true,
-      secure: dotEnvConfig.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/api/v1/hostel-ghar/auth',
     });
@@ -75,18 +80,21 @@ export class CookieManager {
   // ─── clearAuthCookies() ───────────────────────────────────────────────
 
   // Removes both authentication cookies from the browser. Called on logout.
+  // Path + sameSite + secure MUST match setAuthCookies, or the browser keeps
+  // the stale cookie and the user stays "logged in".
   public static clearAuthCookies(res: Response): void {
+    const isProduction = dotEnvConfig.NODE_ENV === 'production';
     res.clearCookie(CookieManager.ACCESS_TOKEN_COOKIE, {
       httpOnly: true,
-      secure: dotEnvConfig.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/',
     });
 
     res.clearCookie(CookieManager.REFRESH_TOKEN_COOKIE, {
       httpOnly: true,
-      secure: dotEnvConfig.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/api/v1/hostel-ghar/auth',
     });
   }

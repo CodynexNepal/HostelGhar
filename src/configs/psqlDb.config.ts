@@ -53,9 +53,11 @@ export const psqlDbConfig: DataSourceOptions = {
     // KeepAlive configuration to prevent idle connection termination by cloud firewalls
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000,
-    // SSL configuration for secure remote / cloud databases (Neon, AWS RDS, Supabase, etc.)
+    // Enable SSL only for remote/cloud databases. Local Docker Postgres should remain plain TCP.
     ssl:
-      isProduction || databaseUrl.includes('sslmode=require') || databaseUrl.includes('neon.tech')
+      !databaseUrl.includes('127.0.0.1') &&
+      !databaseUrl.includes('localhost') &&
+      (isProduction || databaseUrl.includes('sslmode=require') || databaseUrl.includes('neon.tech'))
         ? {
             rejectUnauthorized: false,
           }

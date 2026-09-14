@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE: owner.routes.ts
-// PURPOSE: Owner endpoints: dashboard, add residents, create leave types, trigger fees.
+// PURPOSE: Owner endpoints: dashboard, add residents, logo upload, student photo & doc upload.
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { Router } from 'express';
@@ -10,6 +10,12 @@ import { CreateResidentDto } from '../../dto/resident/create-resident.dto';
 import { CreateLeaveTypeDto } from '../../dto/leave/create-leave-type.dto';
 import { authenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
+import { requireParam } from '../../decorators/http.decorator';
+import {
+  uploadHostelLogo,
+  uploadStudentPhoto,
+  uploadStudentDocument,
+} from '../../middleware/upload.middleware';
 
 const ownerRouter: Router = Router();
 const ownerController = OwnerFactory.create();
@@ -21,5 +27,30 @@ ownerRouter.get('/dashboard', ownerController.getMyHostelsDashboard);
 ownerRouter.post('/residents', validateDto(CreateResidentDto), ownerController.createResident);
 ownerRouter.post('/leave-types', validateDto(CreateLeaveTypeDto), ownerController.createLeaveType);
 ownerRouter.post('/fees/generate-now', ownerController.triggerMonthlyFees);
+
+// ─── Cloudinary Media Upload Routes ──────────────────────────────────────────
+// 1. Upload/Replace Hostel Logo
+ownerRouter.post(
+  '/hostels/:id/logo',
+  requireParam('id'),
+  uploadHostelLogo,
+  ownerController.uploadHostelLogo,
+);
+
+// 2. Upload/Replace Student/Resident Profile Photo
+ownerRouter.post(
+  '/residents/:id/photo',
+  requireParam('id'),
+  uploadStudentPhoto,
+  ownerController.uploadResidentPhoto,
+);
+
+// 3. Upload/Replace Student/Resident ID Document
+ownerRouter.post(
+  '/residents/:id/document',
+  requireParam('id'),
+  uploadStudentDocument,
+  ownerController.uploadResidentDocument,
+);
 
 export { ownerRouter };

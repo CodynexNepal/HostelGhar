@@ -1,0 +1,48 @@
+groups:
+  - name: hostelghar-symptoms
+    rules:
+      - alert: HostelGharApiDown
+        expr: up{job="hostelghar-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: HostelGhar API is down
+          description: Prometheus cannot scrape the API metrics endpoint.
+          runbook: /runbooks/service-down.md
+      - alert: HostelGharHighErrorRate
+        expr: hostelghar:http_error_rate_5m > 0.05 and sum(rate(http_requests_total[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: API 5xx error rate is above 5 percent
+          description: More than 5 percent of API responses are failing for 10 minutes.
+          runbook: /runbooks/high-error-rate.md
+      - alert: HostelGharHighLatency
+        expr: hostelghar:http_latency_p95_5m > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: API p95 latency is above one second
+          description: The p95 request latency has exceeded one second for 10 minutes.
+          runbook: /runbooks/high-latency.md
+      - alert: HostelGharPostgresExporterDown
+        expr: up{job="postgres"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: PostgreSQL exporter is unavailable
+          description: PostgreSQL health and capacity metrics are not being collected.
+          runbook: /runbooks/database-failure.md
+      - alert: HostelGharRedisExporterDown
+        expr: up{job="redis"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Redis exporter is unavailable
+          description: Redis health and cache metrics are not being collected.
+          runbook: /runbooks/redis-failure.md

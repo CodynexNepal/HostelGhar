@@ -1,0 +1,45 @@
+# Dependency: node_modules is rebuilt inside the container
+node_modules
+
+# Build output: rebuilt inside the container
+dist
+
+# Environment files: secrets must NEVER be baked into images
+.env
+.env.*
+!.env.example
+
+# Version control
+.git
+.gitignore
+
+# IDE / Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# CI/CD and docs (not needed in runtime image)
+.github
+docs
+*.md
+!README.md
+
+# Tests (not needed in production image)
+tests
+coverage
+.nyc_output
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Docker files (prevent recursive context)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Misc
+*.log
+*.tsbuildinfo

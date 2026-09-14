@@ -30,6 +30,10 @@ export class ResidentRepository {
     });
   }
 
+  public async saveResident(resident: Resident): Promise<Resident> {
+    return await this.residentRepo.save(resident);
+  }
+
   public async findLeaveTypeById(leaveTypeId: string): Promise<LeaveType | null> {
     return await this.leaveTypeRepo.findOne({ where: { id: leaveTypeId } });
   }

@@ -1,0 +1,42 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Hostel Ghar — Development Docker Compose
+# Spins up the app + PostgreSQL + Redis for local development.
+# Usage: docker compose up -d
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── PostgreSQL Database ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: hostelghar-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hostelghar_dev
+      POSTGRES_USER: hostelghar
+      POSTGRES_PASSWORD: hostelghar_dev_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hostelghar -d hostelghar_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: hostelghar-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+    driver: local

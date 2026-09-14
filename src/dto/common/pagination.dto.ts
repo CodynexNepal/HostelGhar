@@ -5,6 +5,8 @@
 
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { PaginationMeta, PaginatedResponse } from '../../utils/pagination.util';
+import { CacheLevel } from '../../utils/cache.util';
 
 export class PaginationDto {
   @IsOptional()
@@ -34,16 +36,11 @@ export class PaginationDto {
   order?: 'ASC' | 'DESC' = 'DESC';
 }
 
+export type { PaginationMeta, PaginatedResponse };
+
 export interface PaginatedResult<T> {
   data: T[];
-  pagination: {
-    totalItems: number;
-    currentPage: number;
-    totalPages: number;
-    itemsPerPage: number;
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
-    nextCursor?: string;
-  };
+  pagination: PaginationMeta;
   isCached?: boolean;
+  cacheLevel?: CacheLevel;
 }
