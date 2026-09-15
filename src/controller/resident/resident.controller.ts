@@ -191,7 +191,8 @@ export class ResidentController {
       resident.photoPublicId = uploadResult.publicId;
       const savedResident = await this.residentRepository.saveResident(resident);
 
-      await cacheService.invalidatePattern(`hostel:residents:${resident.hostelId}`);
+      await cacheService.invalidatePattern(`hostel:residents`);
+      await cacheService.invalidatePattern(`owner:residents`);
 
       res.status(STATUS_CODE.OK).json({
         success: true,
@@ -236,7 +237,8 @@ export class ResidentController {
       resident.documentPublicId = uploadResult.publicId;
       const savedResident = await this.residentRepository.saveResident(resident);
 
-      await cacheService.invalidatePattern(`hostel:residents:${resident.hostelId}`);
+      await cacheService.invalidatePattern(`hostel:residents`);
+      await cacheService.invalidatePattern(`owner:residents`);
 
       res.status(STATUS_CODE.OK).json({
         success: true,

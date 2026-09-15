@@ -22,6 +22,7 @@ import { AppDataSource } from '../../database/database-source';
 
 // Import the User entity — TypeORM uses this to know which table to query.
 import { User } from '../../entities/user.entity';
+import { IROLES } from '../../constant/enum.constant';
 
 // ─── UserRepository Class ───────────────────────────────────────────────────
 
@@ -50,6 +51,10 @@ export class UserRepository {
     return this.repository.findOne({ where: { email } });
   }
 
+  public async findOwnerByEmail(email: string): Promise<User | null> {
+    return this.repository.findOne({ where: { email, role: IROLES.OWNER } });
+  }
+
   // ─── findById ───────────────────────────────────────────────────────────
 
   // Looks up a user by their UUID primary key. Used by token verification
@@ -76,6 +81,10 @@ export class UserRepository {
     // `this.repository.save()` performs the actual INSERT query and
     // returns the persisted entity with all auto-generated fields filled.
     return this.repository.save(user);
+  }
+
+  public async updateAvatar(userId: string, avatarUrl: string, avatarPublicId: string): Promise<void> {
+    await this.repository.update(userId, { avatarUrl, avatarPublicId });
   }
 
   // ─── updateRefreshToken ─────────────────────────────────────────────────

@@ -8,6 +8,21 @@ export const renderWelcomeEmail = (firstName: string): EmailTemplate => ({
   body: `Hi ${firstName},\n\nWelcome to HostelGhar. Your account is ready.\n\nRegards,\nHostelGhar Team`,
 });
 
+export const renderOwnerCredentialsEmail = (
+  firstName: string,
+  email: string,
+  temporaryPassword: string,
+): EmailTemplate => ({
+  subject: 'Your HostelGhar owner account is ready',
+  body:
+    `Hi ${firstName},\n\n` +
+    'An owner dashboard account has been created for you.\n\n' +
+    `Login email: ${email}\n` +
+    `Temporary password: ${temporaryPassword}\n\n` +
+    'Please log in and change this password immediately. Do not share these credentials.\n\n' +
+    'Regards,\nHostelGhar Team',
+});
+
 export const renderPasswordResetEmail = (firstName: string, resetToken: string): EmailTemplate => ({
   subject: 'Reset your HostelGhar password',
   body:

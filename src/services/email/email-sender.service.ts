@@ -1,4 +1,5 @@
 import { smtpConfig } from '../../configs/smtp.config';
+import nodemailer from 'nodemailer';
 
 export interface SendEmailPayload {
   to: string;
@@ -7,17 +8,26 @@ export interface SendEmailPayload {
 }
 
 export class EmailSenderService {
+  private readonly transporter = smtpConfig.enabled
+    ? nodemailer.createTransport({
+        host: smtpConfig.host,
+        port: smtpConfig.port,
+        secure: smtpConfig.secure,
+        auth: smtpConfig.auth,
+      })
+    : null;
+
   public async send(payload: SendEmailPayload): Promise<boolean> {
     if (!smtpConfig.enabled) {
-      console.log(
-        `[EmailSender] SMTP disabled. Email queued for ${payload.to}: ${payload.subject}`,
-      );
-      return true;
+      throw new Error('SMTP is not configured; owner credentials cannot be delivered.');
     }
 
-    console.log(
-      `[EmailSender] SMTP configured for ${smtpConfig.host}:${smtpConfig.port}. Dispatching email to ${payload.to}: ${payload.subject}`,
-    );
+    await this.transporter!.sendMail({
+      from: smtpConfig.from,
+      to: payload.to,
+      subject: payload.subject,
+      text: payload.body,
+    });
     return true;
   }
 }

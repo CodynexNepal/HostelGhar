@@ -29,6 +29,7 @@ services:
     image: redis:7-alpine
     container_name: hostelghar-redis
     restart: unless-stopped
+    command: ['redis-server', '--maxmemory-policy', 'noeviction']
     ports:
       - "6379:6379"
     healthcheck:

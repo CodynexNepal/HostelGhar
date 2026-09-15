@@ -30,7 +30,9 @@ export const smtpConfig: SmtpConfig = {
 };
 
 export const assertSmtpConfigured = (): void => {
-  if (!smtpConfig.enabled) {
-    throw new Error('SMTP is not configured. Set SMTP_HOST before sending production email.');
+  if (!smtpConfig.enabled || !smtpConfig.auth) {
+    throw new Error(
+      'SMTP is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS before sending email.',
+    );
   }
 };

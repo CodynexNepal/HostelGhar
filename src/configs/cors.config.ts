@@ -62,6 +62,18 @@ export const corsConfig: CorsOptions = {
     'Accept',
     'Origin',
     'X-CSRF-Token',
+    // Custom headers actually used by this API / frontend.
+    // If ANY of these is missing, the browser passes the OPTIONS (server
+    // still logs 204) but then BLOCKS the real GET/POST with:
+    // "Request header field x-... is not allowed by Access-Control-Allow-Headers"
+    // — which is exactly "only OPTIONS, no GET" in your logs.
+    'X-Hostel-Id',
+    'X-Request-Id',
+    'Cache-Control',
+    'Pragma',
+    'Expires',
+    'If-None-Match',
+    'If-Modified-Since',
   ],
   exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset', 'Retry-After'],
   maxAge: 86400, // cache preflight for 24h — fewer OPTIONS round-trips

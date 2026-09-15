@@ -6,13 +6,23 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import CircuitBreaker from 'opossum';
+import { logger } from '../observability/logger';
+import {
+  circuitBreakerEvents,
+  circuitBreakerLatency,
+  circuitBreakerState,
+} from '../observability/metrics';
 
-export interface CircuitBreakerConfig {
-  timeout?: number; // Time in ms before a request fails (default 5000ms)
-  errorThresholdPercentage?: number; // % of errors before opening circuit (default 50%)
-  resetTimeout?: number; // Time in ms before attempting to close circuit (default 10000ms)
+export interface CircuitBreakerConfig<TI extends unknown[] = unknown[], TR = unknown> {
+  timeout?: number;
+  errorThresholdPercentage?: number;
+  resetTimeout?: number;
+  rollingCountTimeout?: number;
+  rollingCountBuckets?: number;
+  volumeThreshold?: number;
+  capacity?: number;
   name?: string;
-  fallback?: (...args: any[]) => any;
+  fallback?: (...args: TI) => TR | Promise<TR>;
 }
 
 const defaultOptions: CircuitBreaker.Options = {
@@ -21,7 +31,21 @@ const defaultOptions: CircuitBreaker.Options = {
   resetTimeout: 10000,
   rollingCountTimeout: 10000,
   rollingCountBuckets: 10,
+  volumeThreshold: 10,
   capacity: 100,
+  allowWarmUp: false,
+};
+
+const breakers = new Map<string, CircuitBreaker>();
+
+const recordState = (breaker: CircuitBreaker): void => {
+  const state = breaker.opened ? 'open' : breaker.halfOpen ? 'half_open' : 'closed';
+  for (const possibleState of ['closed', 'open', 'half_open']) {
+    circuitBreakerState.set(
+      { name: breaker.name, state: possibleState },
+      possibleState === state ? 1 : 0,
+    );
+  }
 };
 
 /**
@@ -32,50 +56,80 @@ const defaultOptions: CircuitBreaker.Options = {
  */
 export function createCircuitBreaker<TI extends any[], TR>(
   action: (...args: TI) => Promise<TR>,
-  options: CircuitBreakerConfig = {},
+  options: CircuitBreakerConfig<TI, TR> = {},
 ): CircuitBreaker<TI, TR> {
+  const name = options.name || action.name || 'CircuitBreaker';
+  if (breakers.has(name)) {
+    throw new Error(`Circuit breaker with name "${name}" is already registered.`);
+  }
+
   const breakerOptions: CircuitBreaker.Options = {
     ...defaultOptions,
     ...options,
-    name: options.name || action.name || 'CircuitBreaker',
+    name,
   };
+  delete (breakerOptions as CircuitBreaker.Options & { fallback?: unknown }).fallback;
 
   const breaker = new CircuitBreaker<TI, TR>(action, breakerOptions);
+  if (options.fallback) breaker.fallback(options.fallback);
+  breakers.set(name, breaker);
+  recordState(breaker);
 
-  if (options.fallback) {
-    breaker.fallback(options.fallback);
-  }
-
-  // Lifecycle monitoring & logging
+  breaker.on('fire', () => circuitBreakerEvents.inc({ name, event: 'fire' }));
+  breaker.on('success', (_result, latencyMs) => {
+    circuitBreakerEvents.inc({ name, event: 'success' });
+    circuitBreakerLatency.observe({ name, outcome: 'success' }, latencyMs / 1000);
+  });
+  breaker.on('failure', (error, latencyMs) => {
+    circuitBreakerEvents.inc({ name, event: 'failure' });
+    circuitBreakerLatency.observe({ name, outcome: 'failure' }, latencyMs / 1000);
+    logger.error('Circuit breaker action failed', { breaker: name, error: error.message });
+  });
+  breaker.on('timeout', (error) => {
+    circuitBreakerEvents.inc({ name, event: 'timeout' });
+    logger.warn('Circuit breaker action timed out', { breaker: name, error: error.message });
+  });
+  breaker.on('reject', (error) => {
+    circuitBreakerEvents.inc({ name, event: 'reject' });
+    logger.warn('Circuit breaker rejected a call', { breaker: name, error: error.message });
+  });
+  breaker.on('fallback', (_result, error) => {
+    circuitBreakerEvents.inc({ name, event: 'fallback' });
+    logger.warn('Circuit breaker fallback executed', { breaker: name, error: error.message });
+  });
   breaker.on('open', () => {
-    console.warn(
-      `🚨 [CircuitBreaker:${breaker.name}] OPENED - Failure threshold reached! Fast-failing calls.`,
-    );
+    circuitBreakerEvents.inc({ name, event: 'open' });
+    recordState(breaker);
+    logger.error('Circuit breaker opened', { breaker: name });
   });
-
   breaker.on('halfOpen', () => {
-    console.info(
-      `🔄 [CircuitBreaker:${breaker.name}] HALF-OPEN - Testing downstream service recovery.`,
-    );
+    circuitBreakerEvents.inc({ name, event: 'half_open' });
+    recordState(breaker);
+    logger.warn('Circuit breaker entered half-open state', { breaker: name });
   });
-
   breaker.on('close', () => {
-    console.info(
-      `✅ [CircuitBreaker:${breaker.name}] CLOSED - Service is healthy. Normal operations resumed.`,
-    );
+    circuitBreakerEvents.inc({ name, event: 'close' });
+    recordState(breaker);
+    logger.info('Circuit breaker closed', { breaker: name });
   });
-
-  breaker.on('fallback', (result) => {
-    console.warn(`🛡️ [CircuitBreaker:${breaker.name}] Fallback executed:`, result);
-  });
-
-  breaker.on('timeout', () => {
-    console.error(`⏱️ [CircuitBreaker:${breaker.name}] Call timed out.`);
-  });
-
-  breaker.on('reject', () => {
-    console.warn(`⛔ [CircuitBreaker:${breaker.name}] Request rejected because circuit is OPEN.`);
+  breaker.on('shutdown', () => {
+    circuitBreakerEvents.inc({ name, event: 'shutdown' });
+    logger.info('Circuit breaker shut down', { breaker: name });
   });
 
   return breaker;
 }
+
+export const getCircuitBreakerHealth = (): Array<Record<string, unknown>> =>
+  [...breakers.values()].map((breaker) => ({
+    name: breaker.name,
+    state: breaker.opened ? 'open' : breaker.halfOpen ? 'half_open' : 'closed',
+    enabled: breaker.enabled,
+    pendingClose: breaker.pendingClose,
+    stats: breaker.stats,
+  }));
+
+export const shutdownCircuitBreakers = (): void => {
+  for (const breaker of breakers.values()) breaker.shutdown();
+  breakers.clear();
+};

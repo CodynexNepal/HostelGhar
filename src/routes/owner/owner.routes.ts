@@ -16,6 +16,7 @@ import {
   uploadStudentPhoto,
   uploadStudentDocument,
 } from '../../middleware/upload.middleware';
+import { resolveHostelId } from '../../middleware/hostel-context.middleware';
 
 const ownerRouter: Router = Router();
 const ownerController = OwnerFactory.create();
@@ -24,7 +25,19 @@ const ownerController = OwnerFactory.create();
 ownerRouter.use(authenticate, requireRoles(IROLES.OWNER, IROLES.ADMIN));
 
 ownerRouter.get('/dashboard', ownerController.getMyHostelsDashboard);
-ownerRouter.post('/residents', validateDto(CreateResidentDto), ownerController.createResident);
+// DEBUG: remove before production — explains empty rooms dropdowns/lists.
+ownerRouter.get('/debug/rooms-count', ownerController.debugRoomsCount);
+ownerRouter.get('/residents/form-options/hostels', ownerController.getResidentFormHostels);
+ownerRouter.get('/residents/form-options/flats', ownerController.getResidentFormFlats);
+ownerRouter.get('/residents/form-options/rooms/detail', ownerController.getResidentFormRoomDetail);
+ownerRouter.get('/residents/form-options/rooms', ownerController.getResidentFormRooms);
+ownerRouter.get('/residents', ownerController.getResidents);
+ownerRouter.post(
+  '/residents',
+  resolveHostelId,
+  validateDto(CreateResidentDto),
+  ownerController.createResident,
+);
 ownerRouter.post('/leave-types', validateDto(CreateLeaveTypeDto), ownerController.createLeaveType);
 ownerRouter.post('/fees/generate-now', ownerController.triggerMonthlyFees);
 

@@ -8,6 +8,7 @@ import { analyticsRouter } from './analytics/analytics.routes';
 import { hostelRouter } from './hostel/hostel.routes';
 import { leaveRouter } from './leave/leave.routes';
 import { feeRouter } from './fee/fee.routes';
+import { roomRouter } from './room/room.routes';
 
 const routes = Router();
 
@@ -20,5 +21,6 @@ routes.use('/analytics', analyticsRouter);
 routes.use('/hostels', hostelRouter);
 routes.use('/leaves', leaveRouter);
 routes.use('/fees', feeRouter);
+routes.use('/rooms', roomRouter);
 
 export default routes;

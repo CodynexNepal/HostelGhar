@@ -3,7 +3,7 @@
 // PURPOSE: Data access layer for Admin operations on Hostels and Users.
 // ──────────────────────────────────────────────────────────────────────────────
 
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { AppDataSource } from '../../database/database-source';
 import { Hostel } from '../../entities/hostel/hostel.entity';
 import { HostelType } from '../../enum/hostel.enum';
@@ -67,12 +67,28 @@ export class AdminRepository {
         createdAt: true,
         updatedAt: true,
         createdByAdmin: { id: true, firstName: true, lastName: true, email: true },
-        owner: { id: true, firstName: true, lastName: true, email: true },
+        owner: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          avatarUrl: true,
+        },
       },
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
     });
+  }
+
+  public async countHostels(): Promise<number> {
+    return await this.hostelRepo.count();
+  }
+
+  public async countExistingHostels(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    return await this.hostelRepo.count({ where: { id: In(ids) } });
   }
 
   public async findUserById(id: string): Promise<User | null> {
@@ -94,6 +110,34 @@ export class AdminRepository {
       .groupBy('r.hostelId')
       .getRawMany<{ hostelId: string; cnt: string }>();
     return new Map(rows.map((r) => [r.hostelId, Number(r.cnt)]));
+  }
+
+  public async getHostelOccupancyByHostel(
+    hostelIds: string[],
+  ): Promise<Map<string, { rooms: number; beds: number; occupied: number }>> {
+    if (hostelIds.length === 0) return new Map();
+
+    const rows = await this.residentRepo
+      .createQueryBuilder('r')
+      .select('r.hostelId', 'hostelId')
+      .addSelect('COUNT(DISTINCT r.roomNumber)', 'rooms')
+      .addSelect('COUNT(DISTINCT r.bedNumber)', 'beds')
+      .addSelect('COUNT(r.id)', 'occupied')
+      .where('r.hostelId IN (:...hostelIds)', { hostelIds })
+      .andWhere('r.isActive = :isActive', { isActive: true })
+      .groupBy('r.hostelId')
+      .getRawMany<{ hostelId: string; rooms: string; beds: string; occupied: string }>();
+
+    return new Map(
+      rows.map((row) => [
+        row.hostelId,
+        {
+          rooms: Number(row.rooms),
+          beds: Number(row.beds),
+          occupied: Number(row.occupied),
+        },
+      ]),
+    );
   }
 
   public async findHostelById(id: string): Promise<Hostel | null> {

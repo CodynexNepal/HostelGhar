@@ -50,6 +50,31 @@ export const uploadHostelLogo = multer({
   { name: 'image', maxCount: 1 },
 ]);
 
+export const uploadOwnerImage = multer({
+  storage: memoryStorage,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+  },
+}).single('image');
+
+export const normalizeOwnerFields = (
+  req: Request,
+  _res: unknown,
+  next: (err?: unknown) => void,
+): void => {
+  if (req.body && typeof req.body === 'object') {
+    const body = req.body as Record<string, unknown>;
+    if (body.name === undefined && body.ownerName !== undefined) {
+      body.name = body.ownerName;
+    }
+    delete body.ownerName;
+    delete body.address;
+  }
+  next();
+};
+
 /**
  * Picks the uploaded hostel logo file regardless of which accepted field
  * name (`logo` | `image`) the client used.
@@ -116,3 +141,27 @@ export const uploadResidentMedia = multer({
   { name: 'photo', maxCount: 1 },
   { name: 'document', maxCount: 1 },
 ]);
+
+// ─── 5. Room Image Upload Middleware (Max 5MB, single `image` field) ───────
+export const uploadRoomImage = multer({
+  storage: memoryStorage,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+    files: 1,
+  },
+}).single('image');
+
+/**
+ * Picks the uploaded room image file (`image` field) regardless of
+ * single vs fields storage shape.
+ */
+export const pickRoomImageFile = (req: Request): Express.Multer.File | undefined => {
+  const single = (req as Request & { file?: Express.Multer.File }).file;
+  if (single) return single;
+  const files = req.files as
+    { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[] | undefined;
+  if (!files) return undefined;
+  if (Array.isArray(files)) return files[0];
+  return files['image']?.[0];
+};

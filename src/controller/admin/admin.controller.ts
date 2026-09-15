@@ -13,9 +13,23 @@ import { normalizePagination } from '../../utils/pagination.util';
 import { pickHostelLogoFile } from '../../middleware/upload.middleware';
 import { AdminService } from '../../services/admin/admin.services';
 import { createHttpError } from '../../utils/createHttpError';
+import { CreateOwnerDto } from '../../dto/admin/create-owner.dto';
 
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  public createOwner = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const owner = await this.adminService.createOwner(req.body as CreateOwnerDto, req.file);
+      res.status(STATUS_CODE.CREATED).json({
+        success: true,
+        message: 'Owner created. Login credentials were queued for delivery by email.',
+        data: { owner },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   public createHostel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -49,6 +63,22 @@ export class AdminController {
       res.status(STATUS_CODE.OK).json({
         success: true,
         ...paginatedResult,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public invalidateHostelCache = async (
+    _req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      await this.adminService.invalidateHostelListCache();
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: 'Hostel list cache invalidated successfully',
       });
     } catch (error) {
       next(error);

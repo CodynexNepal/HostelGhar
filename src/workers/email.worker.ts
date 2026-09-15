@@ -3,6 +3,7 @@ import { BaseWorker } from './base.worker';
 import { QueueName, JobType } from '../constant/queue.constants';
 import { createCircuitBreaker } from '../utils/circuit-breaker.util';
 import { emailSenderService } from '../services/email/email-sender.service';
+import { logger } from '../observability/logger';
 
 export interface EmailJobPayload {
   to: string;
@@ -26,8 +27,11 @@ const emailCircuitBreaker = createCircuitBreaker(externalEmailService, {
   errorThresholdPercentage: 50,
   resetTimeout: 15000,
   fallback: async (payload: EmailJobPayload) => {
-    console.warn(`[Fallback] Storing email for ${payload.to} in fallback queue or retry storage.`);
-    return false;
+    logger.warn('Email circuit breaker fallback executed', {
+      breaker: 'EmailServiceBreaker',
+      recipient_domain: payload.to.split('@')[1] || 'unknown',
+    });
+    throw new Error('Email delivery failed after the circuit breaker fallback');
   },
 });
 

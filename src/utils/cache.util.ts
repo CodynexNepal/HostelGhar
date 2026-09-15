@@ -16,6 +16,7 @@ export interface CacheOptions {
   l2TtlSeconds?: number; // L2 Redis cache TTL (default: 300s)
   skipL1?: boolean; // Bypass L1 if needed
   skipL2?: boolean; // Bypass L2 if needed
+  validateCached?: (data: unknown) => Promise<boolean | undefined>;
 }
 
 export interface CacheWrapResult<T> {
@@ -79,6 +80,11 @@ export class MultiLevelCacheService {
     if (!options.skipL1) {
       const l1Value = this.l1Cache.get(key);
       if (l1Value !== null && l1Value !== undefined) {
+        const validation = options.validateCached ? await options.validateCached(l1Value) : true;
+        if (validation === false) {
+          await this.invalidate(key);
+          return null;
+        }
         this.l1Hits++;
         return { data: l1Value as T, level: 'L1' };
       }
@@ -90,6 +96,11 @@ export class MultiLevelCacheService {
         const cached = await redisClient.get(key);
         if (cached) {
           const parsed = JSON.parse(cached) as T;
+          const validation = options.validateCached ? await options.validateCached(parsed) : true;
+          if (validation === false) {
+            await this.invalidate(key);
+            return null;
+          }
           this.l2Hits++;
 
           // Backfill Level 1 memory cache for ultra-fast subsequent lookups

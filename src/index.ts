@@ -17,6 +17,7 @@
 import http from 'http';
 import { startTelemetry, shutdownTelemetry } from './observability/telemetry';
 import { logger } from './observability/logger';
+import { shutdownCircuitBreakers } from './utils/circuit-breaker.util';
 
 startTelemetry();
 // Import the app factory function that creates a fully-configured Express app.
@@ -54,6 +55,15 @@ const { PORT } = dotEnvConfig;
     bootstrapWorkers();
 
     // ── Step 6: Start the HTTP Server ───────────────────────────────────
+    httpServer.on('error', (error) => {
+      logger.fatal('HTTP server failed', {
+        error: error instanceof Error ? error.message : String(error),
+        code: (error as NodeJS.ErrnoException).code,
+        port: PORT,
+      });
+      process.exitCode = 1;
+    });
+
     httpServer.listen(PORT, () => {
       logger.info('HTTP server started', {
         port: PORT,
@@ -65,6 +75,7 @@ const { PORT } = dotEnvConfig;
     const handleShutdown = async (signal: string) => {
       logger.info('Starting graceful shutdown', { signal });
       await shutdownWorkers();
+      shutdownCircuitBreakers();
       httpServer.close(() => {
         void shutdownTelemetry();
         logger.info('HTTP and WebSocket server closed');
@@ -81,3 +92,15 @@ const { PORT } = dotEnvConfig;
     process.exit(1);
   }
 })();
+
+process.on('uncaughtException', (error) => {
+  logger.fatal('Uncaught exception', { error: error.message, stack: error.stack });
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logger.fatal('Unhandled promise rejection', {
+    error: reason instanceof Error ? reason.message : String(reason),
+  });
+  process.exit(1);
+});

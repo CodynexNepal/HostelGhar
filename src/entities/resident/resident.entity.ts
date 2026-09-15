@@ -43,6 +43,12 @@ export class Resident {
   @Column({ type: 'varchar', length: 20, nullable: false })
   roomNumber!: string;
 
+  @Column({ type: 'varchar', length: 20, nullable: true, default: null })
+  bedNumber!: string | null;
+
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true, default: null })
+  monthlyRent!: number | null;
+
   // Cloudinary student profile photo metadata
   @Column({ type: 'varchar', length: 500, nullable: true, default: null })
   photoUrl!: string | null;

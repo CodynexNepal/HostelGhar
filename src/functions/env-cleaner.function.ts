@@ -28,6 +28,7 @@ export interface CleanEnvConfig {
   SMTP_USER: string;
   SMTP_PASS: string;
   SMTP_FROM: string;
+  RECAPTCHA_SECRET_KEY: string;
 }
 
 /**
@@ -73,15 +74,25 @@ export function cleanEnvConfig(): CleanEnvConfig {
     REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || '7d',
     SALT_ROUNDS: Number.isNaN(saltRounds) ? 10 : saltRounds,
     CORS_ORIGIN:
-      process.env.CORS_ORIGIN || process.env.FRONTEND_URL || (nodeEnv === 'production' ? '' : '*'),
+      process.env.CORS_ORIGIN ||
+      process.env.FRONTEND_ORIGIN ||
+      process.env.FRONTEND_URL ||
+      (nodeEnv === 'production' ? '' : '*'),
     SOCKET_CORS_ORIGIN:
-      process.env.SOCKET_CORS_ORIGIN || process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '*',
+      process.env.SOCKET_CORS_ORIGIN ||
+      process.env.CORS_ORIGIN ||
+      process.env.FRONTEND_ORIGIN ||
+      process.env.FRONTEND_URL ||
+      '*',
     SMTP_HOST: process.env.SMTP_HOST || '',
     SMTP_PORT: Number.isNaN(smtpPort) ? 587 : smtpPort,
-    SMTP_SECURE: process.env.SMTP_SECURE === 'true',
+    SMTP_SECURE: process.env.SMTP_SECURE === 'true' || smtpPort === 465,
     SMTP_USER: process.env.SMTP_USER || '',
     SMTP_PASS: process.env.SMTP_PASS || '',
-    SMTP_FROM: process.env.SMTP_FROM || 'HostelGhar <no-reply@hostelghar.local>',
+    SMTP_FROM:
+      process.env.SMTP_FROM ||
+      `HostelGhar <${process.env.SMTP_USER || 'no-reply@hostelghar.local'}>`,
+    RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY || '',
   };
 
   return Object.freeze(config);
@@ -119,5 +130,6 @@ export function getSanitizedEnvSummary(config: CleanEnvConfig): Record<string, s
     SMTP_USER: maskString(config.SMTP_USER),
     SMTP_PASS: '[REDACTED_SECRET]',
     SMTP_FROM: config.SMTP_FROM,
+    RECAPTCHA_SECRET_KEY: config.RECAPTCHA_SECRET_KEY ? '[CONFIGURED]' : '[NOT_SET]',
   };
 }

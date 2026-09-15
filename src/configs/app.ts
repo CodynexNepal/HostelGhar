@@ -51,14 +51,12 @@ import { notFoundHandler } from '../middleware/not-found.middleware';
 import { socketContextMiddleware } from '../middleware/socket.middleware';
 import { globalRateLimiter } from './rateLimiter.config';
 import { corsConfig } from './cors.config';
-import { authenticate, requireRoles } from '../middleware/auth.middleware';
-import { IROLES } from '../enum/roles.enum';
-import { OwnerFactory } from '../factory/owner/owner.factory';
 import { httpLoggingMiddleware } from '../observability/http.middleware';
 import { metricsHandler, metricsMiddleware } from '../observability/metrics';
 import { registerPerformanceMiddleware } from '../performance/performance.middleware';
 import { requestTimeout } from '../performance/http/timeout';
 import { healthRouter } from '../observability/health/health.routes';
+import { getCircuitBreakerHealth } from '../utils/circuit-breaker.util';
 
 // ─── createApp() Factory Function ───────────────────────────────────────────
 
@@ -127,13 +125,6 @@ export const createApp = (): Express => {
   // static file serving or frontend routes.
   app.use('/api/v1/hostel-ghar', routes);
 
-  app.get(
-    '/dashboard',
-    authenticate,
-    requireRoles(IROLES.OWNER, IROLES.ADMIN),
-    OwnerFactory.create().getMyHostelsDashboard,
-  );
-
   // ─── Health Check ────────────────────────────────────────────────────
 
   // A simple health check endpoint that load balancers, Docker, and
@@ -148,6 +139,9 @@ export const createApp = (): Express => {
   });
 
   app.use('/health', healthRouter);
+  app.get('/health/circuit-breakers', (_req, res) => {
+    res.status(200).json({ status: 'ok', breakers: getCircuitBreakerHealth() });
+  });
 
   app.get('/metrics', metricsHandler);
 
