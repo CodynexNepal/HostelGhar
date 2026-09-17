@@ -168,6 +168,49 @@ which ROOM number and which BED number.
 
 Lists leave policies for a hostel.
 
+### GET `/hostels/:hostelId/facilities`
+
+Lists normalized facilities for a hostel. `hostelId` comes from the URL param.
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "junction-uuid",
+      "title": "Security",
+      "slug": "security",
+      "facilityId": "catalog-uuid",
+      "description": "24 security with guards",
+      "tag": "Included",
+      "clientKey": "security-mu5ofghs"
+    }
+  ]
+}
+```
+
+### PUT `/hostels/:hostelId/facilities`
+
+Full sync (replace) — send the whole frontend editor list; DB ends matching it.
+Requires role: `owner` or `admin`. Frontend `id` maps to `clientKey`.
+
+```json
+{
+  "facilities": [
+    { "id": "security-mu5ofghs", "title": "Security", "description": "24 security with guards", "tag": "Included" }
+  ]
+}
+```
+
+### POST `/hostels/:hostelId/facilities`
+
+Add (or update) one facility. Body: `{ "id?", "title", "description?", "tag?" }`.
+
+### DELETE `/hostels/:hostelId/facilities/:facilityKey`
+
+Removes a facility. `:facilityKey` accepts the junction UUID **or** the frontend
+`clientKey` (e.g. `security-mu5ofghs`).
+
 ## Owner
 
 Requires role: `owner` or `admin`.

@@ -1,0 +1,60 @@
+﻿{
+    "timestamp":  "2026-09-17T16:32:07.7779500Z",
+    "baseUrl":  "http://localhost:3000",
+    "requests":  20,
+    "budgets":  {
+                    "apiP95Ms":  500,
+                    "liveMs":  1000,
+                    "redisP95Ms":  50,
+                    "dbP95Ms":  100
+                },
+    "results":  [
+                    {
+                        "Check":  "GET /health",
+                        "Status":  "SKIP",
+                        "Detail":  "unreachable: Unable to connect to the remote server",
+                        "Ms":  4132.4
+                    },
+                    {
+                        "Check":  "GET /health/live",
+                        "Status":  "SKIP",
+                        "Detail":  "unreachable: Unable to connect to the remote server",
+                        "Ms":  4077.4
+                    },
+                    {
+                        "Check":  "GET /health/ready",
+                        "Status":  "SKIP",
+                        "Detail":  "unreachable: Unable to connect to the remote server",
+                        "Ms":  4053.4
+                    },
+                    {
+                        "Check":  "GET /metrics",
+                        "Status":  "SKIP",
+                        "Detail":  "unreachable: Unable to connect to the remote server",
+                        "Ms":  4063.2
+                    },
+                    {
+                        "Check":  "bench:api/health",
+                        "Status":  "SKIP",
+                        "Detail":  "server down - start with npm run dev",
+                        "Ms":  0
+                    },
+                    {
+                        "Check":  "bench:redis/ping",
+                        "Status":  "SKIP",
+                        "Detail":  "dependency down:                 command.reject(new Error(\"Stream isn\u0027t writeable and enableOfflineQueue options is false\"));",
+                        "Ms":  0
+                    },
+                    {
+                        "Check":  "bench:db/select-1",
+                        "Status":  "FAIL",
+                        "Detail":  "    Error.captureStackTrace(err)",
+                        "Ms":  0
+                    }
+                ],
+    "totals":  {
+                   "skip":  6,
+                   "pass":  0,
+                   "fail":  1
+               }
+}

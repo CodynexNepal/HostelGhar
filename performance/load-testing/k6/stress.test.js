@@ -9,6 +9,6 @@ export const options = {
   ],
 };
 export default function () {
-  const response = http.get(`${__ENV.API_URL || 'http://localhost:3000'}/health/live`);
+  const response = http.get(`${__ENV.API_URL || 'http://localhost:8000'}/health/live`);
   check(response, { 'service remains available': (res) => res.status === 200 });
 }

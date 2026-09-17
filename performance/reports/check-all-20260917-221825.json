@@ -1,0 +1,60 @@
+﻿{
+    "timestamp":  "2026-09-17T16:33:25.3054353Z",
+    "baseUrl":  "http://localhost:8000",
+    "requests":  100,
+    "budgets":  {
+                    "apiP95Ms":  500,
+                    "liveMs":  1000,
+                    "redisP95Ms":  50,
+                    "dbP95Ms":  100
+                },
+    "results":  [
+                    {
+                        "Check":  "GET /health",
+                        "Status":  "SKIP",
+                        "Detail":  "unreachable: Unable to connect to the remote server",
+                        "Ms":  4177.6
+                    },
+                    {
+                        "Check":  "GET /health/live",
+                        "Status":  "SKIP",
+                        "Detail":  "unreachable: Unable to connect to the remote server",
+                        "Ms":  4075
+                    },
+                    {
+                        "Check":  "GET /health/ready",
+                        "Status":  "FAIL",
+                        "Detail":  "200 but 2093.6ms over budget 1000ms",
+                        "Ms":  2093.6
+                    },
+                    {
+                        "Check":  "GET /metrics",
+                        "Status":  "PASS",
+                        "Detail":  "200 in 30.9ms",
+                        "Ms":  30.9
+                    },
+                    {
+                        "Check":  "bench:api/health",
+                        "Status":  "SKIP",
+                        "Detail":  "server down - start with npm run dev",
+                        "Ms":  0
+                    },
+                    {
+                        "Check":  "bench:redis/ping",
+                        "Status":  "SKIP",
+                        "Detail":  "dependency down: command.reject(new Error(\"Stream isn\u0027t writeable and enableOfflineQueue options is false\"));",
+                        "Ms":  0
+                    },
+                    {
+                        "Check":  "bench:db/select-1",
+                        "Status":  "SKIP",
+                        "Detail":  "dependency down: error: password authentication failed for user \"hostelghar\"",
+                        "Ms":  0
+                    }
+                ],
+    "totals":  {
+                   "skip":  5,
+                   "pass":  1,
+                   "fail":  1
+               }
+}

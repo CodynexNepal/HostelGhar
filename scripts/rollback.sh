@@ -12,7 +12,7 @@ set -euo pipefail
 
 PREVIOUS_IMAGE="${1:?Previous image ID or tag is required as argument 1}"
 CONTAINER_NAME="hostelghar-app"
-HEALTHCHECK_URL="http://localhost:3000/health"
+HEALTHCHECK_URL="http://localhost:8000/health"
 
 echo "========================================================"
 echo "⚠️ Initiating Emergency Rollback for Hostel Ghar"

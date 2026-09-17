@@ -1,12 +1,10 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// FILE: index.ts (or enum.ts)
-// PURPOSE: Central export barrel for all application enums.
+// FILE: facility.enum.ts
+// PURPOSE: Central enum for hostel facility tags (normalized status labels).
 // ──────────────────────────────────────────────────────────────────────────────
 
-export * from './roles.enum';
-export * from './hostel.enum';
-export * from './leave.enum';
-export * from './booking.enum';
-export * from './fee.enum';
-export * from './room.enum';
-export * from './facility.enum';
+export enum FacilityTag {
+  INCLUDED = 'Included',
+  EXCLUDED = 'Excluded',
+  EXTRA_CHARGE = 'Extra Charge',
+}

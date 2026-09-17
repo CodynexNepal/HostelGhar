@@ -16,7 +16,7 @@ REGISTRY="ghcr.io/codynexnepal/hostelghar"
 FULL_IMAGE="${REGISTRY}:${IMAGE_TAG}"
 COMPOSE_FILE="docker-compose.production.yml"
 CONTAINER_NAME="hostelghar-app"
-HEALTHCHECK_URL="http://localhost:3000/health"
+HEALTHCHECK_URL="http://localhost:8000/health"
 MAX_HEALTH_ATTEMPTS=10
 HEALTH_RETRY_DELAY=5
 

@@ -52,7 +52,11 @@ export class HostelRepository {
   public async findById(id: string): Promise<Hostel | null> {
     return this.hostelRepo.findOne({
       where: { id },
-      relations: { owner: true, createdByAdmin: true },
+      relations: {
+        owner: true,
+        createdByAdmin: true,
+        hostelFacilities: { facility: true },
+      },
       select: {
         id: true,
         name: true,
@@ -71,7 +75,19 @@ export class HostelRepository {
           avatarUrl: true,
         },
         createdByAdmin: { id: true, firstName: true, lastName: true, email: true },
+        hostelFacilities: {
+          id: true,
+          hostelId: true,
+          facilityId: true,
+          description: true,
+          tag: true,
+          clientKey: true,
+          createdAt: true,
+          updatedAt: true,
+          facility: { id: true, title: true, slug: true },
+        },
       },
+      order: { hostelFacilities: { createdAt: 'ASC' } },
     });
   }
 

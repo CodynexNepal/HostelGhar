@@ -1,0 +1,19 @@
+﻿{
+    "timestamp":  "2026-09-17T16:33:38.8919500Z",
+    "baseUrl":  "http://localhost:8000",
+    "requests":  100,
+    "budgets":  {
+                    "apiP95Ms":  500,
+                    "liveMs":  1000,
+                    "redisP95Ms":  50,
+                    "dbP95Ms":  100
+                },
+    "results":  [
+
+                ],
+    "totals":  {
+                   "skip":  0,
+                   "pass":  0,
+                   "fail":  0
+               }
+}
