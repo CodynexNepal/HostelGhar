@@ -18,7 +18,7 @@ hostelRouter.get('/:id', requireParam('id'), apiReadLimiter, hostelController.ge
 hostelRouter.get(
   '/:id/residents',
   requireParam('id'),
-  requireRoles(IROLES.ADMIN, IROLES.OWNER),
+  requireRoles(IROLES.ADMIN, IROLES.OWNER, IROLES.RESIDENT),
   hostelController.getResidents,
 );
 hostelRouter.get('/:id/leave-types', requireParam('id'), hostelController.getLeaveTypes);

@@ -138,10 +138,15 @@ Gets hostel detail.
 
 ### GET `/hostels/:id/residents`
 
-Requires role: `admin` or `owner`. Lists active residents.
-Each row answers: which HOSTEL → which RESIDENT lives in which FLAT/FLOOR,
-which ROOM number and which BED number.
-(`flat` is an alias of `Room.floor` — no separate flat column exists.)
+Requires role: `admin`, `owner`, or `resident`.
+
+- `admin`/`owner`: lists ALL active residents (owner must own the hostel).
+- `resident`: self-scoped — returns ONLY your own row (`scope: "self"`) when
+  you are an active resident of that hostel; otherwise 403. Use this for
+  "My Room" instead of `GET /resident/me` if you already have the hostelId.
+  Each row answers: which HOSTEL → which RESIDENT lives in which FLAT/FLOOR,
+  which ROOM number and which BED number.
+  (`flat` is an alias of `Room.floor` — no separate flat column exists.)
 
 ```json
 {
@@ -153,7 +158,13 @@ which ROOM number and which BED number.
       "email": "ram@mail.com",
       "hostelId": "hostel-uuid",
       "hostelName": "Sunrise Hostel",
-      "hostel": { "id": "hostel-uuid", "name": "Sunrise Hostel", "type": "BOYS", "city": "Ktm", "address": "..." },
+      "hostel": {
+        "id": "hostel-uuid",
+        "name": "Sunrise Hostel",
+        "type": "BOYS",
+        "city": "Ktm",
+        "address": "..."
+      },
       "roomNumber": "101",
       "bedNumber": "B2",
       "roomType": "DOUBLE",
@@ -197,7 +208,12 @@ Requires role: `owner` or `admin`. Frontend `id` maps to `clientKey`.
 ```json
 {
   "facilities": [
-    { "id": "security-mu5ofghs", "title": "Security", "description": "24 security with guards", "tag": "Included" }
+    {
+      "id": "security-mu5ofghs",
+      "title": "Security",
+      "description": "24 security with guards",
+      "tag": "Included"
+    }
   ]
 }
 ```
@@ -270,6 +286,43 @@ The form-options endpoints now ALSO return the owner's unlinked rooms
 Assigning a resident to an unlinked room auto-links it (`rooms.hostelId` set);
 or link manually via `PATCH /rooms/:id { "hostelId": "<uuid>" }` (new field).
 
+### GET `/owner/resident-imports/template`
+
+Requires role: `owner` or `admin`. Downloads the CSV template with header
+`name,email,phone,room,bed,rent` + 3 sample rows. Maps to the
+"Download template" button in the Import Residents screenshot.
+
+### POST `/owner/resident-imports?hostelId=<uuid>` (multipart `file`)
+
+Requires role: `owner` or `admin`. Queues a background CSV import and returns
+`200` with the `resident_imports` history row (`QUEUED`). The `hostelId` may
+also come from body/header (`resolveHostelId`). Every row is validated
+(name/email/phone/room/bed/rent) before enqueue — same room/bed rules as
+single-create (unknown room → row error, full → row error, taken bed →
+row error). Plan limits: max 2000 rows/file, 5MB, 3 concurrent imports.
+Optional `Idempotency-Key` header replays the same history row instead of
+double-queueing. Processing happens in the `resident-import-queue` BullMQ
+worker (2 concurrency, per-row transaction, welcome emails, socket progress
+`resident:import_progress` → completion `resident:import_completed`).
+
+### GET `/owner/resident-imports?hostelId=<uuid>&page=&limit=`
+
+Requires role: `owner` or `admin`. Import history for the "No imports yet /
+Your import history will appear here" panel (3-tier cached, paginated,
+newest first). Each row: `status` (`QUEUED/PROCESSING/COMPLETED/
+COMPLETED_WITH_ERRORS/FAILED`), `totalRows/validRows/successCount/
+failedCount`, `rowErrors[≤100]`, `fileName`, `createdAt/completedAt`.
+
+### GET `/owner/resident-imports/:id`
+
+Requires role: `owner` or `admin` (owner-scoped). Single import detail
+including per-row errors for the history drill-down.
+
+### GET `/owner/resident-imports/plan-limits`
+
+Requires role: `owner` or `admin`. Powers the "View plan limits" button:
+`{ maxRowsPerFile, maxFileBytes, maxConcurrentImports, monthlyRowBudget, columns }`.
+
 ### POST `/owner/leave-types`
 
 Creates a leave type policy.
@@ -282,9 +335,31 @@ Triggers monthly fee generation.
 
 Requires role: `resident` or `admin`.
 
+### GET `/resident/me`
+
+Dashboard bootstrap for the logged-in resident. Returns resident profile +
+hostel + assigned room inventory row (matched by `hostelId` + `roomNumber`) +
+hostel facilities. Use this for "My Room" / "Facilities at ..." — never call
+owner/admin-only `GET /hostels/:id/residents` or `GET /rooms` as resident.
+
 ### POST `/resident/leaves/apply`
 
-Applies for leave.
+Applies for leave. Accepts EITHER naming (canonical wins if both sent):
+
+```json
+{
+  "leaveTypeId": "<uuid-from-GET-/hostels/:id/leave-types>",
+  "startDate": "2026-09-25",
+  "endDate": "2026-09-27",
+  "reason": "..."
+}
+```
+
+legacy UI shape also accepted:
+
+```json
+{ "leaveTypeId": "<uuid>", "fromDate": "2026-09-25", "toDate": "2026-09-27", "remarks": "..." }
+```
 
 ### GET `/resident/leaves`
 

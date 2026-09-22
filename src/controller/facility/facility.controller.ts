@@ -15,9 +15,14 @@ export class FacilityController {
     try {
       const hostelId = getRequiredParam(req, 'hostelId');
       const r = await this.service.list(hostelId);
-      if ('error' in r) { res.status(r.error.status).json({ success: false, message: r.error.message }); return; }
+      if ('error' in r) {
+        res.status(r.error.status).json({ success: false, message: r.error.message });
+        return;
+      }
       res.status(STATUS_CODE.OK).json({ success: true, ...r });
-    } catch (e) { next(e); }
+    } catch (e) {
+      next(e);
+    }
   };
 
   public sync = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -31,9 +36,14 @@ export class FacilityController {
         tag: f.tag,
       }));
       const r = await this.service.sync(hostelId, items);
-      if ('error' in r) { res.status(r.error.status).json({ success: false, message: r.error.message }); return; }
+      if ('error' in r) {
+        res.status(r.error.status).json({ success: false, message: r.error.message });
+        return;
+      }
       res.status(STATUS_CODE.OK).json({ success: true, message: 'Facilities synced', ...r });
-    } catch (e) { next(e); }
+    } catch (e) {
+      next(e);
+    }
   };
 
   public add = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -46,9 +56,14 @@ export class FacilityController {
         description: f.description?.trim() ? f.description : null,
         tag: f.tag,
       });
-      if ('error' in r) { res.status(r.error.status).json({ success: false, message: r.error.message }); return; }
+      if ('error' in r) {
+        res.status(r.error.status).json({ success: false, message: r.error.message });
+        return;
+      }
       res.status(STATUS_CODE.CREATED).json({ success: true, message: 'Facility added', ...r });
-    } catch (e) { next(e); }
+    } catch (e) {
+      next(e);
+    }
   };
 
   public remove = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -56,8 +71,13 @@ export class FacilityController {
       const hostelId = getRequiredParam(req, 'hostelId');
       const fkey = getRequiredParam(req, 'facilityKey');
       const r = await this.service.remove(hostelId, fkey);
-      if ('error' in r) { res.status(r.error.status).json({ success: false, message: r.error.message }); return; }
+      if ('error' in r) {
+        res.status(r.error.status).json({ success: false, message: r.error.message });
+        return;
+      }
       res.status(STATUS_CODE.OK).json({ success: true, message: 'Facility removed', ...r });
-    } catch (e) { next(e); }
+    } catch (e) {
+      next(e);
+    }
   };
 }

@@ -26,6 +26,38 @@ export class ResidentController {
       const userId = req.user!.userId;
       const dto = req.body as ApplyLeaveDto;
 
+      // Accept BOTH frontend namings: startDate/endDate/reason (canonical)
+      // and fromDate/toDate/remarks (legacy UI). Canonical wins if both sent.
+      const startDate = dto.startDate?.trim() || dto.fromDate?.trim() || '';
+      const endDate = dto.endDate?.trim() || dto.toDate?.trim() || '';
+      const reason = dto.reason?.trim() || dto.remarks?.trim() || null;
+
+      if (!startDate || !endDate) {
+        res.status(STATUS_CODE.BAD_REQUEST).json({
+          success: false,
+          message:
+            'Start date and end date are required. Send { startDate, endDate } or { fromDate, toDate } as YYYY-MM-DD.',
+        });
+        return;
+      }
+
+      // Strict YYYY-MM-DD (not full ISO datetime) to match `date` columns.
+      const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+      if (!DATE_ONLY.test(startDate) || !DATE_ONLY.test(endDate)) {
+        res.status(STATUS_CODE.BAD_REQUEST).json({
+          success: false,
+          message: 'Start date and end date must be valid ISO date strings (YYYY-MM-DD).',
+        });
+        return;
+      }
+      if (endDate < startDate) {
+        res.status(STATUS_CODE.BAD_REQUEST).json({
+          success: false,
+          message: 'End date must be on or after start date.',
+        });
+        return;
+      }
+
       const resident = await this.residentRepository.findResidentByUserId(userId);
 
       if (!resident) {
@@ -36,12 +68,23 @@ export class ResidentController {
         return;
       }
 
+      // Leave type must exist AND belong to the resident's own hostel.
+      const leaveType = await this.residentRepository.findLeaveTypeById(dto.leaveTypeId);
+      if (!leaveType || leaveType.hostelId !== resident.hostelId) {
+        res.status(STATUS_CODE.BAD_REQUEST).json({
+          success: false,
+          message:
+            'Invalid leave type for your hostel. Pick leaveTypeId from GET /hostels/:id/leave-types using your own hostelId.',
+        });
+        return;
+      }
+
       const savedLeave = await this.residentRepository.createLeaveRequest({
         residentId: resident.id,
         leaveTypeId: dto.leaveTypeId,
-        startDate: dto.startDate,
-        endDate: dto.endDate,
-        reason: dto.reason || null,
+        startDate,
+        endDate,
+        reason,
         status: LeaveStatus.PENDING,
       });
 
@@ -54,14 +97,108 @@ export class ResidentController {
         leaveId: savedLeave.id,
         residentId: resident.id,
         status: LeaveStatus.PENDING,
-        startDate: dto.startDate,
-        endDate: dto.endDate,
+        startDate,
+        endDate,
       });
 
       res.status(STATUS_CODE.CREATED).json({
         success: true,
         message: 'Leave application submitted successfully',
         data: savedLeave,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /resident/me — dashboard bootstrap for the logged-in resident.
+   * Returns resident profile + hostel + assigned room (matched by
+   * hostelId+roomNumber) + roommates count, so the frontend NEVER calls
+   * owner/admin-only routes like GET /hostels/:id/residents or GET /rooms.
+   */
+  public getMyProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user!.userId;
+
+      const resident = await this.residentRepository.findResidentByUserId(userId);
+      if (!resident) {
+        res
+          .status(STATUS_CODE.NOT_FOUND)
+          .json({ success: false, message: 'Resident profile not found' });
+        return;
+      }
+
+      const cacheKey = cacheService.generateKey('resident:profile', resident.id);
+      const { data, isCached, cacheLevel } = await cacheService.wrap(
+        cacheKey,
+        async () => {
+          const room = await this.residentRepository.findRoomForResident(
+            resident.hostelId,
+            resident.roomNumber,
+          );
+          const facilities = await this.residentRepository.findFacilitiesByHostel(
+            resident.hostelId,
+          );
+          return {
+            room: room
+              ? {
+                  id: room.id,
+                  roomNumber: room.roomNumber,
+                  type: room.type,
+                  capacity: room.capacity,
+                  occupied: room.occupied,
+                  monthlyRent: Number(room.monthlyRent),
+                  floor: room.floor,
+                  flat: room.floor,
+                  status: room.status,
+                  amenities: room.amenities ?? [],
+                  imageUrl: room.imageUrl,
+                }
+              : null,
+            facilities: facilities.map((hf) => ({
+              id: hf.id,
+              title: hf.facility?.title ?? null,
+              slug: hf.facility?.slug ?? null,
+              description: hf.description,
+              tag: hf.tag,
+            })),
+          };
+        },
+        { l1TtlSeconds: 30, l2TtlSeconds: 120 },
+      );
+
+      const firstName = resident.user?.firstName ?? '';
+      const lastName = resident.user?.lastName ?? '';
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        isCached,
+        cacheLevel,
+        data: {
+          id: resident.id,
+          fullName: `${firstName} ${lastName}`.trim(),
+          firstName,
+          lastName,
+          email: resident.user?.email ?? null,
+          phone: resident.user?.phone ?? null,
+          photoUrl: resident.photoUrl ?? resident.user?.avatarUrl ?? null,
+          roomNumber: resident.roomNumber ?? null,
+          bedNumber: resident.bedNumber ?? null,
+          monthlyRent: resident.monthlyRent != null ? Number(resident.monthlyRent) : null,
+          joinedDate: resident.createdAt ?? null,
+          hostel: resident.hostel
+            ? {
+                id: resident.hostel.id,
+                name: resident.hostel.name,
+                type: resident.hostel.type ?? null,
+                city: resident.hostel.city ?? null,
+                address: resident.hostel.address ?? null,
+              }
+            : { id: resident.hostelId, name: null, type: null, city: null, address: null },
+          room: data.room,
+          facilities: data.facilities,
+        },
       });
     } catch (error) {
       next(error);
@@ -193,6 +330,7 @@ export class ResidentController {
 
       await cacheService.invalidatePattern(`hostel:residents`);
       await cacheService.invalidatePattern(`owner:residents`);
+      await cacheService.invalidatePattern(`resident:profile`);
 
       res.status(STATUS_CODE.OK).json({
         success: true,
@@ -239,6 +377,7 @@ export class ResidentController {
 
       await cacheService.invalidatePattern(`hostel:residents`);
       await cacheService.invalidatePattern(`owner:residents`);
+      await cacheService.invalidatePattern(`resident:profile`);
 
       res.status(STATUS_CODE.OK).json({
         success: true,

@@ -165,3 +165,46 @@ export const pickRoomImageFile = (req: Request): Express.Multer.File | undefined
   if (Array.isArray(files)) return files[0];
   return files['image']?.[0];
 };
+
+// ─── 6. Resident CSV Import Upload (Max 5MB, accepts common field names) ─
+// Some clients send the file as `file`, others as `csv`, `csvFile`, or similar.
+// Keep the field names flexible so the request does not fail before validation.
+const RESIDENT_CSV_FIELD_NAMES = ['file', 'csv', 'csvFile', 'residentCsv', 'importFile'];
+
+export const pickResidentCsvFile = (req: Request): Express.Multer.File | undefined => {
+  const single = (req as Request & { file?: Express.Multer.File }).file;
+  if (single) return single;
+
+  const files = req.files as
+    { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[] | undefined;
+  if (!files) return undefined;
+  if (Array.isArray(files)) return files[0];
+
+  for (const name of RESIDENT_CSV_FIELD_NAMES) {
+    const match = files[name]?.[0];
+    if (match) return match;
+  }
+
+  const firstFile = Object.values(files)[0]?.[0];
+  return firstFile;
+};
+
+export const uploadResidentCsv = multer({
+  storage: memoryStorage,
+  fileFilter: (_req, file, callback) => {
+    const allowed = ['text/csv', 'application/vnd.ms-excel', 'text/plain', 'application/csv'];
+    const nameOk = /\.csv$/i.test(file.originalname ?? '');
+    if (allowed.includes(file.mimetype) || nameOk) {
+      callback(null, true);
+    } else {
+      callback(
+        createHttpError(
+          STATUS_CODE.BAD_REQUEST,
+          `Invalid file type: ${file.mimetype}. Only CSV files (.csv) are allowed.`,
+        ) as unknown as null,
+        false,
+      );
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+}).fields(RESIDENT_CSV_FIELD_NAMES.map((name) => ({ name, maxCount: 1 })));

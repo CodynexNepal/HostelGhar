@@ -83,7 +83,11 @@ export class UserRepository {
     return this.repository.save(user);
   }
 
-  public async updateAvatar(userId: string, avatarUrl: string, avatarPublicId: string): Promise<void> {
+  public async updateAvatar(
+    userId: string,
+    avatarUrl: string,
+    avatarPublicId: string,
+  ): Promise<void> {
     await this.repository.update(userId, { avatarUrl, avatarPublicId });
   }
 

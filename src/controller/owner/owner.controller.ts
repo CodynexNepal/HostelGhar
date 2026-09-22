@@ -127,8 +127,7 @@ export class OwnerController {
     try {
       const userId = req.user!.userId;
       const role = req.user!.role?.toLowerCase();
-      const hostelId =
-        typeof req.query.hostelId === 'string' ? req.query.hostelId.trim() : '';
+      const hostelId = typeof req.query.hostelId === 'string' ? req.query.hostelId.trim() : '';
 
       if (!hostelId) {
         res
@@ -184,8 +183,7 @@ export class OwnerController {
     try {
       const userId = req.user!.userId;
       const role = req.user!.role?.toLowerCase();
-      const hostelId =
-        typeof req.query.hostelId === 'string' ? req.query.hostelId.trim() : '';
+      const hostelId = typeof req.query.hostelId === 'string' ? req.query.hostelId.trim() : '';
       const flatRaw = typeof req.query.flat === 'string' ? req.query.flat.trim() : '';
 
       if (!hostelId) {
@@ -347,8 +345,7 @@ export class OwnerController {
     try {
       const userId = req.user!.userId;
       const role = req.user!.role?.toLowerCase();
-      const hostelId =
-        typeof req.query.hostelId === 'string' ? req.query.hostelId.trim() : '';
+      const hostelId = typeof req.query.hostelId === 'string' ? req.query.hostelId.trim() : '';
       const roomNumber =
         typeof req.query.roomNumber === 'string' ? req.query.roomNumber.trim() : '';
 
@@ -413,11 +410,7 @@ export class OwnerController {
    * Query: ?page=&limit=&hostelId= (optional, still owner-scoped).
    * NOTE: there is no `flat` column — `flat` is an alias of Room.floor.
    */
-  public getResidents = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public getResidents = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const ownerId = req.user!.userId;
       const { page, limit } = normalizePagination({
@@ -458,8 +451,7 @@ export class OwnerController {
       const residents = data.list.map((resident) => {
         const firstName = resident.user?.firstName ?? '';
         const lastName = resident.user?.lastName ?? '';
-        const room =
-          roomByKey.get(`${resident.hostelId}::${resident.roomNumber?.trim()}`) ?? null;
+        const room = roomByKey.get(`${resident.hostelId}::${resident.roomNumber?.trim()}`) ?? null;
         const floor = room?.floor ?? null;
         return {
           id: resident.id,
@@ -494,7 +486,12 @@ export class OwnerController {
 
       res.status(STATUS_CODE.OK).json({
         success: true,
-        ...createPaginatedResponse(residents, data.total, { page, limit }, { isCached, cacheLevel }),
+        ...createPaginatedResponse(
+          residents,
+          data.total,
+          { page, limit },
+          { isCached, cacheLevel },
+        ),
       });
     } catch (error) {
       next(error);
@@ -526,13 +523,14 @@ export class OwnerController {
         you: { userId, role },
         requestedHostelId: hostelId ?? null,
         ...counts,
-        hint: counts.requestedHostelOwned === false
-          ? 'This hostelId does NOT belong to your login. Use a hostelId from /owner/residents/form-options/hostels, or log in as the owner who owns it.'
-          : counts.linkedToHostel === 0 && counts.unlinkedMine > 0
-            ? 'Your rooms exist but are NOT linked to this hostel (hostelId NULL). Link via PATCH /rooms/:id { hostelId }, or they still appear in form-options dropdowns.'
-            : counts.mine === 0
-              ? 'No rooms exist under THIS login at all. You probably created rooms while logged in as a different user (or seed data belongs to another owner).'
-              : 'Rooms exist and are linked — if a list still shows [], it is a stale L1/L2 cache entry or a hostelId/status/type filter mismatch.',
+        hint:
+          counts.requestedHostelOwned === false
+            ? 'This hostelId does NOT belong to your login. Use a hostelId from /owner/residents/form-options/hostels, or log in as the owner who owns it.'
+            : counts.linkedToHostel === 0 && counts.unlinkedMine > 0
+              ? 'Your rooms exist but are NOT linked to this hostel (hostelId NULL). Link via PATCH /rooms/:id { hostelId }, or they still appear in form-options dropdowns.'
+              : counts.mine === 0
+                ? 'No rooms exist under THIS login at all. You probably created rooms while logged in as a different user (or seed data belongs to another owner).'
+                : 'Rooms exist and are linked — if a list still shows [], it is a stale L1/L2 cache entry or a hostelId/status/type filter mismatch.',
       });
     } catch (error) {
       next(error);
@@ -687,6 +685,7 @@ export class OwnerController {
       await cacheService.invalidatePattern(`owner:form-options:room-detail`);
       await cacheService.invalidatePattern(`hostel:residents`);
       await cacheService.invalidatePattern(`owner:rooms`);
+      await cacheService.invalidatePattern(`resident:profile`);
 
       // Dispatch welcome email via BullMQ
       await eventDispatcher.queueEmail(JobType.SEND_WELCOME_EMAIL, {

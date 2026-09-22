@@ -71,7 +71,7 @@ export const requireRoles = (...allowedRoles: (IROLES | string)[]) => {
     if (!hasRole) {
       res.status(STATUS_CODE.FORBIDDEN).json({
         success: false,
-        message: `Forbidden. This action requires one of the following roles: [${allowedRoles.join(', ')}]`,
+        message: `Forbidden. This action requires one of the following roles: [${allowedRoles.join(', ')}] (your role: ${req.user.role ?? 'unknown'})`,
       });
       return;
     }

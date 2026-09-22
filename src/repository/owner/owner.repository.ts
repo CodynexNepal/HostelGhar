@@ -159,10 +159,13 @@ export class OwnerRepository {
       .select('COALESCE(room.floor, 0)', 'flat')
       .addSelect('COUNT(room.id)', 'roomCount');
     if (ownerId) {
-      qb.where('(room.hostelId = :hostelId OR (room.hostelId IS NULL AND room.ownerId = :ownerId))', {
-        hostelId,
-        ownerId,
-      });
+      qb.where(
+        '(room.hostelId = :hostelId OR (room.hostelId IS NULL AND room.ownerId = :ownerId))',
+        {
+          hostelId,
+          ownerId,
+        },
+      );
     } else {
       qb.where('room.hostelId = :hostelId', { hostelId });
     }
@@ -296,7 +299,9 @@ export class OwnerRepository {
       if (myHostels.length > 0) {
         const otherIds = myHostels.map((h) => h.id).filter((id) => id !== hostelId);
         linkedToMyOtherHostels =
-          otherIds.length > 0 ? await this.roomRepo.count({ where: { hostelId: In(otherIds) } }) : 0;
+          otherIds.length > 0
+            ? await this.roomRepo.count({ where: { hostelId: In(otherIds) } })
+            : 0;
       }
     }
 

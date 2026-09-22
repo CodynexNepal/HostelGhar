@@ -158,8 +158,8 @@ export class AdminService {
    *   Hostel + Owner + Occupancy (active residents) + Status — one query, no N+1.
    * There is NO capacity/totalBeds column in the schema, so occupancy is
    * reported as `occupiedBeds` with `totalBeds: null` (frontend renders
-  * e.g. "3" or "3/—" instead of "undefined/undefined").
-  * Occupancy is derived from active resident room and bed assignments.
+   * e.g. "3" or "3/—" instead of "undefined/undefined").
+   * Occupancy is derived from active resident room and bed assignments.
    */
   public async getAllHostels(page: number, limit: number) {
     const cacheKey = cacheService.generateKey('hostels:list', { page, limit, v: 4 });

@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { STATUS_CODE } from '../constant/statusCode.interface';
 
-const UUID_V4_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const getRequestedHostelId = (req: Request): unknown =>
   req.params.hostelId ||
   req.params.id ||
+  (req.query?.hostelId as string | undefined) ||
   req.body?.hostelId ||
   req.headers['x-hostel-id'];
 

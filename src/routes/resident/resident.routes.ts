@@ -17,6 +17,7 @@ const residentController = ResidentFactory.create();
 // Protect resident routes
 residentRouter.use(authenticate, requireRoles(IROLES.RESIDENT, IROLES.ADMIN));
 
+residentRouter.get('/me', residentController.getMyProfile);
 residentRouter.post('/leaves/apply', validateDto(ApplyLeaveDto), residentController.applyForLeave);
 residentRouter.get('/leaves', residentController.getMyLeaves);
 residentRouter.get('/fees', residentController.getMyFees);

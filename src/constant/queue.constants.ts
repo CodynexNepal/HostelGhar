@@ -8,6 +8,7 @@ export enum QueueName {
   NOTIFICATION = 'notification-queue',
   AUDIT_LOG = 'audit-log-queue',
   SYSTEM_EVENT = 'system-event-queue',
+  RESIDENT_IMPORT = 'resident-import-queue',
 }
 
 export enum JobType {
@@ -27,6 +28,9 @@ export enum JobType {
 
   // System Events
   PROCESS_DOMAIN_EVENT = 'PROCESS_DOMAIN_EVENT',
+
+  // Resident bulk import (background CSV processing)
+  RESIDENT_CSV_IMPORT = 'RESIDENT_CSV_IMPORT',
 }
 
 export enum SocketEvent {
@@ -45,4 +49,6 @@ export enum SocketEvent {
   PAYMENT_PROCESSED = 'payment:processed',
   BOOKING_CONFIRMED = 'booking:confirmed',
   LIVE_ANNOUNCEMENT = 'announcement:broadcast',
+  RESIDENT_IMPORT_PROGRESS = 'resident:import_progress',
+  RESIDENT_IMPORT_COMPLETED = 'resident:import_completed',
 }

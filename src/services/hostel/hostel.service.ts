@@ -7,6 +7,12 @@ import { HostelRepository } from '../../repository/hostel/hostel.repository';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { cacheService } from '../../utils/cache.util';
 import { createPaginatedResponse } from '../../utils/pagination.util';
+import { IROLES } from '../../enum/roles.enum';
+
+export interface HostelResidentsAccess {
+  userId: string;
+  role: string;
+}
 
 export class HostelService {
   constructor(private readonly hostelRepository: HostelRepository) {}
@@ -50,7 +56,70 @@ export class HostelService {
     return { data: hostel, isCached, cacheLevel };
   }
 
-  public async getHostelResidents(id: string) {
+  public async getHostelResidents(id: string, access?: HostelResidentsAccess) {
+    const role = access?.role?.toLowerCase();
+
+    // Owner must own this hostel; admin bypasses ownership. This keeps the
+    // 403 meaningful (wrong hostel vs wrong role) instead of leaking data.
+    if (access && role === IROLES.OWNER) {
+      const hostel = await this.hostelRepository.findHostelOwner(id);
+      if (!hostel) {
+        return { error: { status: STATUS_CODE.NOT_FOUND, message: 'Hostel not found' } };
+      }
+      if (hostel.ownerId !== access.userId) {
+        return {
+          error: {
+            status: STATUS_CODE.FORBIDDEN,
+            message:
+              'You do not own this hostel. Use GET /owner/residents?hostelId=<your-own-hostel-id> or pick a hostel from GET /owner/residents/form-options/hostels.',
+          },
+        };
+      }
+    }
+
+    // Resident self-scope: a resident may read THIS endpoint only for the
+    // hostel they live in, and only sees their OWN row (no emails/phones of
+    // roommates). Prevents the old 403 while avoiding a privacy leak.
+    const isResident = access && role === IROLES.RESIDENT;
+    if (isResident) {
+      const ownRow = await this.hostelRepository.findResidentInHostel(id, access.userId);
+      if (!ownRow) {
+        return {
+          error: {
+            status: STATUS_CODE.FORBIDDEN,
+            message:
+              'You are not an active resident of this hostel. Ask your warden to assign you (POST /owner/residents with your login email), then re-login.',
+          },
+        };
+      }
+      const cacheKey = cacheService.generateKey('hostel:residents:self', {
+        hostelId: id,
+        userId: access.userId,
+        v: 1,
+      });
+      const {
+        data: residents,
+        isCached,
+        cacheLevel,
+      } = await cacheService.wrap(
+        cacheKey,
+        async () => {
+          const [fees, rooms] = await Promise.all([
+            this.hostelRepository.findLatestFeesByResidentIds([ownRow.id]),
+            this.hostelRepository.findRoomsByNumbers(id, [ownRow.roomNumber]),
+          ]);
+          return { list: [ownRow], fees: [...fees.entries()], rooms: [...rooms.entries()] };
+        },
+        { l1TtlSeconds: 30, l2TtlSeconds: 120 },
+      );
+      const feeByResident = new Map<string, any>(residents.fees);
+      const roomByNumber = new Map<string, any>(residents.rooms);
+      const data = residents.list.map((resident) =>
+        this.toResidentRow(resident, id, feeByResident, roomByNumber),
+      );
+      return { data, isCached, cacheLevel, scope: 'self' as const };
+    }
+
     // v5: + hostel (id/name/type/city/address) + flat (alias of floor) — busts old v4 L1/L2 cache.
     const cacheKey = cacheService.generateKey('hostel:residents', { hostelId: id, v: 5 });
 
@@ -87,63 +156,78 @@ export class HostelService {
     // which ROOM number and which BED number.
     // NOTE: there is no `flat` column in the schema. `flat` here is an alias
     // of Room.floor (the storey/flat level the room sits on).
-    const data = residents.list.map((resident) => {
-      const firstName = resident.user?.firstName ?? '';
-      const lastName = resident.user?.lastName ?? '';
-      const latestFee = feeByResident.get(resident.id) ?? null;
-      const room = roomByNumber.get(resident.roomNumber?.trim()) ?? null;
-      const floor = room?.floor ?? null;
-      return {
-        id: resident.id,
-        firstName,
-        lastName,
-        fullName: `${firstName} ${lastName}`.trim(),
-        email: resident.user?.email ?? null,
-        phone: resident.user?.phone ?? null,
-        imageUrl: resident.photoUrl ?? resident.user?.avatarUrl ?? null,
-        // Which hostel this resident lives in.
-        hostelId: resident.hostelId ?? resident.hostel?.id ?? id,
-        hostelName: resident.hostel?.name ?? null,
-        hostel: resident.hostel
-          ? {
-              id: resident.hostel.id,
-              name: resident.hostel.name,
-              type: resident.hostel.type ?? null,
-              city: resident.hostel.city ?? null,
-              address: resident.hostel.address ?? null,
-            }
-          : { id: resident.hostelId ?? id, name: null, type: null, city: null, address: null },
-        // When the resident profile was created (= joined the hostel).
-        joinedDate: resident.createdAt ?? null,
-        // Agreed rent from the resident profile (may be null if unset).
-        monthlyRent: resident.monthlyRent != null ? Number(resident.monthlyRent) : null,
-        // Room assignment from the resident profile (plain text).
-        roomNumber: resident.roomNumber ?? null,
-        bedNumber: resident.bedNumber ?? null,
-        // Enriched from rooms inventory matched by (hostelId, roomNumber).
-        // Null when no Room row exists yet for that number (owner hasn't
-        // created it in room management) — frontend should show "—".
-        roomType: room?.type ?? null,
-        floor,
-        // `flat` = alias of `floor` (no separate flat column exists).
-        flat: floor,
-        // Latest generated bill, null if no fee generated yet.
-        fee: latestFee
-          ? {
-              billingMonth: latestFee.billingMonth,
-              billingYear: latestFee.billingYear,
-              amount: Number(latestFee.amount),
-              dueAmount: Number(latestFee.dueAmount),
-              totalPayable: Number(latestFee.totalPayable),
-              paidAmount: Number(latestFee.paidAmount),
-              dueDate: latestFee.dueDate,
-              status: latestFee.status,
-            }
-          : null,
-      };
-    });
+    const data = residents.list.map((resident) =>
+      this.toResidentRow(resident, id, feeByResident, roomByNumber),
+    );
 
     return { data, isCached, cacheLevel };
+  }
+
+  private toResidentRow(
+    resident: any,
+    hostelId: string,
+    feeByResident: Map<string, any>,
+    roomByNumber: Map<string, any>,
+  ) {
+    const firstName = resident.user?.firstName ?? '';
+    const lastName = resident.user?.lastName ?? '';
+    const latestFee = feeByResident.get(resident.id) ?? null;
+    const room = roomByNumber.get(resident.roomNumber?.trim()) ?? null;
+    const floor = room?.floor ?? null;
+    return {
+      id: resident.id,
+      firstName,
+      lastName,
+      fullName: `${firstName} ${lastName}`.trim(),
+      email: resident.user?.email ?? null,
+      phone: resident.user?.phone ?? null,
+      imageUrl: resident.photoUrl ?? resident.user?.avatarUrl ?? null,
+      // Which hostel this resident lives in.
+      hostelId: resident.hostelId ?? resident.hostel?.id ?? hostelId,
+      hostelName: resident.hostel?.name ?? null,
+      hostel: resident.hostel
+        ? {
+            id: resident.hostel.id,
+            name: resident.hostel.name,
+            type: resident.hostel.type ?? null,
+            city: resident.hostel.city ?? null,
+            address: resident.hostel.address ?? null,
+          }
+        : {
+            id: resident.hostelId ?? hostelId,
+            name: null,
+            type: null,
+            city: null,
+            address: null,
+          },
+      // When the resident profile was created (= joined the hostel).
+      joinedDate: resident.createdAt ?? null,
+      // Agreed rent from the resident profile (may be null if unset).
+      monthlyRent: resident.monthlyRent != null ? Number(resident.monthlyRent) : null,
+      // Room assignment from the resident profile (plain text).
+      roomNumber: resident.roomNumber ?? null,
+      bedNumber: resident.bedNumber ?? null,
+      // Enriched from rooms inventory matched by (hostelId, roomNumber).
+      // Null when no Room row exists yet for that number (owner hasn't
+      // created it in room management) — frontend should show "—".
+      roomType: room?.type ?? null,
+      floor,
+      // `flat` = alias of `floor` (no separate flat column exists).
+      flat: floor,
+      // Latest generated bill, null if no fee generated yet.
+      fee: latestFee
+        ? {
+            billingMonth: latestFee.billingMonth,
+            billingYear: latestFee.billingYear,
+            amount: Number(latestFee.amount),
+            dueAmount: Number(latestFee.dueAmount),
+            totalPayable: Number(latestFee.totalPayable),
+            paidAmount: Number(latestFee.paidAmount),
+            dueDate: latestFee.dueDate,
+            status: latestFee.status,
+          }
+        : null,
+    };
   }
 
   public async getHostelLeaveTypes(id: string) {

@@ -55,3 +55,4 @@ export const emailQueue = getQueue(QueueName.EMAIL);
 export const notificationQueue = getQueue(QueueName.NOTIFICATION);
 export const auditLogQueue = getQueue(QueueName.AUDIT_LOG);
 export const systemEventQueue = getQueue(QueueName.SYSTEM_EVENT);
+export const residentImportQueue = getQueue(QueueName.RESIDENT_IMPORT);

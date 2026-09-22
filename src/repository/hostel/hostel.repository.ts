@@ -91,6 +91,44 @@ export class HostelRepository {
     });
   }
 
+  public async findHostelOwner(hostelId: string): Promise<Pick<Hostel, 'id' | 'ownerId'> | null> {
+    return this.hostelRepo.findOne({
+      where: { id: hostelId },
+      select: { id: true, ownerId: true },
+    });
+  }
+
+  public async findResidentInHostel(hostelId: string, userId: string): Promise<Resident | null> {
+    return this.residentRepo.findOne({
+      where: { hostelId, userId, isActive: true },
+      relations: { user: true, hostel: true },
+      select: {
+        id: true,
+        hostelId: true,
+        photoUrl: true,
+        monthlyRent: true,
+        createdAt: true,
+        roomNumber: true,
+        bedNumber: true,
+        user: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          avatarUrl: true,
+        },
+        hostel: {
+          id: true,
+          name: true,
+          type: true,
+          city: true,
+          address: true,
+        },
+      },
+    });
+  }
+
   public async findResidents(hostelId: string): Promise<Resident[]> {
     // Slim projection: only columns needed for the public resident list.
     // NEVER return password / refreshToken / reset tokens to the client.
@@ -132,7 +170,10 @@ export class HostelRepository {
    * batch-load the Room rows to enrich with type / floor.
    * Keyed by roomNumber for O(1) lookup in the service mapper.
    */
-  public async findRoomsByNumbers(hostelId: string, roomNumbers: string[]): Promise<Map<string, Room>> {
+  public async findRoomsByNumbers(
+    hostelId: string,
+    roomNumbers: string[],
+  ): Promise<Map<string, Room>> {
     const unique = [...new Set(roomNumbers.map((n) => n?.trim()).filter(Boolean))];
     if (unique.length === 0) return new Map();
     const rooms = await this.roomRepo.find({

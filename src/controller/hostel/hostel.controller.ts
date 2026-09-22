@@ -43,7 +43,14 @@ export class HostelController {
   public getResidents = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const hostelId = getRequiredParam(req, 'id');
-      const result = await this.hostelService.getHostelResidents(hostelId);
+      const result = await this.hostelService.getHostelResidents(hostelId, {
+        userId: req.user!.userId,
+        role: req.user!.role ?? '',
+      });
+      if ('error' in result && result.error) {
+        res.status(result.error.status).json({ success: false, message: result.error.message });
+        return;
+      }
       res.status(STATUS_CODE.OK).json({ success: true, ...result });
     } catch (error) {
       next(error);

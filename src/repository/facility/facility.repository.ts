@@ -52,7 +52,9 @@ export class FacilityRepository {
     return this.facilityRepo.find({ where: { slug: In(unique) } });
   }
 
-  public async createCatalogEntries(entries: Array<{ title: string; slug: string }>): Promise<Facility[]> {
+  public async createCatalogEntries(
+    entries: Array<{ title: string; slug: string }>,
+  ): Promise<Facility[]> {
     if (entries.length === 0) return [];
     const rows = this.facilityRepo.create(
       entries.map((e) => ({ title: e.title.trim(), slug: e.slug })),
