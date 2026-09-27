@@ -10,6 +10,9 @@ import { hostelRouter } from './hostel/hostel.routes';
 import { leaveRouter } from './leave/leave.routes';
 import { feeRouter } from './fee/fee.routes';
 import { roomRouter } from './room/room.routes';
+import { bedRouter } from './bed/bed.routes';
+import { paymentQrRouter } from './payment-qr/payment-qr.routes';
+import { paymentProofRouter } from './payment-proof/payment-proof.routes';
 
 const routes = Router();
 
@@ -22,7 +25,10 @@ routes.use('/bookings', bookingRouter);
 routes.use('/analytics', analyticsRouter);
 routes.use('/hostels', hostelRouter);
 routes.use('/leaves', leaveRouter);
+routes.use('/', paymentProofRouter);
 routes.use('/fees', feeRouter);
 routes.use('/rooms', roomRouter);
+routes.use('/beds', bedRouter);
+routes.use('/payment-qrs', paymentQrRouter);
 
 export default routes;

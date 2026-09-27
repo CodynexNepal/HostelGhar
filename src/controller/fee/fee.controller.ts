@@ -3,6 +3,7 @@ import { FeeService } from '../../services/fee/fee.service';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { getRequiredParam } from '../../decorators/http.decorator';
 import { normalizePagination } from '../../utils/pagination.util';
+import { isFirstDayOfNepaliMonth, toNepaliDate, formatNepaliMonthYear } from '../../utils/nepali-date.util';
 
 export class FeeController {
   constructor(private readonly feeService: FeeService) {}
@@ -15,6 +16,32 @@ export class FeeController {
     try {
       const result = await this.feeService.generateMonthlyFeesForAllHostels();
       res.status(STATUS_CODE.OK).json({ success: true, result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /fees/nepali-status — is today Nepali 1st? When will billing run?
+   * Public helper for dashboards ("Next bill: 1 Kartik 2083").
+   */
+  public nepaliBillingStatus = async (
+    _req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const now = new Date();
+      const bs = toNepaliDate(now);
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        data: {
+          todayBs: bs,
+          todayBsLabel: `${bs.day} ${formatNepaliMonthYear(bs)} BS`,
+          isNepaliFirstDay: isFirstDayOfNepaliMonth(now),
+          currentBillingMonth: formatNepaliMonthYear(bs),
+        },
+      });
     } catch (error) {
       next(error);
     }

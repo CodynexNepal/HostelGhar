@@ -9,6 +9,7 @@ export interface EmailJobPayload {
   to: string;
   subject: string;
   body?: string;
+  html?: string;
   template?: string;
   context?: Record<string, any>;
 }
@@ -18,6 +19,7 @@ const externalEmailService = async (payload: EmailJobPayload): Promise<boolean> 
     to: payload.to,
     subject: payload.subject,
     body: payload.body || '',
+    ...(payload.html ? { html: payload.html } : {}),
   });
 };
 

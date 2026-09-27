@@ -1,0 +1,6 @@
+export enum BedStatus {
+  AVAILABLE = 'AVAILABLE',
+  OCCUPIED = 'OCCUPIED',
+  RESERVED = 'RESERVED',
+  MAINTENANCE = 'MAINTENANCE',
+}

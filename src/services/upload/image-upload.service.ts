@@ -211,6 +211,93 @@ export class ImageUploadService {
   }
 
   /**
+   * ─── 6. HOSTEL PAYMENT QR CODE UPLOAD LOGIC ───────────────────────────────
+   * - Target Folder: `hostelghar/payments/qr-codes`
+   * - Transformation: 600x600 limit fit, PNG/WEBP format, automatic quality
+   * - Cleans up previous QR asset from Cloudinary if replacing
+   */
+  public async uploadPaymentQrCode(
+    file: Express.Multer.File,
+    hostelId: string,
+    paymentMethod: string,
+    previousPublicId?: string | null,
+  ): Promise<ImageUploadResponse> {
+    if (!file || !file.buffer) {
+      throw createHttpError(STATUS_CODE.BAD_REQUEST, 'QR code image file is required');
+    }
+
+    const result: CloudinaryUploadResult = await CloudinaryUtil.uploadBuffer(file.buffer, {
+      folder: 'hostelghar/payments/qr-codes',
+      public_id: `qr_${hostelId}_${paymentMethod.toLowerCase()}_${Date.now()}`,
+      overwrite: true,
+      transformation: [
+        { width: 600, height: 600, crop: 'limit' },
+        { quality: 'auto:good', fetch_format: 'png' },
+      ],
+      tags: ['payment_qr', `hostel_${hostelId}`, paymentMethod.toLowerCase()],
+    });
+
+    if (previousPublicId) {
+      CloudinaryUtil.deleteByPublicId(previousPublicId).catch((err) =>
+        console.warn(
+          `[ImageUploadService] Could not delete old payment QR image ${previousPublicId}:`,
+          err,
+        ),
+      );
+    }
+
+    return {
+      url: result.secureUrl,
+      publicId: result.publicId,
+      bytes: result.bytes,
+      format: result.format,
+    };
+  }
+
+  /**
+   * ─── 7. PAYMENT PROOF SCREENSHOT UPLOAD LOGIC ─────────────────────────────
+   * - Target Folder: `hostelghar/payments/proofs`
+   * - Transformation: capped at 1600px (keeps receipt text legible), auto format
+   * - Cleans up previous screenshot asset from Cloudinary if replacing
+   */
+  public async uploadPaymentProofScreenshot(
+    file: Express.Multer.File,
+    feeId: string,
+    previousPublicId?: string | null,
+  ): Promise<ImageUploadResponse> {
+    if (!file || !file.buffer) {
+      throw createHttpError(STATUS_CODE.BAD_REQUEST, 'Payment screenshot file is required');
+    }
+
+    const result: CloudinaryUploadResult = await CloudinaryUtil.uploadBuffer(file.buffer, {
+      folder: 'hostelghar/payments/proofs',
+      public_id: `proof_${feeId}_${Date.now()}`,
+      overwrite: true,
+      transformation: [
+        { width: 1600, height: 1600, crop: 'limit' },
+        { quality: 'auto:good', fetch_format: 'auto' },
+      ],
+      tags: ['payment_proof', `fee_${feeId}`],
+    });
+
+    if (previousPublicId) {
+      CloudinaryUtil.deleteByPublicId(previousPublicId).catch((err) =>
+        console.warn(
+          `[ImageUploadService] Could not delete old payment proof ${previousPublicId}:`,
+          err,
+        ),
+      );
+    }
+
+    return {
+      url: result.secureUrl,
+      publicId: result.publicId,
+      bytes: result.bytes,
+      format: result.format,
+    };
+  }
+
+  /**
    * General asset deletion by public ID
    */
   public async deleteAsset(publicId: string): Promise<boolean> {

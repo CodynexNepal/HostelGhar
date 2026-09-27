@@ -25,6 +25,22 @@ export const httpActiveRequests = new Gauge({
   registers: [metricsRegistry],
 });
 
+// Response compression (Brotli/gzip/deflate) — proves the bandwidth saved by
+// src/performance/http/compression.ts straight from /metrics.
+export const httpResponsesCompressedTotal = new Counter({
+  name: 'http_responses_compressed_total',
+  help: 'Responses sent with a compressed body, by content coding.',
+  labelNames: ['encoding'] as const,
+  registers: [metricsRegistry],
+});
+
+export const httpCompressionSavedBytesTotal = new Counter({
+  name: 'http_compression_saved_bytes_total',
+  help: 'Bytes saved by compressing responses (uncompressed minus compressed), by coding.',
+  labelNames: ['encoding'] as const,
+  registers: [metricsRegistry],
+});
+
 export const circuitBreakerEvents = new Counter({
   name: 'circuit_breaker_events_total',
   help: 'Circuit breaker lifecycle and execution events.',

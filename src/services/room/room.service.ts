@@ -214,6 +214,10 @@ export class RoomService {
     await cacheService.invalidatePattern('owner:form-options:flats');
     await cacheService.invalidatePattern('owner:form-options:rooms');
     await cacheService.invalidatePattern('owner:form-options:room-detail');
+    // Dashboard KPI cards (Available Rooms, occupancy %, Floor overview,
+    // Room mix) are computed from the rooms table — bust them too.
+    await cacheService.invalidatePattern('owner:dashboard');
+    await cacheService.invalidatePattern('analytics:owner');
   }
 
   private async dispatchRoomEvent(room: Room, actorId: string): Promise<void> {

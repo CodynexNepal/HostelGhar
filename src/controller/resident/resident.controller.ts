@@ -14,6 +14,10 @@ import { ResidentRepository } from '../../repository/resident/resident.repositor
 import { normalizePagination, createPaginatedResponse } from '../../utils/pagination.util';
 import { imageUploadService } from '../../services/upload/image-upload.service';
 import { createHttpError } from '../../utils/createHttpError';
+import { PaymentQrService } from '../../services/payment-qr/payment-qr.service';
+import { FeeStatus } from '../../enum/fee.enum';
+import { feeOutstandingAmount } from '../../utils/fee-credit.util';
+
 
 export class ResidentController {
   constructor(private readonly residentRepository: ResidentRepository) {}
@@ -282,11 +286,28 @@ export class ResidentController {
         async () => {
           const fees = await this.residentRepository.findFeesByResident(resident.id);
 
-          const totalPendingDue = fees
-            .filter((f) => f.status !== 'PAID')
-            .reduce((sum, f) => sum + (Number(f.totalPayable) - Number(f.paidAmount)), 0);
+          // Dues are AMOUNT-driven, not label-driven: a bill whose paidAmount
+          // covers totalPayable is PAID (even if an earlier approval stamped it
+          // PARTIALLY_PAID), and a bill stamped PAID with a short paidAmount
+          // still reports its real outstanding instead of inflating "Current dues".
+          const ledger = fees.map((fee) => {
+            const totalPayable = Number(fee.totalPayable);
+            const paidAmount = Number(fee.paidAmount);
+            const outstanding = feeOutstandingAmount({ totalPayable, paidAmount });
+            const status = outstanding === 0 ? FeeStatus.PAID : fee.status;
+            return {
+              ...fee,
+              totalPayable,
+              paidAmount,
+              outstanding,
+              status,
+              isPaid: status === FeeStatus.PAID,
+            };
+          });
 
-          return { fees, totalPendingDue };
+          const totalPendingDue = ledger.reduce((sum, fee) => sum + fee.outstanding, 0);
+
+          return { fees: ledger, totalPendingDue };
         },
         { l1TtlSeconds: 30, l2TtlSeconds: 120 },
       );
@@ -383,6 +404,28 @@ export class ResidentController {
         success: true,
         message: 'Student document uploaded successfully',
         data: savedResident,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * Get active Payment QR codes for resident's hostel (under "My Payments")
+   */
+  public getMyPaymentQrs = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const userId = req.user!.userId;
+      const paymentQrService = new PaymentQrService();
+      const result = await paymentQrService.getResidentPaymentQrs(userId);
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        data: result,
       });
     } catch (error) {
       next(error);

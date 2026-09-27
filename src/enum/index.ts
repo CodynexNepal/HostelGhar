@@ -10,3 +10,5 @@ export * from './booking.enum';
 export * from './fee.enum';
 export * from './room.enum';
 export * from './facility.enum';
+export * from './payment-qr.enum';
+export * from './payment-proof.enum';

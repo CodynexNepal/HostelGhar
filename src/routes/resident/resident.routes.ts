@@ -21,6 +21,7 @@ residentRouter.get('/me', residentController.getMyProfile);
 residentRouter.post('/leaves/apply', validateDto(ApplyLeaveDto), residentController.applyForLeave);
 residentRouter.get('/leaves', residentController.getMyLeaves);
 residentRouter.get('/fees', residentController.getMyFees);
+residentRouter.get('/payment-qrs', residentController.getMyPaymentQrs);
 
 // ─── Student Self-Service Media Upload Routes ────────────────────────────────
 // 1. Upload/Update own student photo

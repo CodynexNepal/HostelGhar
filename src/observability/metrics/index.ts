@@ -5,4 +5,6 @@ export {
   httpRequestsTotal,
   httpRequestDuration,
   httpActiveRequests,
+  httpResponsesCompressedTotal,
+  httpCompressionSavedBytesTotal,
 } from '../metrics';

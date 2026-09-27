@@ -49,7 +49,20 @@ export class OwnerController {
   }
 
   /**
-   * Get all hostels managed by the owner with aggregated resident counts
+   * GET /owner/dashboard — dashboard bootstrap for the logged-in owner.
+   *
+   * Returns the KPI cards (Total Residents, Occupied/Available Beds,
+   * Monthly Revenue, Pending Payments, Available Rooms), the occupancy gauge,
+   * Floor overview, Room mix, 6-month Revenue collection trend and the
+   * "Recent payments" list — all from a few aggregated queries (no N+1).
+   *
+   * SHAPE (backward compatible):
+   *   data           → per-hostel rows (legacy flat array, unchanged)
+   *   summary        → all KPI numbers
+   *   floorOverview  → rooms per floor
+   *   roomMix        → rooms per type
+   *   revenueTrend    → last 6 billing periods (collected + outstanding)
+   *   recentPayments → 5 latest fee movements
    */
   public getMyHostelsDashboard = async (
     req: Request,
@@ -73,7 +86,14 @@ export class OwnerController {
         success: true,
         isCached,
         cacheLevel,
-        data,
+        // LEGACY: `data` stays the flat per-hostel array that older clients map over.
+        data: data.hostels,
+        // ADDITIVE: the dashboard widgets read these sibling blocks.
+        summary: data.summary,
+        floorOverview: data.floorOverview,
+        roomMix: data.roomMix,
+        revenueTrend: data.revenueTrend,
+        recentPayments: data.recentPayments,
       });
     } catch (error) {
       next(error);

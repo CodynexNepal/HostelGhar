@@ -55,6 +55,27 @@ Factories live in `src/factory/**`. They compose dependencies so routes do not i
 - JWT auth middleware supports Bearer token and cookie token.
 - RBAC middleware restricts endpoints by role.
 
+## Response Compression
+
+`src/performance/http/compression.ts` compresses eligible HTTP responses with **Brotli** (`Content-Encoding: br`) and falls back to gzip/deflate. It is registered by `registerPerformanceMiddleware` before the routes, so every handler benefits.
+
+- Negotiation: `Accept-Encoding` quality values decide first; the server preference `br` → `gzip` → `deflate` breaks ties.
+- Encoding runs on the libuv threadpool (async `zlib.brotliCompress`), so large JSON bodies never block the event loop.
+- Only worthwhile responses are encoded: body ≥ `COMPRESSION_THRESHOLD_BYTES`, compressible content type, no `Cache-Control: no-transform`, status not 1xx/204/205/304, method not `HEAD`.
+- Negotiated responses carry `Vary: Accept-Encoding` (caches keep variants apart) and a `Content-Length` that matches the bytes actually sent.
+- A client can opt out per request with `x-no-compression: 1`.
+- Failures are silent: if compression errors or does not shrink the body, the original bytes are sent.
+
+| Env var                        |   Default | Purpose                                              |
+| ------------------------------ | --------: | ---------------------------------------------------- |
+| `COMPRESSION_ENABLED`          |    `true` | Master switch                                        |
+| `COMPRESSION_BROTLI_QUALITY`   |       `5` | Brotli quality 0-11 (dynamic-content sweet spot)     |
+| `COMPRESSION_GZIP_LEVEL`       |       `6` | gzip/deflate zlib level 0-9                          |
+| `COMPRESSION_THRESHOLD_BYTES`  |    `1024` | Bodies smaller than this stay uncompressed           |
+| `COMPRESSION_MAX_BUFFER_BYTES` | `2097152` | Above this the response streams through uncompressed |
+
+Bandwidth savings are visible in `/metrics` as `http_responses_compressed_total{encoding}` and `http_compression_saved_bytes_total{encoding}`.
+
 ## Event-Driven Architecture
 
 The `eventDispatcher` bridges synchronous domain logic with asynchronous work:

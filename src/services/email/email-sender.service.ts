@@ -5,6 +5,7 @@ export interface SendEmailPayload {
   to: string;
   subject: string;
   body: string;
+  html?: string;
 }
 
 export class EmailSenderService {
@@ -27,6 +28,7 @@ export class EmailSenderService {
       to: payload.to,
       subject: payload.subject,
       text: payload.body,
+      ...(payload.html ? { html: payload.html } : {}),
     });
     return true;
   }

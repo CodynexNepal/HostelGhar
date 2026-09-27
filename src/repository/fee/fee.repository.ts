@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { AppDataSource } from '../../database/database-source';
 import { Fee } from '../../entities/fee/fee.entity';
 import { Resident } from '../../entities/resident/resident.entity';
@@ -21,7 +21,11 @@ export class FeeRepository {
   }
 
   public async findPendingFeesByResident(residentId: string): Promise<Fee[]> {
-    return this.feeRepo.find({ where: { residentId, status: FeeStatus.PENDING } });
+    // Outstanding = anything not fully PAID (PENDING + PARTIALLY_PAID + OVERDUE).
+    // Only querying PENDING drops partial remainders from next month's dueAmount.
+    return this.feeRepo.find({
+      where: { residentId, status: In([FeeStatus.PENDING, FeeStatus.PARTIALLY_PAID, FeeStatus.OVERDUE]) },
+    });
   }
 
   public async findMonthlyFee(

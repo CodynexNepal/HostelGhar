@@ -13,6 +13,10 @@ All protected endpoints accept `Authorization: Bearer <accessToken>` or the conf
 - Booking creation uses user-scoped rate limiting and idempotency.
 - Sensitive password and fee actions use the sensitive action limiter.
 
+## Response Compression
+
+Responses are compressed with **Brotli** (`Content-Encoding: br`) when the client sends `Accept-Encoding: br`, and fall back to `gzip`/`deflate` otherwise. Clients that send no `Accept-Encoding` (or `identity`) receive uncompressed bodies, so no client changes are required — browsers and `fetch`/`axios` decompress automatically. Send `x-no-compression: 1` to opt out for a single request.
+
 ## Auth
 
 ### POST `/auth/register`
@@ -227,13 +231,121 @@ Add (or update) one facility. Body: `{ "id?", "title", "description?", "tag?" }`
 Removes a facility. `:facilityKey` accepts the junction UUID **or** the frontend
 `clientKey` (e.g. `security-mu5ofghs`).
 
+## Bed
+
+Requires role: `owner` or `admin`.
+
+### POST `/beds`
+
+Creates a bed inside the selected room in a hostel. In the owner workflow, the room is identified by its room number such as `2011`, and the selected room is validated against the hostel before the bed is created. Duplicate bed numbers in the same hostel + room are rejected.
+
+Body:
+
+```json
+{
+  "hostelId": "<hostel-uuid>",
+  "floor": 2,
+  "roomNumber": "2011",
+  "bedNumber": "B1",
+  "status": "AVAILABLE",
+  "rentAmount": 12000
+}
+```
+
+| Field        | Type   | Required | Description                                                     |
+| ------------ | ------ | -------- | --------------------------------------------------------------- |
+| `hostelId`   | string | Yes      | Hostel UUID where the room belongs.                             |
+| `floor`      | number | Yes      | Floor number for the room.                                      |
+| `roomNumber` | string | Yes      | Room number inside the hostel, such as `2011`.                  |
+| `bedNumber`  | string | Yes      | Bed identifier inside the room, such as `B1`.                   |
+| `status`     | string | No       | Bed status: `AVAILABLE`, `OCCUPIED`, `RESERVED`, `MAINTENANCE`. |
+| `rentAmount` | number | No       | Optional monthly rent amount for the bed.                       |
+
+Valid values for `status`:
+
+- `AVAILABLE`
+- `OCCUPIED`
+- `RESERVED`
+- `MAINTENANCE`
+
+Validation rules:
+
+- `hostelId` must be a valid UUID
+- `floor` is required and should match the floor number for the room
+- `roomNumber` is required and should match the room number in the hostel, such as `2011`
+- `bedNumber` is required and limited to 20 characters
+- `rentAmount` must be a non-negative number if supplied
+
+Example success response:
+
+```json
+{
+  "success": true,
+  "message": "Bed added successfully",
+  "data": {
+    "id": "<bed-uuid>",
+    "hostelId": "<hostel-uuid>",
+    "roomId": "<room-uuid>",
+    "bedNumber": "B1",
+    "status": "AVAILABLE",
+    "rentAmount": 12000,
+    "ownerId": "<owner-uuid>",
+    "createdAt": "2026-09-22T10:00:00.000Z",
+    "updatedAt": "2026-09-22T10:00:00.000Z"
+  }
+}
+```
+
+Common error responses:
+
+- `404` — room not found or does not belong to the logged-in owner
+- `400` — selected room does not match the selected hostel
+- `409` — bed number already exists in that hostel and room
+
 ## Owner
 
 Requires role: `owner` or `admin`.
 
 ### GET `/owner/dashboard`
 
-Returns owner hostel dashboard.
+Single-call bootstrap for the owner dashboard (hostel list + every KPI card,
+gauge, chart and table). Backend uses 3-level cache (L1 30s / L2 60s) and shares
+one aggregated query per table — never fan out to `/rooms`, `/fees` or
+`/analytics` for the dashboard.
+
+Response (top-level blocks):
+
+- `data` — **legacy** flat array of per-hostel rows
+  (`hostelId`, `hostelName`, `hostelType`, `totalActiveResidents`,
+  `residentsOnLeaveToday`). Unchanged shape, so older clients keep working.
+- `summary` — every KPI number:
+  `totalResidents`, `residentsOnLeaveToday`, `totalBeds`, `occupiedBeds`,
+  `availableBeds`, `occupancyRate` (%, 1 decimal), `totalRooms`,
+  `availableRooms`, `occupiedRooms`, `monthlyRevenue` (collected this AD
+  month/year), `pendingPayments` (`SUM(totalPayable - paidAmount)` where
+  `status != PAID`), `pendingCount`, `totalHostels`.
+- `floorOverview` — `[{ floor: number | null, label, roomCount }]` sorted by
+  floor; rooms without an alias come back as `floor: null`, `label: "Unassigned"`.
+- `roomMix` — `[{ type, roomCount }]` (rooms grouped by `type`, most rooms first).
+- `revenueTrend` — last 6 billing periods, oldest → newest:
+  `[{ billingYear, billingMonth, label: "Apr", collected, outstanding }]`.
+- `recentPayments` — 5 most recently updated fees, each shaped as
+  `{ feeId, residentId, residentName, hostelId, hostelName, roomNumber,
+paidAmount, totalPayable, status, billingMonth, billingYear, updatedAt }`.
+
+Notes:
+
+- `occupiedBeds` = `max(active residents, sum(rooms.occupied))` — same occupancy
+  rule as `GET /owner/residents/form-options/rooms`, so the dashboard gauge and
+  the Add-Resident dropdowns never disagree.
+- `availableRooms` counts rooms with `status === AVAILABLE` **and** at least one
+  free bed (`capacity - occupied > 0`).
+- Rooms are scoped by `ownerId` (includes rooms whose `hostelId` is still NULL).
+- Beds are counted from the `rooms` table (`capacity`/`occupied`), the same
+  convention as the Add-Resident form options — the separate `beds` table is
+  intentional bed-level inventory and does not feed these cards.
+- Cache key `owner:dashboard:<ownerId>`, busted by resident/room/fee/
+  payment-proof mutations.
 
 ### GET `/owner/residents`
 
