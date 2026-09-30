@@ -76,6 +76,32 @@ Factories live in `src/factory/**`. They compose dependencies so routes do not i
 
 Bandwidth savings are visible in `/metrics` as `http_responses_compressed_total{encoding}` and `http_compression_saved_bytes_total{encoding}`.
 
+## Data Compression (`brotli` npm)
+
+`src/utils/brotli.util.ts` compresses stored data (not live HTTP bytes) with the **`brotli` npm package** (`br1:<base64>` payloads). The package is synchronous, so it is deliberately kept out of the request/response path (HTTP keeps native async `zlib`) and used only for background writes, where one small CPU cost buys back memory and bandwidth on every later read.
+
+**L2 Redis cache** (`src/utils/cache.util.ts`, `MultiLevelCacheService`):
+
+- L2 writes encode via `encodeDataPayload` (default quality 4 for fast writes); L1 keeps live objects so the hot path pays no decompress cost.
+- Reads accept both `br1:` and legacy plain JSON, so rollout needs no cache flush.
+- Per-call opt-out: `cacheService.set(key, data, { compressL2: false })`.
+
+**BullMQ job payloads** (`packQueueRows` / `unpackQueueRows`): only the resident CSV import carries a payload big enough to matter — up to 2,000 parsed rows per job (~315 KB of JSON). Packing just the `rows` array keeps job metadata (`importId`, `hostelId`, …) as plain JSON for BullMQ dashboards and retries while the rows ride as one `br1:` string:
+
+- Producer: `src/services/resident(-import)/resident-import.service.ts` calls `packQueueRows(payload)` before `residentImportQueue.add(...)`.
+- Consumer: `src/workers/resident-import.worker.ts` calls `unpackQueueRows(job.data)`, which also accepts legacy jobs whose `rows` is still a plain array — in-flight jobs enqueued before this change finish unchanged.
+- Measured on a 2,000-row import: 314,756 B of job JSON → 9,793 B (~97% less Redis memory and queue bandwidth per enqueue, retry, and worker fetch). Small imports (< 1 KB of rows) stay plain JSON.
+
+| Env var                  | Default | Purpose                                                     |
+| ------------------------ | ------: | ----------------------------------------------------------- |
+| `BROTLI_DATA_ENABLED`    |  `true` | Master switch for stored-data compression                   |
+| `BROTLI_QUALITY`         |     `4` | Quality 0-11 — low keeps background writes fast             |
+| `BROTLI_MODE`            |     `1` | `1` = text (best for UTF-8 JSON), `0` = generic, `2` = font |
+| `BROTLI_LGWIN`           |    `22` | LZ window bits 10-24 (larger = better ratio)                |
+| `BROTLI_THRESHOLD_BYTES` |  `1024` | Smaller payloads stay plain JSON                            |
+
+Both encoders never throw: any compression error falls back to plain JSON, and the compressed form is only stored when it is actually smaller. Set `BROTLI_DATA_ENABLED=false` to disable without a redeploy of code.
+
 ## Event-Driven Architecture
 
 The `eventDispatcher` bridges synchronous domain logic with asynchronous work:

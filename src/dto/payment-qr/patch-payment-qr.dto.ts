@@ -3,13 +3,7 @@
 // PURPOSE: Validation rules for PATCH / partial updates of a payment QR code.
 // ──────────────────────────────────────────────────────────────────────────────
 
-import {
-  IsBoolean,
-  IsEnum,
-  IsOptional,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaymentMethod } from '../../enum/payment-qr.enum';
 

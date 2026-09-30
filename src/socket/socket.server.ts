@@ -24,11 +24,20 @@ export interface AuthenticatedSocket extends Socket {
 
 class SocketService {
   private io: Server | null = null;
+  private pubClient: import('ioredis').default | null = null;
+  private subClient: import('ioredis').default | null = null;
 
   public init(httpServer: HttpServer): Server {
-    // Dedicated pub/sub clients for socket.io redis adapter
-    const pubClient = createRedisClient('socket-pub');
-    const subClient = createRedisClient('socket-sub');
+    // Dedicated pub/sub clients for socket.io redis adapter.
+    // Reuse across nodemon restarts of init() in the same process.
+    if (!this.pubClient || this.pubClient.status === 'end') {
+      this.pubClient = createRedisClient('socket-pub');
+    }
+    if (!this.subClient || this.subClient.status === 'end') {
+      this.subClient = createRedisClient('socket-sub');
+    }
+    const pubClient = this.pubClient!;
+    const subClient = this.subClient!;
 
     this.io = new Server(httpServer, {
       cors: socketConfig.cors,
@@ -149,6 +158,14 @@ class SocketService {
 
   public broadcast(event: string, data: any): void {
     this.getIO().emit(event, data);
+  }
+
+  public async close(): Promise<void> {
+    try {
+      await this.io?.close();
+    } finally {
+      this.io = null;
+    }
   }
 }
 

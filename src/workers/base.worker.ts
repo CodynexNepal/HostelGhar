@@ -11,6 +11,7 @@ import { QueueName } from '../constant/queue.constants';
 export abstract class BaseWorker<TData = any, TResult = any> {
   protected worker: Worker;
   public readonly queueName: QueueName;
+  private readonly connection: import('ioredis').default;
 
   constructor(
     queueName: QueueName,
@@ -18,7 +19,7 @@ export abstract class BaseWorker<TData = any, TResult = any> {
     customOptions?: Partial<WorkerOptions>,
   ) {
     this.queueName = queueName;
-    const connection = createRedisClient(`worker:${queueName}`);
+    this.connection = createRedisClient(`worker:${queueName}`);
 
     this.worker = new Worker<TData, TResult>(
       queueName,
@@ -26,7 +27,7 @@ export abstract class BaseWorker<TData = any, TResult = any> {
         return this.process(job);
       },
       {
-        connection,
+        connection: this.connection,
         concurrency,
         ...customOptions,
       },
@@ -81,6 +82,18 @@ export abstract class BaseWorker<TData = any, TResult = any> {
   }
 
   public async close(): Promise<void> {
-    await this.worker.close();
+    try {
+      await this.worker.close();
+    } finally {
+      try {
+        if (this.connection.status === 'ready' || this.connection.status === 'connect') {
+          await this.connection.quit().catch(() => this.connection.disconnect());
+        } else {
+          this.connection.disconnect();
+        }
+      } catch {
+        this.connection.disconnect();
+      }
+    }
   }
 }

@@ -43,7 +43,8 @@ export class CreatePaymentQrDto {
 
   @IsString({ message: 'accountIdentifier must be a string' })
   @IsNotEmpty({
-    message: 'accountIdentifier is required (e.g., eSewa/Khalti phone number or bank account number)',
+    message:
+      'accountIdentifier is required (e.g., eSewa/Khalti phone number or bank account number)',
   })
   @MaxLength(100, { message: 'accountIdentifier cannot exceed 100 characters' })
   accountIdentifier!: string;

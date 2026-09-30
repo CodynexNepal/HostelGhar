@@ -50,8 +50,7 @@ export const applyPaymentToFeeAmounts = (
   const outstanding = Math.max(total - alreadyPaid, 0);
 
   const finalize = (paidAmount: number, credited: number): FeeCreditResult => {
-    const status =
-      total > 0 && paidAmount >= total ? FeeStatus.PAID : FeeStatus.PARTIALLY_PAID;
+    const status = total > 0 && paidAmount >= total ? FeeStatus.PAID : FeeStatus.PARTIALLY_PAID;
     return {
       totalPayable: total,
       paidAmount,
@@ -89,8 +88,9 @@ export const applyPaymentToFeeAmounts = (
 };
 
 /** Outstanding balance still owed on a bill (never negative). */
-export const feeOutstandingAmount = (fee: Pick<FeeAmounts, 'totalPayable' | 'paidAmount'>): number =>
-  Math.max(num(fee.totalPayable) - num(fee.paidAmount), 0);
+export const feeOutstandingAmount = (
+  fee: Pick<FeeAmounts, 'totalPayable' | 'paidAmount'>,
+): number => Math.max(num(fee.totalPayable) - num(fee.paidAmount), 0);
 
 /** True when a bill still contributes to the resident's current dues. */
 export const isFeeUnsettled = (fee: FeeAmounts): boolean =>

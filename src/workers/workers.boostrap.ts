@@ -35,12 +35,17 @@ export const bootstrapWorkers = (): void => {
 
 export const shutdownWorkers = async (): Promise<void> => {
   console.log('🛑 Gracefully shutting down BullMQ workers...');
-  await Promise.all([
+  await Promise.allSettled([
     emailWorker?.close(),
     notificationWorker?.close(),
     auditWorker?.close(),
     feeWorker?.close(),
     residentImportWorker?.close(),
   ]);
+  emailWorker = null;
+  notificationWorker = null;
+  auditWorker = null;
+  feeWorker = null;
+  residentImportWorker = null;
   console.log('✅ BullMQ workers stopped');
 };

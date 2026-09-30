@@ -33,7 +33,9 @@ let server: Server;
 let baseUrl: string;
 
 const get = async (path: string): Promise<{ status: number; body: { message?: string } }> => {
-  const res = await fetch(`${baseUrl}${path}`, { headers: { Authorization: `Bearer ${residentToken}` } });
+  const res = await fetch(`${baseUrl}${path}`, {
+    headers: { Authorization: `Bearer ${residentToken}` },
+  });
   return { status: res.status, body: (await res.json()) as { message?: string } };
 };
 
@@ -44,7 +46,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  await new Promise<void>((resolve, reject) =>
+    server.close((err) => (err ? reject(err) : resolve())),
+  );
 });
 
 describe('GET /fees/hostels/:hostelId/payment-proofs', () => {

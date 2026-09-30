@@ -9,14 +9,7 @@
 // service — anything NOT declared here is rejected by `forbidNonWhitelisted`.
 // ──────────────────────────────────────────────────────────────────────────────
 
-import {
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  IsString,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProofPaymentMethod } from '../../enum/payment-proof.enum';
 

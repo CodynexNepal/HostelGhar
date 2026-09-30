@@ -13,10 +13,7 @@ import { CreatePaymentQrDto } from '../../dto/payment-qr/create-payment-qr.dto';
 import { UpdatePaymentQrDto } from '../../dto/payment-qr/update-payment-qr.dto';
 import { PatchPaymentQrDto } from '../../dto/payment-qr/patch-payment-qr.dto';
 import { LoadDemoQrDto } from '../../dto/payment-qr/load-demo-qr.dto';
-import {
-  uploadPaymentQr,
-  stripFileFields,
-} from '../../middleware/upload.middleware';
+import { uploadPaymentQr, stripFileFields } from '../../middleware/upload.middleware';
 import { requireParam } from '../../decorators/http.decorator';
 
 const paymentQrRouter = Router();

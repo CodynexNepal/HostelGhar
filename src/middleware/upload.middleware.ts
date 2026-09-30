@@ -217,9 +217,7 @@ export const pickPaymentQrFile = (req: Request): Express.Multer.File | undefined
   if (single) return single;
 
   const files = req.files as
-    | { [fieldname: string]: Express.Multer.File[] }
-    | Express.Multer.File[]
-    | undefined;
+    { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[] | undefined;
   if (!files) return undefined;
   if (Array.isArray(files)) return files[0];
 
@@ -248,9 +246,7 @@ export const pickPaymentProofFile = (req: Request): Express.Multer.File | undefi
   if (single) return single;
 
   const files = req.files as
-    | { [fieldname: string]: Express.Multer.File[] }
-    | Express.Multer.File[]
-    | undefined;
+    { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[] | undefined;
   if (!files) return undefined;
   if (Array.isArray(files)) return files[0];
 

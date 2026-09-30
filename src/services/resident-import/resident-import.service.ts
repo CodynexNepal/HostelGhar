@@ -12,6 +12,7 @@ import { ResidentImport, ResidentImportStatus } from '../../entities/import/resi
 import { ResidentImportRepository } from '../../repository/import/resident-import.repository';
 import { OwnerRepository } from '../../repository/owner/owner.repository';
 import { cacheService } from '../../utils/cache.util';
+import { packQueueRows } from '../../utils/brotli.util';
 import { eventDispatcher } from '../../utils/event-dispatcher.util';
 import {
   buildResidentImportTemplate,
@@ -31,6 +32,8 @@ export interface ResidentImportJobPayload {
   ownerId: string;
   requestedByRole: string;
   rows: ResidentImportCsvRow[];
+  /** Brotli-packed `rows` (`br1:`) — present when the row array was large enough to compress. */
+  rowsBr?: string | undefined;
   hostelName?: string | undefined;
 }
 
@@ -163,14 +166,14 @@ export class ResidentImportService {
       return { data: { import: saved, replayed: false } };
     }
 
-    const payload: ResidentImportJobPayload = {
+    const payload: ResidentImportJobPayload = packQueueRows({
       importId: saved.id,
       hostelId: input.hostelId,
       ownerId: input.ownerId,
       requestedByRole: input.role,
       rows: parsed.rows,
       hostelName: hostel.name,
-    };
+    });
 
     await residentImportQueue.add(JobType.RESIDENT_CSV_IMPORT, payload, {
       jobId: `resident-import-${saved.id}`,

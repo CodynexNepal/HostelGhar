@@ -12,6 +12,7 @@ import { Hostel } from '../entities/hostel/hostel.entity';
 import { PasswordHasher } from '../utils/password-hasher.util';
 import { normalizeEmail } from '../utils/normalize.util';
 import { cacheService } from '../utils/cache.util';
+import { unpackQueueRows } from '../utils/brotli.util';
 import { eventDispatcher } from '../utils/event-dispatcher.util';
 import { socketServer } from '../socket/socket.server';
 import { logger } from '../observability/logger';
@@ -23,7 +24,8 @@ export class ResidentImportWorker extends BaseWorker<ResidentImportJobPayload> {
 
   async process(job: Job<ResidentImportJobPayload>): Promise<Record<string, unknown>> {
     if (job.name !== JobType.RESIDENT_CSV_IMPORT) return { skipped: true };
-    const { importId, hostelId, ownerId, rows } = job.data;
+    // Jobs enqueued before Brotli carry plain `rows`; newer ones carry `rowsBr`.
+    const { importId, hostelId, ownerId, rows } = unpackQueueRows(job.data);
     const importRepo = AppDataSource.getRepository(ResidentImport);
     const record = await importRepo.findOne({ where: { id: importId } });
     if (!record) throw new Error(`Resident import ${importId} not found`);

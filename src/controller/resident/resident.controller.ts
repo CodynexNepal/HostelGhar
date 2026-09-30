@@ -18,7 +18,6 @@ import { PaymentQrService } from '../../services/payment-qr/payment-qr.service';
 import { FeeStatus } from '../../enum/fee.enum';
 import { feeOutstandingAmount } from '../../utils/fee-credit.util';
 
-
 export class ResidentController {
   constructor(private readonly residentRepository: ResidentRepository) {}
 

@@ -105,11 +105,7 @@ export class PaymentQrController {
         req.hostelId ||
         (req.headers['x-hostel-id'] as string | undefined);
 
-      const result = await this.qrService.previewResidentView(
-        user.userId,
-        user.role,
-        hostelId,
-      );
+      const result = await this.qrService.previewResidentView(user.userId, user.role, hostelId);
 
       res.status(STATUS_CODE.OK).json({
         success: true,
@@ -133,7 +129,7 @@ export class PaymentQrController {
       const user = req.user!;
       const { id } = req.params;
 
-      const qr = await this.qrService.getPaymentQrById(user.userId, user.role,id as string);
+      const qr = await this.qrService.getPaymentQrById(user.userId, user.role, id as string);
 
       res.status(STATUS_CODE.OK).json({
         success: true,
@@ -174,11 +170,7 @@ export class PaymentQrController {
    * POST /payment-qrs/demo
    * "Load Demo QRs": Seeds standard eSewa, Khalti, and Bank Transfer QRs
    */
-  public loadDemoQRs = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public loadDemoQRs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user!;
       const dto = req.body as LoadDemoQrDto;
@@ -270,11 +262,7 @@ export class PaymentQrController {
    * PATCH /payment-qrs/:id/toggle
    * Toggle Active / Inactive status
    */
-  public toggleStatus = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public toggleStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user!;
       const { id } = req.params;

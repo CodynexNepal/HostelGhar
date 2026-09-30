@@ -3,7 +3,11 @@ import { FeeService } from '../../services/fee/fee.service';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { getRequiredParam } from '../../decorators/http.decorator';
 import { normalizePagination } from '../../utils/pagination.util';
-import { isFirstDayOfNepaliMonth, toNepaliDate, formatNepaliMonthYear } from '../../utils/nepali-date.util';
+import {
+  isFirstDayOfNepaliMonth,
+  toNepaliDate,
+  formatNepaliMonthYear,
+} from '../../utils/nepali-date.util';
 
 export class FeeController {
   constructor(private readonly feeService: FeeService) {}

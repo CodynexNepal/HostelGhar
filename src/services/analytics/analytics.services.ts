@@ -16,7 +16,9 @@ export class AnalyticsService {
   }
 
   public async getOwnerSummary(ownerId: string) {
-    const cacheKey = cacheService.generateKey('analytics:owner', ownerId);
+    // Bump the response version whenever its shape changes, so an L2 cache entry
+    // created by an older server cannot be returned to the analytics client.
+    const cacheKey = cacheService.generateKey('analytics:owner', { ownerId, v: 2 });
 
     return await cacheService.wrap(
       cacheKey,

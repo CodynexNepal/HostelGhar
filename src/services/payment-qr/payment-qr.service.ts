@@ -41,9 +41,7 @@ export interface ResidentPaymentQrsResponse {
 }
 
 export class PaymentQrService {
-  constructor(
-    private readonly qrRepository: PaymentQrRepository = new PaymentQrRepository(),
-  ) {}
+  constructor(private readonly qrRepository: PaymentQrRepository = new PaymentQrRepository()) {}
 
   /**
    * Generates canonical display text for QR card beneath code
@@ -144,11 +142,7 @@ export class PaymentQrService {
     hostelId?: string,
     isActiveFilter?: boolean,
   ): Promise<{ hostelId: string; paymentQrs: PaymentQr[] }> {
-    const resolvedHostelId = await this.resolveAndAuthorizeHostel(
-      actorId,
-      actorRole,
-      hostelId,
-    );
+    const resolvedHostelId = await this.resolveAndAuthorizeHostel(actorId, actorRole, hostelId);
 
     const paymentQrs = await this.qrRepository.findByHostel(resolvedHostelId, {
       onlyActive: isActiveFilter as boolean,
@@ -228,11 +222,7 @@ export class PaymentQrService {
     actorRole: string,
     hostelId?: string,
   ): Promise<ResidentPaymentQrsResponse> {
-    const resolvedHostelId = await this.resolveAndAuthorizeHostel(
-      actorId,
-      actorRole,
-      hostelId,
-    );
+    const resolvedHostelId = await this.resolveAndAuthorizeHostel(actorId, actorRole, hostelId);
     return this.getResidentPaymentQrs(actorId, resolvedHostelId);
   }
 
@@ -335,11 +325,7 @@ export class PaymentQrService {
     actorRole: string,
     hostelId?: string,
   ): Promise<{ message: string; data: PaymentQr[] }> {
-    const resolvedHostelId = await this.resolveAndAuthorizeHostel(
-      actorId,
-      actorRole,
-      hostelId,
-    );
+    const resolvedHostelId = await this.resolveAndAuthorizeHostel(actorId, actorRole, hostelId);
 
     const hostel = await this.qrRepository.findHostelById(resolvedHostelId);
     const hostelName = hostel?.name || 'Sunrise Hostel';
@@ -397,8 +383,7 @@ export class PaymentQrService {
         existing.displayText = spec.displayText;
         existing.qrCodeUrl = spec.qrCodeUrl;
         existing.isActive = true;
-        existing.instructions =
-          'Displayed beneath the QR code so residents can verify or copy it';
+        existing.instructions = 'Displayed beneath the QR code so residents can verify or copy it';
         results.push(await this.qrRepository.save(existing));
       } else {
         const newQr = this.qrRepository.create({
@@ -563,9 +548,11 @@ export class PaymentQrService {
     const existing = await this.getPaymentQrById(actorId, actorRole, id);
 
     if (existing.qrCodePublicId) {
-      imageUploadService.deleteAsset(existing.qrCodePublicId).catch((err) =>
-        console.warn(`[PaymentQrService] Failed to delete Cloudinary asset: ${err.message}`),
-      );
+      imageUploadService
+        .deleteAsset(existing.qrCodePublicId)
+        .catch((err) =>
+          console.warn(`[PaymentQrService] Failed to delete Cloudinary asset: ${err.message}`),
+        );
     }
 
     await this.qrRepository.delete(id);

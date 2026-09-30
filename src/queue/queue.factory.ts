@@ -5,7 +5,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { Queue, QueueOptions, JobsOptions } from 'bullmq';
-import { createRedisClient } from '../configs/redis.config';
+import { getSharedQueueConnection } from '../configs/redis.config';
 import { QueueName } from '../constant/queue.constants';
 
 /**
@@ -34,7 +34,7 @@ export function getQueue(queueName: QueueName, customOptions?: Partial<QueueOpti
     return queueRegistry.get(queueName)!;
   }
 
-  const connection = createRedisClient(`queue:${queueName}`);
+  const connection = getSharedQueueConnection();
 
   const queue = new Queue(queueName, {
     connection,

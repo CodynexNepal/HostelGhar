@@ -70,7 +70,9 @@ const escapeHtml = (value: string): string =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-export const renderMonthlyFeeBillEmail = (input: MonthlyFeeBillInput): EmailTemplate & { html: string } => {
+export const renderMonthlyFeeBillEmail = (
+  input: MonthlyFeeBillInput,
+): EmailTemplate & { html: string } => {
   const subject = `Hostel Fee Bill — ${input.nepaliMonthLabel} | ${input.hostelName}`;
   const body =
     `Dear ${input.studentName},\n\n` +
@@ -127,4 +129,3 @@ export const renderMonthlyFeeBillEmail = (input: MonthlyFeeBillInput): EmailTemp
 
   return { subject, body, html };
 };
-

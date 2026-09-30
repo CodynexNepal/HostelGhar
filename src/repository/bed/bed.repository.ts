@@ -14,7 +14,11 @@ export class BedRepository {
     return this.bedRepo.save(bed);
   }
 
-  public async findByHostelRoomBed(hostelId: string, roomId: string, bedNumber: string): Promise<Bed | null> {
+  public async findByHostelRoomBed(
+    hostelId: string,
+    roomId: string,
+    bedNumber: string,
+  ): Promise<Bed | null> {
     return this.bedRepo.findOne({
       where: {
         hostelId,

@@ -72,19 +72,53 @@ const { PORT } = dotEnvConfig;
     });
 
     // ── Graceful Shutdown Handling ─────────────────────────────────────
+    let shuttingDown = false;
     const handleShutdown = async (signal: string) => {
+      if (shuttingDown) return;
+      shuttingDown = true;
       logger.info('Starting graceful shutdown', { signal });
-      await shutdownWorkers();
+      try {
+        await shutdownWorkers();
+      } catch (err) {
+        logger.error('Error shutting down workers', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+      try {
+        await socketServer.close();
+      } catch (err) {
+        logger.error('Error closing socket server', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       shutdownCircuitBreakers();
+      try {
+        const { closeAllRedisConnections } = await import('./configs/redis.config');
+        await closeAllRedisConnections();
+      } catch (err) {
+        logger.error('Error closing Redis connections', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       httpServer.close(() => {
         void shutdownTelemetry();
         logger.info('HTTP and WebSocket server closed');
         process.exit(0);
       });
+      // Failsafe: force-exit if something hangs (stale Redis sockets, etc.)
+      setTimeout(() => process.exit(0), 10000).unref();
     };
 
-    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-    process.on('SIGINT', () => handleShutdown('SIGINT'));
+    process.on('SIGTERM', () => void handleShutdown('SIGTERM'));
+    process.on('SIGINT', () => void handleShutdown('SIGINT'));
+    // Nodemon restarts with SIGUSR2 — without this, old Redis sockets stay
+    // open on the server and each restart leaks clients until max-clients.
+    // Re-kill self after cleanup so nodemon actually restarts the process.
+    process.on('SIGUSR2', () => {
+      void handleShutdown('SIGUSR2').finally(() => {
+        process.kill(process.pid, 'SIGUSR2');
+      });
+    });
   } catch (error) {
     logger.fatal('Failed to start application', {
       error: error instanceof Error ? error.message : String(error),

@@ -1,0 +1,17 @@
+export enum ExpenseCategory {
+  STAFF = 'STAFF',
+  FOOD = 'FOOD',
+  MAINTENANCE = 'MAINTENANCE',
+  UTILITIES = 'UTILITIES',
+  ELECTRICITY = 'ELECTRICITY',
+  WATER = 'WATER',
+  SUPPLIES = 'SUPPLIES',
+  INTERNET = 'INTERNET',
+  OTHER = 'OTHER',
+}
+
+export enum ExpenseStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  CANCELLED = 'CANCELLED',
+}

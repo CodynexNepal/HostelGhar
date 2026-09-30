@@ -24,7 +24,10 @@ export class FeeRepository {
     // Outstanding = anything not fully PAID (PENDING + PARTIALLY_PAID + OVERDUE).
     // Only querying PENDING drops partial remainders from next month's dueAmount.
     return this.feeRepo.find({
-      where: { residentId, status: In([FeeStatus.PENDING, FeeStatus.PARTIALLY_PAID, FeeStatus.OVERDUE]) },
+      where: {
+        residentId,
+        status: In([FeeStatus.PENDING, FeeStatus.PARTIALLY_PAID, FeeStatus.OVERDUE]),
+      },
     });
   }
 

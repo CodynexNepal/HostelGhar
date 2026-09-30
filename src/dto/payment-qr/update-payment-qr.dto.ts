@@ -3,14 +3,7 @@
 // PURPOSE: Validation rules for PUT / full replacement ("Replace QR") of a payment QR code.
 // ──────────────────────────────────────────────────────────────────────────────
 
-import {
-  IsBoolean,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaymentMethod } from '../../enum/payment-qr.enum';
 

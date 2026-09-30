@@ -17,6 +17,8 @@ All protected endpoints accept `Authorization: Bearer <accessToken>` or the conf
 
 Responses are compressed with **Brotli** (`Content-Encoding: br`) when the client sends `Accept-Encoding: br`, and fall back to `gzip`/`deflate` otherwise. Clients that send no `Accept-Encoding` (or `identity`) receive uncompressed bodies, so no client changes are required — browsers and `fetch`/`axios` decompress automatically. Send `x-no-compression: 1` to opt out for a single request.
 
+Large cached values are also stored Brotli-compressed in Redis via the `brotli` npm package (`src/utils/brotli.util.ts`), cutting Redis memory and fetch bandwidth. The asynchronous resident CSV import job carries its parsed rows Brotli-packed through BullMQ the same way — transparent to clients, and the import endpoints/contracts are unchanged.
+
 ## Auth
 
 ### POST `/auth/register`
@@ -90,7 +92,25 @@ Requires role: `admin`. Returns system counts and fee totals.
 
 ### GET `/analytics/owner/summary`
 
-Requires role: `owner` or `admin`. Returns owner-scoped summary.
+Requires role: `owner` or `admin`. Returns an owner-scoped analytics payload.
+
+The response includes the legacy summary fields (`hostels`, `activeResidents`,
+`pendingBookings`, `pendingLeaves`, and `outstandingAmount`) plus these UI-ready
+sections:
+
+- `hostelOptions`: hostels for the **All hostels** selector.
+- `totals` and `occupancy`: room/bed inventory, occupancy rate, current-month
+  collected and pending amounts.
+- `paymentStatus`: current-month billed, collected, pending, collection rate,
+  and a breakdown for every fee status.
+- `roomOccupancy` and `capacityByRoom`: full/partial/available room counts and
+  bed capacity by room/floor.
+- `trends.revenue` and `trends.residentGrowth`: rolling 12-month chart series.
+
+`monthlyExpenses`, `netRevenue`, and metrics named in `unavailableMetrics` are
+`null` or unavailable until expense, maintenance-ticket, and resident-profile
+data are stored by the API. The endpoint never returns fabricated values for
+those cards.
 
 ## Booking
 
@@ -508,6 +528,61 @@ Lists hostel fees.
 ### PATCH `/fees/:id/payment`
 
 Records payment against a fee.
+
+## Expense
+
+Requires role: `owner` or `admin`. Every row belongs to one hostel
+(`hostelId` FK → `hostels.id`, cascade on hostel delete).
+
+Table `expenses`: `id` (uuid), `hostelId` (uuid FK), `title` (≤150),
+`category` (`STAFF|FOOD|MAINTENANCE|UTILITIES|ELECTRICITY|WATER|SUPPLIES|INTERNET|OTHER`),
+`amount` (numeric 12,2, ≥ 0.01), `expenseDate` (ISO `YYYY-MM-DD`),
+`notes` (nullable text ≤ 2000), `status` (`PENDING|PAID|CANCELLED`, default `PAID`),
+`createdById` (uuid FK → `users.id`), `createdAt`/`updatedAt`.
+
+Compression: HTTP responses use global Brotli/gzip (`Accept-Encoding`),
+and paginated list + detail reads go through the 3-tier cache whose Redis
+(L2) values are Brotli-packed (`br1:`) when it saves bytes; writes
+invalidate `expenses:list`, `expenses:hostel`, the detail key, and analytics.
+
+### POST `/expenses`
+
+```json
+{
+  "hostelId": "a38bf07a-b7b1-49dc-85c8-dd5542a8e90a",
+  "title": "Electricity Bill",
+  "category": "UTILITIES",
+  "amount": 12000,
+  "expenseDate": "2026-09-30",
+  "notes": "Expenses to electricity bill",
+  "status": "PAID"
+}
+```
+
+→ `201 { success, message: "Expense created", data }`.
+
+### GET `/expenses?page=1&limit=20&hostelId=&category=&status=`
+
+Paginated (`page`/`limit` normalized, max 100). Optional filters:
+`hostelId` (uuid), `category`, `status`. Owners without `hostelId` get
+only their own hostels; admins get everything.
+
+→ `200 { success, data[], pagination: { totalItems, currentPage, totalPages, itemsPerPage, hasNextPage, hasPrevPage }, isCached, cacheLevel }`.
+
+### GET `/expenses/:id`
+
+→ `200 { success, data }` (404 when missing/forbidden hostel).
+
+### PUT `/expenses/:id` and PATCH `/expenses/:id`
+
+Both map to full/partial update of `title/category/amount/expenseDate/notes/status`
+(`hostelId` is immutable — create a new row to move hostels).
+
+→ `200 { success, message: "Expense updated", data }`.
+
+### DELETE `/expenses/:id`
+
+→ `200 { success, message: "Expense deleted" }`.
 
 ## Socket Events
 

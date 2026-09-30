@@ -21,10 +21,7 @@ import { createHttpError } from '../../utils/createHttpError';
 import { cacheService } from '../../utils/cache.util';
 import { eventDispatcher } from '../../utils/event-dispatcher.util';
 import { JobType, SocketEvent } from '../../constant/queue.constants';
-import {
-  createPaginatedResponse,
-  PaginatedResponse,
-} from '../../utils/pagination.util';
+import { createPaginatedResponse, PaginatedResponse } from '../../utils/pagination.util';
 import { imageUploadService } from '../upload/image-upload.service';
 
 const BILLING_MONTHS = [
@@ -75,7 +72,8 @@ export class PaymentProofService {
   ) {}
 
   private serialize(proof: PaymentProof): SerializedPaymentProof {
-    const user = proof.resident?.user as { firstName?: string; lastName?: string; email?: string } | undefined;
+    const user = proof.resident?.user as
+      { firstName?: string; lastName?: string; email?: string } | undefined;
     const name = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || 'Resident';
     const m = proof.fee?.billingMonth;
     const y = proof.fee?.billingYear;
@@ -87,7 +85,10 @@ export class PaymentProofService {
       residentName: name,
       residentEmail: user?.email ?? undefined,
       roomNumber: proof.resident?.roomNumber ?? undefined,
-      feeLabel: typeof m === 'number' && typeof y === 'number' ? `${BILLING_MONTHS[m - 1] ?? m} ${y}` : undefined,
+      feeLabel:
+        typeof m === 'number' && typeof y === 'number'
+          ? `${BILLING_MONTHS[m - 1] ?? m} ${y}`
+          : undefined,
       amount: Number(proof.amount),
       method: proof.method,
       transactionRef: proof.transactionRef ?? undefined,
@@ -96,7 +97,8 @@ export class PaymentProofService {
       status: proof.status,
       reviewNote: proof.reviewNote ?? undefined,
       reviewedBy: proof.reviewedBy ?? undefined,
-      createdAt: proof.createdAt instanceof Date ? proof.createdAt.toISOString() : String(proof.createdAt),
+      createdAt:
+        proof.createdAt instanceof Date ? proof.createdAt.toISOString() : String(proof.createdAt),
       reviewedAt: proof.reviewedAt instanceof Date ? proof.reviewedAt.toISOString() : undefined,
     };
   }
@@ -106,11 +108,16 @@ export class PaymentProofService {
       throw createHttpError(STATUS_CODE.FORBIDDEN, 'Only residents can submit payment proofs');
     }
     const resident = await this.proofRepository.findResidentByUserId(userId);
-    if (!resident) throw createHttpError(STATUS_CODE.NOT_FOUND, 'Active resident profile not found');
+    if (!resident)
+      throw createHttpError(STATUS_CODE.NOT_FOUND, 'Active resident profile not found');
     return resident;
   }
 
-  private async resolveHostelAccess(actorId: string, role: string, hostelId: string): Promise<void> {
+  private async resolveHostelAccess(
+    actorId: string,
+    role: string,
+    hostelId: string,
+  ): Promise<void> {
     const normalized = role.toLowerCase();
     if (normalized === IROLES.ADMIN.toLowerCase()) return;
     if (normalized === IROLES.OWNER.toLowerCase()) {
@@ -175,8 +182,16 @@ export class PaymentProofService {
     options: ListOptions,
   ): Promise<PaginatedResponse<SerializedPaymentProof>> {
     const resident = await this.resolveResident(userId, role);
-    const [rows, total] = await this.proofRepository.findByResident(resident.id, options.page, options.limit);
-    return createPaginatedResponse(rows.map((r) => this.serialize(r)), total, options);
+    const [rows, total] = await this.proofRepository.findByResident(
+      resident.id,
+      options.page,
+      options.limit,
+    );
+    return createPaginatedResponse(
+      rows.map((r) => this.serialize(r)),
+      total,
+      options,
+    );
   }
 
   public async listForHostel(
@@ -187,8 +202,17 @@ export class PaymentProofService {
     status?: PaymentProofStatus,
   ): Promise<PaginatedResponse<SerializedPaymentProof>> {
     await this.resolveHostelAccess(actorId, role, hostelId);
-    const [rows, total] = await this.proofRepository.findByHostel(hostelId, options.page, options.limit, status);
-    return createPaginatedResponse(rows.map((r) => this.serialize(r)), total, options);
+    const [rows, total] = await this.proofRepository.findByHostel(
+      hostelId,
+      options.page,
+      options.limit,
+      status,
+    );
+    return createPaginatedResponse(
+      rows.map((r) => this.serialize(r)),
+      total,
+      options,
+    );
   }
 
   public async listForFee(
@@ -208,7 +232,11 @@ export class PaymentProofService {
       await this.resolveHostelAccess(actorId, role, fee.hostelId);
     }
     const [rows, total] = await this.proofRepository.findByFee(feeId, options.page, options.limit);
-    return createPaginatedResponse(rows.map((r) => this.serialize(r)), total, options);
+    return createPaginatedResponse(
+      rows.map((r) => this.serialize(r)),
+      total,
+      options,
+    );
   }
 
   public async reviewProof(
@@ -223,7 +251,10 @@ export class PaymentProofService {
     // Idempotent: an APPROVE for an already-APPROVED proof just re-syncs the
     // fee ledger instead of 409ing (dashboards retry; double-clicks happen).
     if (proof.status !== PaymentProofStatus.PENDING) {
-      if (proof.status === PaymentProofStatus.APPROVED && dto.action === ProofReviewAction.APPROVE) {
+      if (
+        proof.status === PaymentProofStatus.APPROVED &&
+        dto.action === ProofReviewAction.APPROVE
+      ) {
         await this.creditFeeForApprovedProof(proof.id, Number(proof.amount));
         const synced = (await this.proofRepository.findById(proof.id)) ?? proof;
         return this.serialize(synced);
@@ -279,7 +310,9 @@ export class PaymentProofService {
     });
     const email = fee.resident?.user?.email;
     if (email) {
-      const name = `${fee.resident?.user?.firstName ?? ''} ${fee.resident?.user?.lastName ?? ''}`.trim() || 'Student';
+      const name =
+        `${fee.resident?.user?.firstName ?? ''} ${fee.resident?.user?.lastName ?? ''}`.trim() ||
+        'Student';
       await eventDispatcher.queueEmail(JobType.SEND_INVOICE_EMAIL, {
         to: email,
         subject: `Payment approved — fee marked ${fee.status === 'PAID' ? 'PAID' : 'partially paid'}`,

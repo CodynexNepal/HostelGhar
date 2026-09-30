@@ -198,4 +198,3 @@ export const formatNepaliMonthYear = (bs: NepaliDate): string => {
 /** "1 Ashwin 2083 BS" style full date. */
 export const formatNepaliDate = (bs: NepaliDate): string =>
   `${bs.day} ${formatNepaliMonthYear(bs)} BS`;
-

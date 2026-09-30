@@ -52,10 +52,15 @@ export class FeeAutomationWorker extends BaseWorker {
       if (!isFirstDayOfNepaliMonth(now)) {
         return { skipped: true, reason: 'Not Nepali 1st', bs };
       }
-      const result = await feeService.generateMonthlyFeesForAllHostels(undefined, undefined, 10500, {
-        enforceNepaliFirstDay: true,
-        now,
-      });
+      const result = await feeService.generateMonthlyFeesForAllHostels(
+        undefined,
+        undefined,
+        10500,
+        {
+          enforceNepaliFirstDay: true,
+          now,
+        },
+      );
       return { ...result, bsMonth: formatNepaliMonthYear(bs) };
     }
     return { skipped: true };

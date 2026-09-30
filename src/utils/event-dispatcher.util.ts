@@ -55,7 +55,13 @@ class AppEventDispatcher extends EventEmitter {
    */
   public async queueEmail(
     jobType: JobType,
-    data: { to: string; subject: string; body?: string; html?: string; context?: Record<string, any> },
+    data: {
+      to: string;
+      subject: string;
+      body?: string;
+      html?: string;
+      context?: Record<string, any>;
+    },
   ) {
     return await emailQueue.add(jobType, data);
   }

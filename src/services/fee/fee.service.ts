@@ -50,7 +50,16 @@ export const resolveNepaliBillingPeriod = (now: Date = new Date()): NepaliBillin
   const dueDate = `${billingYear}-${String(billingMonth).padStart(2, '0')}-07`;
   const dueDay = Math.min(7, getBsMonthLength(bs.year, bs.month));
   const dueDateBs = formatNepaliDate({ year: bs.year, month: bs.month, day: dueDay });
-  return { bsYear: bs.year, bsMonth: bs.month, nepaliMonthLabel, nepaliDateLabel, billingMonth, billingYear, dueDate, dueDateBs };
+  return {
+    bsYear: bs.year,
+    bsMonth: bs.month,
+    nepaliMonthLabel,
+    nepaliDateLabel,
+    billingMonth,
+    billingYear,
+    dueDate,
+    dueDateBs,
+  };
 };
 
 export class FeeService {

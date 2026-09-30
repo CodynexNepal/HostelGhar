@@ -8,6 +8,7 @@
 
 import { redisClient } from '../configs/redis.config';
 import { LRUCache } from './lru-cache.util';
+import { decodeDataPayload, encodeDataPayload } from './brotli.util';
 
 export type CacheLevel = 'L1' | 'L2' | 'L3';
 
@@ -16,6 +17,12 @@ export interface CacheOptions {
   l2TtlSeconds?: number; // L2 Redis cache TTL (default: 300s)
   skipL1?: boolean; // Bypass L1 if needed
   skipL2?: boolean; // Bypass L2 if needed
+  /**
+   * Compress L2 (Redis) values with the `brotli` npm package (`br1:` payloads).
+   * Default true — small/incompressible values stay plain JSON automatically,
+   * and reads accept both formats, so this is rollout-safe. Set false to opt out.
+   */
+  compressL2?: boolean;
   validateCached?: (data: unknown) => Promise<boolean | undefined>;
 }
 
@@ -95,7 +102,8 @@ export class MultiLevelCacheService {
       try {
         const cached = await redisClient.get(key);
         if (cached) {
-          const parsed = JSON.parse(cached) as T;
+          // Brotli (`br1:`) or legacy plain JSON — decodeDataPayload handles both.
+          const parsed = decodeDataPayload<T>(cached);
           const validation = options.validateCached ? await options.validateCached(parsed) : true;
           if (validation === false) {
             await this.invalidate(key);
@@ -137,10 +145,13 @@ export class MultiLevelCacheService {
       this.l1Cache.set(key, data, l1Ttl);
     }
 
-    // 2. Write to Level 2 Distributed Redis
+    // 2. Write to Level 2 Distributed Redis (Brotli-compressed via `brotli` npm)
     if (!opts.skipL2) {
       try {
-        await redisClient.set(key, JSON.stringify(data), 'EX', l2Ttl);
+        // L1 keeps the live object (no decompress cost on the hot path); L2
+        // stores `br1:` when it saves bytes — less Redis memory + bandwidth.
+        const stored = opts.compressL2 === false ? JSON.stringify(data) : encodeDataPayload(data);
+        await redisClient.set(key, stored, 'EX', l2Ttl);
       } catch (err: any) {
         console.warn(`[MultiLevelCache] L2 (Redis) SET failed for "${key}":`, err.message);
       }
