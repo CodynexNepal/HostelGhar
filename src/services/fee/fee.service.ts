@@ -242,13 +242,7 @@ export class FeeService {
     fee.status = result.status;
     if (result.paidAmount >= result.totalPayable) fee.dueAmount = 0;
     const savedFee = await this.feeRepository.saveFee(fee);
-
-    // Invalidate fee caches across all tiers (prefix — keys hold JSON params).
-    await cacheService.invalidatePattern(`resident:fees`);
-    await cacheService.invalidatePattern(`hostel:fees`);
-    await cacheService.invalidatePattern(`hostel:residents`);
-    await cacheService.invalidatePattern(`owner:dashboard`);
-    await cacheService.invalidatePattern(`owner:residents`);
+    await this.invalidateFeeCaches();
 
     await eventDispatcher.dispatch({
       type: SocketEvent.PAYMENT_PROCESSED,
@@ -259,6 +253,105 @@ export class FeeService {
     });
 
     return { data: savedFee };
+  }
+
+  /**
+   * PATCH /fees/:id/status — explicit owner/admin status override.
+   *
+   * Why this exists alongside PATCH /fees/:id/payment: clients already call
+   * `/fees/:id/status` (booking/leave convention) e.g. to mark OVERDUE or to
+   * correct a mislabelled row. Payment math still wins for the money fields:
+   * a PAID status with an outstanding balance is repaired to fully-paid
+   * (same settlement rule as proof approval), and a non-PAID status can
+   * never claim `paidAmount >= totalPayable` — it is normalized to PAID.
+   */
+  public async updateFeeStatus(
+    feeId: string,
+    status: FeeStatus,
+    actorId: string,
+    paidAmount?: number,
+  ) {
+    if (!Object.values(FeeStatus).includes(status)) {
+      return {
+        error: { status: STATUS_CODE.BAD_REQUEST, message: 'Invalid fee status' },
+      };
+    }
+    if (paidAmount !== undefined && (!Number.isFinite(paidAmount) || paidAmount <= 0)) {
+      return {
+        error: { status: STATUS_CODE.BAD_REQUEST, message: 'paidAmount must be a positive number' },
+      };
+    }
+
+    const fee = await this.feeRepository.findById(feeId);
+    if (!fee) {
+      return { error: { status: STATUS_CODE.NOT_FOUND, message: 'Fee not found' } };
+    }
+
+    // Apply any accompanying payment first (clamped to the outstanding balance).
+    const result = applyPaymentToFeeAmounts(
+      {
+        totalPayable: Number(fee.totalPayable),
+        paidAmount: Number(fee.paidAmount),
+        status: fee.status,
+      },
+      paidAmount ?? 0,
+    );
+    // paidAmount omitted / zero → applyPaymentToFeeAmounts settles the FULL
+    // outstanding. For a pure status flip (e.g. PENDING → OVERDUE) that would
+    // wrongly credit the bill, so keep the ledger untouched in that case.
+    const keepLedger = paidAmount === undefined || !(paidAmount > 0);
+    const nextPaidAmount = keepLedger ? Number(fee.paidAmount) : result.paidAmount;
+
+    const total = Number(fee.totalPayable);
+    const outstanding = Math.max(total - nextPaidAmount, 0);
+
+    // Ledger truth wins: fully-paid money ⇒ PAID, outstanding ⇒ never PAID.
+    // A PAID request on a bill with dues is treated as settlement (proof
+    // approval behaves the same way); a non-PAID request on settled money
+    // would lie on dashboards, so it normalizes back to PAID.
+    let nextStatus = status;
+    if (outstanding <= 0 && total > 0) {
+      nextStatus = FeeStatus.PAID;
+    } else if (outstanding > 0 && nextStatus === FeeStatus.PAID) {
+      fee.paidAmount = total;
+      fee.status = FeeStatus.PAID;
+      fee.dueAmount = 0;
+      const savedFee = await this.feeRepository.saveFee(fee);
+      await this.invalidateFeeCaches();
+      await eventDispatcher.dispatch({
+        type: SocketEvent.PAYMENT_PROCESSED,
+        payload: savedFee,
+        userId: fee.resident.userId,
+        hostelId: fee.hostelId,
+        metadata: { actorId, feeId, status: nextStatus },
+      });
+      return { data: savedFee };
+    }
+
+    fee.paidAmount = nextPaidAmount;
+    fee.status = nextStatus;
+    if (nextStatus === FeeStatus.PAID) fee.dueAmount = 0;
+    const savedFee = await this.feeRepository.saveFee(fee);
+    await this.invalidateFeeCaches();
+
+    await eventDispatcher.dispatch({
+      type: SocketEvent.PAYMENT_PROCESSED,
+      payload: savedFee,
+      userId: fee.resident.userId,
+      hostelId: fee.hostelId,
+      metadata: { actorId, feeId, status: nextStatus },
+    });
+
+    return { data: savedFee };
+  }
+
+  private async invalidateFeeCaches(): Promise<void> {
+    // Invalidate fee caches across all tiers (prefix — keys hold JSON params).
+    await cacheService.invalidatePattern(`resident:fees`);
+    await cacheService.invalidatePattern(`hostel:fees`);
+    await cacheService.invalidatePattern(`hostel:residents`);
+    await cacheService.invalidatePattern(`owner:dashboard`);
+    await cacheService.invalidatePattern(`owner:residents`);
   }
 }
 

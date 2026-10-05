@@ -298,6 +298,49 @@ export class ImageUploadService {
   }
 
   /**
+   * ─── 8. SUBSCRIPTION PAYMENT PROOF UPLOAD LOGIC ────────────────────────────
+   * - Target Folder: `hostelghar/payments/subscription-proofs`
+   * - The owner uploads a screenshot proving they paid for a plan upgrade;
+   *   an admin reviews it before the plan is activated.
+   */
+  public async uploadSubscriptionProofScreenshot(
+    file: Express.Multer.File,
+    ownerId: string,
+    previousPublicId?: string | null,
+  ): Promise<ImageUploadResponse> {
+    if (!file || !file.buffer) {
+      throw createHttpError(STATUS_CODE.BAD_REQUEST, 'Payment proof screenshot file is required');
+    }
+
+    const result: CloudinaryUploadResult = await CloudinaryUtil.uploadBuffer(file.buffer, {
+      folder: 'hostelghar/payments/subscription-proofs',
+      public_id: `sub_proof_${ownerId}_${Date.now()}`,
+      overwrite: true,
+      transformation: [
+        { width: 1600, height: 1600, crop: 'limit' },
+        { quality: 'auto:good', fetch_format: 'auto' },
+      ],
+      tags: ['subscription_proof', `owner_${ownerId}`],
+    });
+
+    if (previousPublicId) {
+      CloudinaryUtil.deleteByPublicId(previousPublicId).catch((err) =>
+        console.warn(
+          `[ImageUploadService] Could not delete old subscription proof ${previousPublicId}:`,
+          err,
+        ),
+      );
+    }
+
+    return {
+      url: result.secureUrl,
+      publicId: result.publicId,
+      bytes: result.bytes,
+      format: result.format,
+    };
+  }
+
+  /**
    * General asset deletion by public ID
    */
   public async deleteAsset(publicId: string): Promise<boolean> {

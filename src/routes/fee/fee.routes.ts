@@ -4,6 +4,8 @@ import { authenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { sensitiveActionLimiter } from '../../configs/rateLimiter.config';
 import { requireParam } from '../../decorators/http.decorator';
+import { validateDto } from '../../middleware/validate-dto.middleware';
+import { UpdateFeeStatusDto } from '../../dto/fee/update-fee-status.dto';
 
 const feeRouter = Router();
 const feeController = FeeFactory.create();
@@ -33,6 +35,14 @@ feeRouter.patch(
   requireParam('id'),
   sensitiveActionLimiter,
   feeController.recordPayment,
+);
+feeRouter.patch(
+  '/:id/status',
+  ...ownerOrAdmin,
+  requireParam('id'),
+  sensitiveActionLimiter,
+  validateDto(UpdateFeeStatusDto),
+  feeController.updateStatus,
 );
 
 export { feeRouter };

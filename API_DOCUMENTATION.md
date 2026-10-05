@@ -529,6 +529,12 @@ Lists hostel fees.
 
 Records payment against a fee.
 
+### PATCH `/fees/:id/status`
+
+Updates fee status (`PENDING | PAID | OVERDUE | PARTIALLY_PAID`).
+Optional `paidAmount` applies a payment alongside the status change.
+Marking `PAID` settles the bill in full (same settlement rule as proof approval).
+
 ## Expense
 
 Requires role: `owner` or `admin`. Every row belongs to one hostel
@@ -583,6 +589,304 @@ Both map to full/partial update of `title/category/amount/expenseDate/notes/stat
 ### DELETE `/expenses/:id`
 
 → `200 { success, message: "Expense deleted" }`.
+
+## Subscription
+
+Base: `/api/v1/hostel-ghar/subscriptions`. Owner-scoped, optionally
+hostel-scoped. No `ACTIVE` non-expired row means `FREE` fallback.
+Mount: `routes.use('/subscriptions', subscriptionRouter)`.
+
+| Method | Auth | Roles | Hostel | Use |
+|---|---|---|---|---|
+| GET `/subscriptions/plans` | optional | public | no | list 4 tiers + isCurrent |
+| GET `/subscriptions/current` | yes | owner admin | required | plan + usage + daysRemaining |
+| POST `/subscriptions/subscribe` | yes | owner admin | required | FREE instant; paid = upload proof → PENDING |
+| POST `/subscriptions/cancel` | yes | owner admin | required | expire to FREE |
+| GET `/subscriptions/history` | yes | owner admin | no | rows newest first (incl. PENDING requests) |
+| GET `/subscriptions/check-limit` | yes | owner admin | required | resident capacity |
+| GET `/subscriptions/requests` | yes | admin | no | payment-proof review queue (default PENDING) |
+| POST `/subscriptions/requests/:id/review` | yes | admin | no | APPROVE (activate) / REJECT |
+
+`GET /plans` uses `optionalAuthenticate`. Valid token personalizes
+`isCurrent`. Anonymous uses `FREE`. Invalid token ignored.
+
+### Plans and limits
+
+File `src/constant/subscription.constant.ts`. Currency `NPR`.
+`null` means unlimited.
+
+`FREE` Free 0 Free/mo residents 10 hostels 1 CTA Current Plan badge Current.
+`BASIC` Basic 999 Rs 999/mo residents 60 hostels 1 CTA Upgrade to Basic.
+`PRO` Pro 1999 Rs 1,999/mo residents null hostels 1 CTA Upgrade to Pro badge Popular.
+`ENTERPRISE` Enterprise 4999 Rs 4,999/mo residents null hostels null CTA Contact Sales.
+
+Taglines: Free Get started with hostel basics. Basic For small hostels
+getting organized. Pro For growing hostels that need automation.
+Enterprise For groups and multi-hostel operators.
+
+Features in order:
+Free: Basic dashboard, Basic hostel profile, Up to 10 residents,
+Room management, Staff management, Reports and analytics.
+Basic: Up to 60 residents, Room management, Basic payments,
+Expenses tracking, Reports and analytics.
+Pro: Unlimited residents, Staff management, Advanced analytics,
+Reports and exports, Invoices and reminders.
+Enterprise: Multiple hostels, Advanced administration,
+Advanced reporting, Priority support, Custom integrations.
+
+Flags `PlanFeatureDetails`: basicDashboard basicHostelProfile
+maxResidents maxHostels roomManagement staffManagement
+reportsAndAnalytics basicPayments expensesTracking advancedAnalytics
+reportsAndExports invoicesAndReminders multipleHostels
+advancedAdministration advancedReporting prioritySupport
+customIntegrations.
+Free only basic room staff reports true.
+Basic adds basicPayments expensesTracking, staff false.
+Pro adds staff advancedAnalytics reportsAndExports invoicesAndReminders.
+Enterprise all true.
+Enforced resident Free 10 Basic 60 Pro Enterprise unlimited.
+Hostel Free Basic Pro 1 Enterprise unlimited.
+`checkHostelLimit` has no HTTP route.
+
+### Auth hostel validation
+
+Missing invalid token 401. Wrong role 403.
+`resolveHostelId` runs before controller for current subscribe cancel
+check-limit. Accepts UUIDv4 from params hostelId or id, query hostelId,
+body hostelId, X-Hostel-Id. Missing invalid 400 valid hostelId required.
+`POST /subscribe` validates `SubscribeDto`, unknown fields 422 Validation error.
+
+### GET `/subscriptions/plans`
+
+`GET /api/v1/hostel-ghar/subscriptions/plans`
+200 Subscription plans fetched successfully.
+Data array with id name tagline price currency billingPeriod
+formattedPrice badge features buttonText limits featureFlags isCurrent.
+When isCurrent true buttonText Current Plan.
+
+### GET `/subscriptions/current`
+
+`GET /api/v1/hostel-ghar/subscriptions/current?hostelId=uuid`
+Auth owner admin hostel required.
+200 Current subscription fetched successfully.
+`data.subscription` nullable, `data.plan` definition, `data.limits`
+residentCount residentLimit residentLimitReached hostelCount hostelLimit
+hostelLimitReached, `data.daysRemaining` ceil endDate-now or null.
+residentCount active residents for hostel else 0.
+
+### POST `/subscriptions/subscribe`
+
+`POST /api/v1/hostel-ghar/subscriptions/subscribe`
+Auth owner admin hostel required. Accepts JSON or multipart/form-data
+(multer field `proof` | `screenshot` | `receipt` | `image` | `file`,
+image ≤ 4MB).
+Body plan required FREE BASIC PRO ENTERPRISE.
+hostelId UUID optional in DTO but required by middleware, falls back to
+req hostelId. billingCycle optional MONTHLY YEARLY default MONTHLY.
+paymentMethod optional ESEWA KHALTI BANK CASH. paymentReference optional
+string ≤ 100. proofUrl optional string ≤ 500 (instead of an uploaded file).
+notes optional string.
+
+Flow FREE = self-serve downgrade: deactivate old ACTIVE to EXPIRED,
+creates an ACTIVE FREE row, startDate now endDate null, busts cache,
+200 `Successfully subscribed to Free plan`.
+
+Paid (BASIC PRO ENTERPRISE) = payment-proof request, nothing activates:
+payment proof screenshot required (uploaded file or proofUrl) else 400
+`Payment proof screenshot is required for paid plans…`. A PENDING row for
+the same owner+hostel already existing → 409 `A subscription request is
+already awaiting admin review…`. Otherwise inserts a row with status
+PENDING, endDate null, price snapshot 999 1999 4999 NPR, paymentMethod,
+paymentReference, notes, proofUrl/proofPublicId. The ACTIVE plan is NOT
+touched. 201 message `Payment proof submitted for Pro plan…` data
+{ subscription, plan, requiresApproval true }.
+
+### GET `/subscriptions/requests` (admin)
+
+`GET /api/v1/hostel-ghar/subscriptions/requests?status=PENDING&page=1&limit=20`
+Auth admin only (owner gets 403). `status` default PENDING, accepts
+ACTIVE EXPIRED CANCELLED PENDING REJECTED; unknown values fall back to
+PENDING. 200 `{ success, data: [...], meta }` newest first with owner
+(id name email), hostel (id name), plan, status, billingCycle, price,
+currency, paymentMethod, paymentReference, notes, proofUrl, reviewNote,
+reviewedBy, reviewedAt, startDate, endDate, createdAt.
+
+### POST `/subscriptions/requests/:id/review` (admin)
+
+`POST /api/v1/hostel-ghar/subscriptions/requests/:id/review`
+Auth admin only. Body action required APPROVE REJECT, note optional
+string ≤ 500.
+APPROVE deactivates the owner's ACTIVE rows to EXPIRED, flips the request
+to ACTIVE with startDate now, endDate now + 30d monthly / + 1y yearly,
+price/currency snapshot, records reviewedBy/At/Note, busts subscription and
+owner caches. REJECT sets status REJECTED (owner keeps current plan).
+Not found 404. Not PENDING 409 `Request has already been reviewed`.
+200 message `Subscription approved — Pro plan is now active.` or
+`Subscription request rejected. The owner stays on their current plan.`
+
+### POST `/subscriptions/cancel`
+
+`POST /api/v1/hostel-ghar/subscriptions/cancel` body hostelId uuid.
+Auth owner admin hostel required. Deactivate ACTIVE to EXPIRED.
+Next current FREE. Bust cache.
+200 message Subscription cancelled successfully. No data.
+
+### GET `/subscriptions/history`
+
+`GET /api/v1/hostel-ghar/subscriptions/history`
+Auth owner admin no hostel no pagination newest first with hostel.
+200 Subscription history fetched successfully. Empty array if none.
+
+### GET `/subscriptions/check-limit`
+
+`GET /api/v1/hostel-ghar/subscriptions/check-limit?hostelId=uuid&count=1`
+Auth owner admin hostel required count default 1.
+Allowed 200 data allowed true currentPlan planName limit currentCount.
+Blocked still 200 allowed false plus message.
+FREE hint Upgrade to Basic or Pro. BASIC hint Upgrade to Pro.
+Other hint Please upgrade. Pro Enterprise limit null allowed true.
+Missing hostelId 400 hostelId is required.
+
+### DTO enums entity
+
+`SubscribeDto` plan enum required hostelId UUID optional billingCycle
+enum optional paymentMethod enum optional paymentReference string ≤100
+optional proofUrl string ≤500 optional notes string optional.
+`ReviewSubscriptionDto` action enum required note string ≤500 optional.
+Enums `SubscriptionPlan` FREE BASIC PRO ENTERPRISE.
+`SubscriptionStatus` ACTIVE EXPIRED CANCELLED PENDING REJECTED.
+`SubscriptionReviewAction` APPROVE REJECT.
+paymentMethod reuses `ProofPaymentMethod` ESEWA KHALTI BANK CASH.
+`BillingCycle` MONTHLY YEARLY.
+Only ACTIVE with endDate null or future counts. Service writes ACTIVE
+(cancel/subscribe FREE), PENDING (paid request) then ACTIVE or REJECTED
+(admin review). CANCELLED unused by service.
+Table subscriptions id uuid PK ownerId FK users cascade hostelId FK
+hostels set null nullable plan default FREE status default ACTIVE
+billingCycle default MONTHLY price numeric 10 2 currency NPR startDate
+now endDate nullable autoRenew false cancelledAt nullable
+paymentReference 255 nullable notes text nullable createdAt updatedAt
+plus paymentMethod payment_proof_method_enum nullable proofUrl 500
+proofPublicId 255 reviewedBy uuid FK users set null reviewedAt nullable
+reviewNote text nullable (migration 1793000000000).
+Indexes ownerId hostelId status plan ownerId+status.
+
+### Lifecycle caching
+
+FREE no row to ACTIVE via subscribe FREE downgrade. Paid plan rows enter
+as PENDING with proof, become ACTIVE (+30d or +1y) on admin APPROVE or
+REJECTED on REJECT. Cancel to EXPIRED. Current falls back FREE history
+keeps row. `findActiveSubscription` latest ACTIVE matching hostelId OR
+ownerId — PENDING REJECTED rows never grant limits.
+subscribe review cancel bust subscription owner cache.
+Flow plans to current to check-limit to subscribe to admin requests.
+
+## Reports
+
+No `/reports` mount in `src/routes/index.routes.ts`. Only auth admin
+owner resident resident-imports bookings analytics hostels leaves fees
+rooms beds payment-qrs payment-proofs expenses subscriptions.
+No ReportController ReportService report routes. Only ReportRepository
+and report-export util, both unwired never called outside util.
+Use analytics owner dashboard fees expenses residents today.
+
+### Live reporting endpoints
+
+Prefix api v1 hostel-ghar auth Bearer or cookie.
+
+`GET /analytics/admin/summary`. Roles admin plus apiReadLimiter.
+Cache L1 30s L2 120s returns isCached cacheLevel. Fields users hostels
+activeResidents pendingBookings pendingLeaves unpaidFees paidAmount SUM
+paid outstanding SUM payable-paid.
+
+`GET /analytics/owner/summary`. Roles owner admin plus limiter.
+Cache owner id v2. Legacy hostels activeResidents pendingBookings
+pendingLeaves outstandingAmount generatedAt plus hostelOptions totals
+rooms beds occupancyRate monthlyRevenue pendingAmount monthlyExpenses
+null netRevenue null occupancy paymentStatus billed collected pending
+collectionRate breakdown per FeeStatus roomOccupancy capacityByRoom
+trends revenue residentGrowth 12 YYYY-MM unavailableMetrics expenses
+maintenance residentDemographics residentCheckOuts.
+
+`GET /owner/dashboard`. Roles owner admin. Cache owner dashboard id.
+Returns data legacy rows plus summary totalResidents occupiedBeds
+availableBeds occupancyRate totalRooms availableRooms monthlyRevenue
+pendingPayments pendingCount totalHostels floorOverview roomMix
+revenueTrend 6 recentPayments 5.
+occupiedBeds max active residents SUM rooms occupied.
+
+Fee expense resident sources.
+`GET /fees/hostels/:id` ledger. `PATCH /fees/:id/payment` and status
+feed reports.
+`GET /expenses?page=&limit=&hostelId=&category=&status=` paginated max
+100 with pagination isCached cacheLevel owner own admin all.
+`GET /hostels/:id/residents` and `GET /owner/residents` rosters hostel
+room bed. Use analytics dashboard plus lists for Reports UI client CSV
+for now.
+
+### Internal blocks not HTTP
+
+`ReportRepository` TypeORM only.
+`findScopedHostels` userId role hostelId owners own admin all cross none.
+`findRoomsByHostels` Room hostel roomNumber ASC.
+`findBedsByHostels` Bed room bedNumber ASC.
+`findResidentsByHostels` active user hostel roomNumber ASC.
+`findFeesByHostels` Fee resident user hostel year month DESC.
+`findOutstandingFees` status PENDING OVERDUE PARTIALLY_PAID dueDate ASC.
+`findApprovedProofs` APPROVED resident user fee hostel createdAt ASC.
+Flow scoped hostels ids parallel finds shape toCsv pdf.
+
+`report-export.util` zero dep.
+`escapeCsvCell` RFC4180. `toCsv` headers rows BOM CRLF Excel.
+`safeFileSegment` slug fallback report.
+`buildTabularPdf` title subtitle headers rows weights landscape Buffer
+PDF1.4 Helvetica auto landscape if headers over 5 weighted zebra footer
+Page X of Y HostelGhar date empty No records. Send Buffer pdf with
+Content-Disposition attachment. No auth cache inside.
+
+### Future reports contract NOT implemented
+
+Do not call returns 404. Proposed mount `routes.use reports router`.
+`GET /reports/rooms` hostelId format json csv pdf.
+`GET /reports/beds` same.
+`GET /reports/residents` same.
+`GET /reports/fees` hostelId status outstanding all format.
+`GET /reports/payments` hostelId format approved proofs.
+Auth owner admin scoped `findScopedHostels` hostel via query body header.
+json success data meta hostelId generatedAt count. csv text csv.
+pdf application pdf. Columns rooms hostel roomNumber floor flat type
+capacity occupied status. beds hostel room bedNumber status resident.
+residents name email phone hostel room bed rent joinedAt.
+fees resident hostel period YYYY-MM totalPayable paidAmount outstanding
+status dueDate. payments resident fee period amount approvedAt reference.
+Cache requester hostel report format L1 30s L2 120s bust on mutations.
+
+### Codes and curl
+
+200 subscription incl blocked analytics dashboard. 201 expense create.
+400 hostelId. 401 token. 403 role cross owner. 404 unknown reports or
+missing row. 422 DTO. 429 limiter.
+Success success true message data. Cached adds isCached cacheLevel.
+Error success false message. Validation adds errors field messages.
+Messages PLANS_FETCHED CURRENT_FETCHED UPGRADED CANCELLED HISTORY_FETCHED
+RESIDENT_LIMIT_REACHED.
+
+```bash
+BASE=http://localhost:3000/api/v1/hostel-ghar
+curl $BASE/subscriptions/plans
+curl -H "Authorization: Bearer $TOKEN" $BASE/subscriptions/plans
+curl -H "Authorization: Bearer $TOKEN" "$BASE/subscriptions/current?hostelId=$HOSTEL"
+curl -H "Authorization: Bearer $TOKEN" "$BASE/subscriptions/check-limit?hostelId=$HOSTEL&count=3"
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"plan\":\"PRO\",\"hostelId\":\"$HOSTEL\",\"billingCycle\":\"MONTHLY\",\"paymentMethod\":\"ESEWA\"}" $BASE/subscriptions/subscribe
+curl -H "Authorization: Bearer $TOKEN" $BASE/subscriptions/history
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"hostelId\":\"$HOSTEL\"}" $BASE/subscriptions/cancel
+curl -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/subscriptions/requests?status=PENDING"
+curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"action\":\"APPROVE\",\"note\":\"Payment verified\"}" "$BASE/subscriptions/requests/$REQUEST_ID/review"
+curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"action\":\"REJECT\"}" "$BASE/subscriptions/requests/$REQUEST_ID/review"
+curl -H "Authorization: Bearer $TOKEN" $BASE/analytics/owner/summary
+curl -H "Authorization: Bearer $TOKEN" $BASE/owner/dashboard
+curl -H "Authorization: Bearer $TOKEN" "$BASE/expenses?hostelId=$HOSTEL&page=1&limit=20"
+```
 
 ## Socket Events
 

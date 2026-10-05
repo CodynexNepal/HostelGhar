@@ -14,6 +14,7 @@ import { bedRouter } from './bed/bed.routes';
 import { paymentQrRouter } from './payment-qr/payment-qr.routes';
 import { paymentProofRouter } from './payment-proof/payment-proof.routes';
 import { expenseRouter } from './expense/expense.routes';
+import { subscriptionRouter } from './subscription/subscription.routes';
 
 const routes = Router();
 
@@ -32,5 +33,6 @@ routes.use('/rooms', roomRouter);
 routes.use('/beds', bedRouter);
 routes.use('/payment-qrs', paymentQrRouter);
 routes.use('/expenses', expenseRouter);
+routes.use('/subscriptions', subscriptionRouter);
 
 export default routes;

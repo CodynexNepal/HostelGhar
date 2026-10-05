@@ -265,3 +265,32 @@ export const uploadPaymentProof = multer({
   // 4MB matches the dashboard's own "under 4MB" client-side guard.
   limits: { fileSize: 4 * 1024 * 1024, files: PAYMENT_PROOF_FIELD_NAMES.length },
 }).fields(PAYMENT_PROOF_FIELD_NAMES.map((name) => ({ name, maxCount: 1 })));
+
+// ─── 8. Subscription Payment Proof Screenshot Upload (Max 4MB) ───────────────
+// The dashboard uploads the plan-upgrade payment screenshot under the `proof`
+// field; other clients may use `screenshot` / `image` / `file` / `receipt`.
+const SUBSCRIPTION_PROOF_FIELD_NAMES = ['proof', 'screenshot', 'receipt', 'image', 'file'];
+
+export const pickSubscriptionProofFile = (req: Request): Express.Multer.File | undefined => {
+  const single = (req as Request & { file?: Express.Multer.File }).file;
+  if (single) return single;
+
+  const files = req.files as
+    { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[] | undefined;
+  if (!files) return undefined;
+  if (Array.isArray(files)) return files[0];
+
+  for (const name of SUBSCRIPTION_PROOF_FIELD_NAMES) {
+    const match = files[name]?.[0];
+    if (match) return match;
+  }
+
+  const firstFile = Object.values(files)[0]?.[0];
+  return firstFile;
+};
+
+export const uploadSubscriptionProof = multer({
+  storage: memoryStorage,
+  fileFilter: imageFileFilter,
+  limits: { fileSize: 4 * 1024 * 1024, files: SUBSCRIPTION_PROOF_FIELD_NAMES.length },
+}).fields(SUBSCRIPTION_PROOF_FIELD_NAMES.map((name) => ({ name, maxCount: 1 })));

@@ -12,3 +12,4 @@ export * from './room.enum';
 export * from './facility.enum';
 export * from './payment-qr.enum';
 export * from './payment-proof.enum';
+export * from './subscription.enum';

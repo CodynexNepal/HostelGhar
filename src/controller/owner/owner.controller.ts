@@ -21,9 +21,18 @@ import { OwnerRepository } from '../../repository/owner/owner.repository';
 import { getRequiredParam } from '../../decorators/http.decorator';
 import { imageUploadService } from '../../services/upload/image-upload.service';
 import { createHttpError } from '../../utils/createHttpError';
+import { SubscriptionService } from '../../services/subscription/subscription.service';
+import { SubscriptionFactory } from '../../factory/subscription/subscription.factory';
 
 export class OwnerController {
-  constructor(private readonly ownerRepository: OwnerRepository) {}
+  private subscriptionService: SubscriptionService;
+
+  constructor(
+    private readonly ownerRepository: OwnerRepository,
+    subscriptionService?: SubscriptionService,
+  ) {
+    this.subscriptionService = subscriptionService ?? SubscriptionFactory.createService();
+  }
 
   /**
    * Builds the exact dropdown label the frontend renders per room.
@@ -586,6 +595,21 @@ export class OwnerController {
           message: 'You do not have permission to add residents to this hostel',
         });
         return;
+      }
+
+      // Enforce subscription resident limit (Admin role bypasses)
+      if (role !== IROLES.ADMIN) {
+        const limitCheck = await this.subscriptionService.checkResidentLimit(hostelId, 1);
+        if (!limitCheck.allowed) {
+          res.status(STATUS_CODE.FORBIDDEN).json({
+            success: false,
+            message: limitCheck.message,
+            currentPlan: limitCheck.currentPlan,
+            limit: limitCheck.limit,
+            currentCount: limitCheck.currentCount,
+          });
+          return;
+        }
       }
 
       // Check if user already exists

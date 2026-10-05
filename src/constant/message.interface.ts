@@ -58,6 +58,18 @@ export const MESSAGES = {
   EMAIL_NOT_VERIFIED: 'Please verify your email address before signing in.',
   LOGIN_HISTORY_FETCHED: 'Login history fetched successfully.',
   SESSIONS_FETCHED: 'Active sessions fetched successfully.',
+
+  // ===== Subscription Messages =====
+  SUBSCRIPTION_PLANS_FETCHED: 'Subscription plans fetched successfully.',
+  SUBSCRIPTION_CURRENT_FETCHED: 'Current subscription fetched successfully.',
+  SUBSCRIPTION_UPGRADED: 'Subscription upgraded successfully.',
+  SUBSCRIPTION_CANCELLED: 'Subscription cancelled successfully.',
+  SUBSCRIPTION_HISTORY_FETCHED: 'Subscription history fetched successfully.',
+  SUBSCRIPTION_RESIDENT_LIMIT_REACHED: 'Resident limit reached for current subscription plan.',
+  SUBSCRIPTION_REQUEST_SUBMITTED:
+    'Payment proof submitted. Your plan changes after admin verification.',
+  SUBSCRIPTION_REQUESTS_FETCHED: 'Subscription requests fetched successfully.',
+  SUBSCRIPTION_REQUEST_REVIEWED: 'Subscription request reviewed successfully.',
 } as const;
 
 export type Message = (typeof MESSAGES)[keyof typeof MESSAGES];

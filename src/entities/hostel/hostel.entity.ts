@@ -20,6 +20,7 @@ import { Resident } from '../resident/resident.entity';
 import { LeaveType } from '../leave/leave-type.entity';
 import { HostelFacility } from '../facility/hostel-facility.entity';
 import { PaymentQr } from '../payment-qr/payment-qr.entity';
+import { Subscription } from '../subscription/subscription.entity';
 
 @Entity('hostels')
 @Index('idx_hostels_owner_id', ['ownerId'])
@@ -79,6 +80,9 @@ export class Hostel {
 
   @OneToMany(() => PaymentQr, (qr) => qr.hostel)
   paymentQrs!: PaymentQr[];
+
+  @OneToMany(() => Subscription, (sub) => sub.hostel)
+  subscriptions!: Subscription[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
