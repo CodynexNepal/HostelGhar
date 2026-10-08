@@ -14,6 +14,7 @@ import { pickHostelLogoFile } from '../../middleware/upload.middleware';
 import { AdminService } from '../../services/admin/admin.services';
 import { createHttpError } from '../../utils/createHttpError';
 import { CreateOwnerDto } from '../../dto/admin/create-owner.dto';
+import { SuspendHostelDto } from '../../dto/admin/suspend-hostel.dto';
 
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -128,6 +129,53 @@ export class AdminController {
       res.status(STATUS_CODE.OK).json({
         success: true,
         message: 'Hostel logo uploaded successfully',
+        data: result.data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public suspendHostel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const hostelId = getRequiredParam(req, 'id');
+      const dto = req.body as SuspendHostelDto;
+      const adminId = req.user!.userId;
+
+      const result = await this.adminService.suspendHostel(hostelId, adminId, dto?.reason);
+      if (result.error) {
+        res.status(result.error.status).json({ success: false, message: result.error.message });
+        return;
+      }
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: 'Hostel suspended successfully',
+        data: result.data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public reactivateHostel = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const hostelId = getRequiredParam(req, 'id');
+      const adminId = req.user!.userId;
+
+      const result = await this.adminService.reactivateHostel(hostelId, adminId);
+      if (result.error) {
+        res.status(result.error.status).json({ success: false, message: result.error.message });
+        return;
+      }
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: 'Hostel reactivated successfully',
         data: result.data,
       });
     } catch (error) {

@@ -9,6 +9,12 @@ const analyticsController = AnalyticsFactory.create();
 
 analyticsRouter.use(authenticate, apiReadLimiter);
 analyticsRouter.get('/admin/summary', requireRoles(IROLES.ADMIN), analyticsController.adminSummary);
+// Same payload as GET /admin/dashboard, for analytics clients that hit this router.
+analyticsRouter.get(
+  '/admin/dashboard',
+  requireRoles(IROLES.ADMIN),
+  analyticsController.adminDashboard,
+);
 analyticsRouter.get(
   '/owner/summary',
   requireRoles(IROLES.OWNER, IROLES.ADMIN),

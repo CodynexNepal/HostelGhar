@@ -63,7 +63,9 @@ export const validateDto = <T extends Object>(dtoClass: new (...args: unknown[])
     // Without this step, the class-validator decorators have nothing
     // to validate against — they're attached to class properties,
     // and a plain object has no class.
-    const dtoInstance = plainToInstance(dtoClass, req.body);
+    // Default to `{}` so empty-body POSTs (e.g. suspend with no reason)
+    // validate cleanly against all-optional DTOs instead of throwing.
+    const dtoInstance = plainToInstance(dtoClass, req.body ?? {});
 
     // ── Step 2: Run all validation decorators ─────────────────────
 

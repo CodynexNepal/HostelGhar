@@ -95,8 +95,7 @@ export class FeeController {
       const feeId = getRequiredParam(req, 'id');
       const body = req.body as UpdateFeeStatusDto;
       // Canonical wins when several aliases are sent together.
-      const rawStatus =
-        body.status ?? body.feeStatus ?? body.paymentStatus ?? body.payment_status;
+      const rawStatus = body.status ?? body.feeStatus ?? body.paymentStatus ?? body.payment_status;
       const status = typeof rawStatus === 'string' ? rawStatus.trim().toUpperCase() : rawStatus;
       if (!status || !Object.values(FeeStatus).includes(status as FeeStatus)) {
         res.status(STATUS_CODE.BAD_REQUEST).json({

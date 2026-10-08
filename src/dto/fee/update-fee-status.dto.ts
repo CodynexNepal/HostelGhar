@@ -55,4 +55,3 @@ export class UpdateFeeStatusDto {
   @Min(0.01, { message: 'amount must be a positive number' })
   amount?: number;
 }
-

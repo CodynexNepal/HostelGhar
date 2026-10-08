@@ -156,7 +156,10 @@ export function buildTabularPdf(options: TabularPdfOptions): Buffer {
   streams.forEach((stream, i) => {
     const cid = contentStartId + i;
     const pid = pageStartId + i;
-    objs.set(cid, `${cid} 0 obj\n<< /Length ${Buffer.byteLength(stream, 'utf8')} >>\nstream\n${stream}endstream\nendobj`);
+    objs.set(
+      cid,
+      `${cid} 0 obj\n<< /Length ${Buffer.byteLength(stream, 'utf8')} >>\nstream\n${stream}endstream\nendobj`,
+    );
     objs.set(
       pid,
       `${pid} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /Font << /F1 ${fontRegId} 0 R /F2 ${fontBoldId} 0 R >> >> /Contents ${cid} 0 R >>\nendobj`,
@@ -164,8 +167,14 @@ export function buildTabularPdf(options: TabularPdfOptions): Buffer {
   });
   // Id 3 intentionally unused (keeps xref dense, viewers ignore gaps).
   objs.set(3, `3 0 obj\n<< >>\nendobj`);
-  objs.set(fontRegId, `${fontRegId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj`);
-  objs.set(fontBoldId, `${fontBoldId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj`);
+  objs.set(
+    fontRegId,
+    `${fontRegId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj`,
+  );
+  objs.set(
+    fontBoldId,
+    `${fontBoldId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj`,
+  );
 
   let body = '%PDF-1.4\n%@@@\n';
   const offsets: number[] = [0];
@@ -183,4 +192,3 @@ export function buildTabularPdf(options: TabularPdfOptions): Buffer {
   body += `trailer\n<< /Size ${maxId + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`;
   return Buffer.from(body, 'utf8');
 }
-

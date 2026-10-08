@@ -9,14 +9,14 @@ Owner routes also accept `admin`.
 Owner-scoped, optionally hostel-scoped. No ACTIVE non-expired row
 means FREE fallback. Mount: `routes.use('/subscriptions', router)`.
 
-| Method | Auth | Roles | Hostel | Use |
-|---|---|---|---|---|
-| GET /subscriptions/plans | optional | public | no | list 4 tiers + isCurrent |
-| GET /subscriptions/current | yes | owner admin | required | plan + usage + daysRemaining |
-| POST /subscriptions/subscribe | yes | owner admin | required | create or upgrade |
-| POST /subscriptions/cancel | yes | owner admin | required | expire to FREE |
-| GET /subscriptions/history | yes | owner admin | no | rows newest first |
-| GET /subscriptions/check-limit | yes | owner admin | required | resident capacity |
+| Method                         | Auth     | Roles       | Hostel   | Use                          |
+| ------------------------------ | -------- | ----------- | -------- | ---------------------------- |
+| GET /subscriptions/plans       | optional | public      | no       | list 4 tiers + isCurrent     |
+| GET /subscriptions/current     | yes      | owner admin | required | plan + usage + daysRemaining |
+| POST /subscriptions/subscribe  | yes      | owner admin | required | create or upgrade            |
+| POST /subscriptions/cancel     | yes      | owner admin | required | expire to FREE               |
+| GET /subscriptions/history     | yes      | owner admin | no       | rows newest first            |
+| GET /subscriptions/check-limit | yes      | owner admin | required | resident capacity            |
 
 GET plans uses optionalAuthenticate. Valid token personalizes
 isCurrent. Anonymous uses FREE. Invalid token ignored.
@@ -83,6 +83,7 @@ data.subscription nullable, data.plan definition, data.limits
 residentCount residentLimit residentLimitReached hostelCount hostelLimit
 hostelLimitReached, data.daysRemaining ceil endDate-now or null.
 residentCount active residents for hostel else 0.
+
 ## 4.3 POST subscribe
 
 POST /api/v1/hostel-ghar/subscriptions/subscribe
@@ -120,6 +121,7 @@ Blocked still 200 allowed false plus message.
 FREE hint Upgrade to Basic or Pro. BASIC hint Upgrade to Pro.
 Other hint Please upgrade. Pro Enterprise limit null allowed true.
 Missing hostelId 400 hostelId is required.
+
 ## 5 DTO enums entity
 
 SubscribeDto plan enum required hostelId UUID optional billingCycle
@@ -152,6 +154,7 @@ payment-qrs payment-proofs expenses subscriptions.
 No ReportController ReportService report routes. Only ReportRepository
 and report-export util, both unwired never called outside util.
 Use analytics owner dashboard fees expenses residents today.
+
 ## 8 Live reporting endpoints
 
 Prefix api v1 hostel-ghar auth Bearer or cookie.
@@ -203,6 +206,7 @@ buildTabularPdf title subtitle headers rows weights landscape Buffer
 PDF1.4 Helvetica auto landscape if headers over 5 weighted zebra footer
 Page X of Y HostelGhar date empty No records. Send Buffer pdf with
 Content-Disposition attachment. No auth cache inside.
+
 ## 10 Future reports contract NOT implemented
 
 Do not call returns 404. Proposed mount routes.use reports router.

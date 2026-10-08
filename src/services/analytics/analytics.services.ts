@@ -4,15 +4,32 @@ import { cacheService } from '../../utils/cache.util';
 export class AnalyticsService {
   constructor(private readonly analyticsRepository: AnalyticsRepository) {}
 
-  public async getAdminSummary() {
-    const cacheKey = cacheService.generateKey('analytics', 'admin-summary');
+  /**
+   * Admin dashboard bootstrap. Served from the 3-tier cache like the legacy
+   * summary, but `refresh: true` (the dashboard's Refresh button) bypasses L1/L2
+   * so the admin always sees committed rows instead of a 120s-stale card.
+   */
+  public async getAdminDashboard(options: { refresh?: boolean } = {}) {
+    // v3: adds the stats/pendingApprovals/recentHostels/health blocks, so an
+    // older L2 entry must never be served to the new client.
+    const cacheKey = cacheService.generateKey('analytics', { name: 'admin-dashboard', v: 3 });
+    const fresh = options.refresh === true;
 
-    // 3-Level Cache: L1 (LRU RAM) -> L2 (Redis) -> L3 (DB)
     return await cacheService.wrap(
       cacheKey,
-      async () => await this.analyticsRepository.getAdminSummary(),
-      { l1TtlSeconds: 30, l2TtlSeconds: 120 },
+      async () => await this.analyticsRepository.getAdminDashboard(),
+      { l1TtlSeconds: 30, l2TtlSeconds: 120, skipL1: fresh, skipL2: fresh },
     );
+  }
+
+  /**
+   * Kept for the legacy `/admin/dashboard/summary` and `/analytics/admin/summary`
+   * routes so an existing client gets the SAME payload — including MRR — as
+   * `/admin/dashboard`. It delegates instead of running a second, thinner query,
+   * so all three endpoints share one cache entry and never disagree.
+   */
+  public async getAdminSummary(options: { refresh?: boolean } = {}) {
+    return await this.getAdminDashboard(options);
   }
 
   public async getOwnerSummary(ownerId: string) {

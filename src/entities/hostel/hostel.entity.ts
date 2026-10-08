@@ -54,6 +54,15 @@ export class Hostel {
   @Column({ type: 'varchar', length: 255, nullable: true, default: null })
   logoPublicId!: string | null;
 
+  @Column({ type: 'boolean', nullable: false, default: true })
+  isActive!: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true, default: null })
+  suspendedAt!: Date | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true, default: null })
+  suspendReason!: string | null;
+
   @Column({ type: 'uuid', nullable: true })
   ownerId!: string | null;
 

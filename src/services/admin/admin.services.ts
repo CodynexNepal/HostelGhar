@@ -162,7 +162,7 @@ export class AdminService {
    * Occupancy is derived from active resident room and bed assignments.
    */
   public async getAllHostels(page: number, limit: number) {
-    const cacheKey = cacheService.generateKey('hostels:list', { page, limit, v: 4 });
+    const cacheKey = cacheService.generateKey('hostels:list', { page, limit, v: 5 });
 
     // 3-Level Cache: L1 (In-Memory LRU) -> L2 (Redis Distributed) -> L3 (PostgreSQL DB)
     const { data, isCached, cacheLevel } = await cacheService.wrap(
@@ -182,6 +182,9 @@ export class AdminService {
             phone: h.phone,
             email: h.email,
             logoUrl: h.logoUrl,
+            isActive: h.isActive,
+            suspendedAt: h.suspendedAt ?? null,
+            suspendReason: h.suspendReason ?? null,
             owner: h.owner
               ? {
                   id: h.owner.id,
@@ -271,6 +274,81 @@ export class AdminService {
     });
 
     return { data: savedHostel };
+  }
+
+  /**
+   * Suspend a hostel — hides it from public listings without deleting data.
+   * Idempotent: suspending an already-suspended hostel just updates the reason.
+   */
+  public async suspendHostel(
+    hostelId: string,
+    adminId: string,
+    reason?: string,
+  ): Promise<
+    | { data: Hostel; error?: undefined }
+    | { data?: undefined; error: { status: number; message: string } }
+  > {
+    const hostel = await this.adminRepository.findHostelById(hostelId);
+    if (!hostel) {
+      return { error: { status: STATUS_CODE.NOT_FOUND, message: 'Hostel not found' } };
+    }
+
+    hostel.isActive = false;
+    hostel.suspendedAt = new Date();
+    hostel.suspendReason = reason?.trim() ? reason.trim() : hostel.suspendReason;
+    const savedHostel = await this.adminRepository.saveHostel(hostel);
+
+    await this.invalidateHostelCaches();
+
+    await eventDispatcher.dispatch({
+      type: SocketEvent.HOSTEL_UPDATED,
+      payload: savedHostel,
+      hostelId: savedHostel.id,
+      metadata: { adminId, action: 'SUSPEND', reason: savedHostel.suspendReason },
+    });
+
+    return { data: savedHostel };
+  }
+
+  /**
+   * Reactivate a suspended hostel.
+   */
+  public async reactivateHostel(
+    hostelId: string,
+    adminId: string,
+  ): Promise<
+    | { data: Hostel; error?: undefined }
+    | { data?: undefined; error: { status: number; message: string } }
+  > {
+    const hostel = await this.adminRepository.findHostelById(hostelId);
+    if (!hostel) {
+      return { error: { status: STATUS_CODE.NOT_FOUND, message: 'Hostel not found' } };
+    }
+
+    hostel.isActive = true;
+    hostel.suspendedAt = null;
+    hostel.suspendReason = null;
+    const savedHostel = await this.adminRepository.saveHostel(hostel);
+
+    await this.invalidateHostelCaches();
+
+    await eventDispatcher.dispatch({
+      type: SocketEvent.HOSTEL_UPDATED,
+      payload: savedHostel,
+      hostelId: savedHostel.id,
+      metadata: { adminId, action: 'REACTIVATE' },
+    });
+
+    return { data: savedHostel };
+  }
+
+  private async invalidateHostelCaches(): Promise<void> {
+    // 'hostels' covers admin list/detail keys; 'public:hostels' + 'public:hostel'
+    // cover public list/detail keys; 'hostel:leave-types' depends on hostel id.
+    await cacheService.invalidatePattern('hostels');
+    await cacheService.invalidatePattern('public:hostels');
+    await cacheService.invalidatePattern('public:hostel');
+    await cacheService.invalidatePattern('hostel:leave-types');
   }
 
   /**

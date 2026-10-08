@@ -23,6 +23,7 @@ export class HostelRepository {
 
   public async findAll(page: number, limit: number): Promise<[Hostel[], number]> {
     return this.hostelRepo.findAndCount({
+      where: { isActive: true },
       relations: { owner: true },
       select: {
         id: true,
@@ -33,6 +34,7 @@ export class HostelRepository {
         phone: true,
         email: true,
         logoUrl: true,
+        isActive: true,
         createdAt: true,
         owner: {
           id: true,
@@ -66,6 +68,7 @@ export class HostelRepository {
         phone: true,
         email: true,
         logoUrl: true,
+        isActive: true,
         owner: {
           id: true,
           firstName: true,

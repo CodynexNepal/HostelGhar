@@ -19,6 +19,7 @@ import {
   stripFileFields,
 } from '../../middleware/upload.middleware';
 import { CreateOwnerDto } from '../../dto/admin/create-owner.dto';
+import { SuspendHostelDto } from '../../dto/admin/suspend-hostel.dto';
 
 const adminRouter: Router = Router();
 const adminController = AdminFactory.create();
@@ -27,7 +28,10 @@ const analyticsController = AnalyticsFactory.create();
 // Protect all admin routes with JWT auth and Admin role check
 adminRouter.use(authenticate, requireRoles(IROLES.ADMIN));
 
-adminRouter.get('/dashboard', analyticsController.adminSummary);
+// Single-call bootstrap for every card on the admin dashboard page.
+// `?refresh=1` forces a live DB read instead of the cached snapshot.
+adminRouter.get('/dashboard', analyticsController.adminDashboard);
+adminRouter.get('/dashboard/summary', analyticsController.adminSummary);
 adminRouter.post(
   '/owners',
   uploadOwnerImage,
@@ -65,5 +69,16 @@ adminRouter.post(
   uploadHostelLogo,
   adminController.uploadLogo,
 );
+
+// Suspend / reactivate a hostel (admin only). Frontend calls
+// POST /admin/hostels/:id/suspend with optional { reason }.
+adminRouter.post(
+  '/hostels/:id/suspend',
+  requireParam('id'),
+  validateDto(SuspendHostelDto),
+  adminController.suspendHostel,
+);
+
+adminRouter.post('/hostels/:id/reactivate', requireParam('id'), adminController.reactivateHostel);
 
 export { adminRouter };

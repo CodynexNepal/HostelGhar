@@ -72,6 +72,102 @@ Clears auth cookies and revokes the stored refresh token. Requires auth.
 
 Requires role: `admin`.
 
+### GET `/admin/dashboard`
+
+Single-call bootstrap for the admin dashboard page — stats cards, pending
+approvals, hostels spotlight and platform health. `?refresh=1` (or
+`?refresh=true`) bypasses L1/L2 and re-reads the database, which is what the
+dashboard's **Refresh** button should send.
+
+Cached (L1 30s / L2 120s) and served from `isCached` + `cacheLevel`. Blocks:
+
+- `stats`: `totalHostels`, `totalResidents`, `mrr` (ACTIVE plans, yearly plans
+  amortized over 12 months; lapsed `endDate` rows excluded) and `occupancy`
+  (`totalBeds`, `occupiedBeds`, `availableBeds`, `rate`). Occupancy uses the bed
+  inventory and falls back to `rooms.capacity` when no beds exist yet — same
+  rule as `GET /analytics/owner/summary`.
+
+  MRR ships with diagnostics so a zero card explains itself instead of showing a
+  bare `Rs. 0`:
+
+  | Field            | Meaning                                                   |
+  | ---------------- | --------------------------------------------------------- |
+  | `mrr`            | Monthly recurring revenue from active owner subscriptions |
+  | `mrrBasis`       | Always `activeSubscriptions`                              |
+  | `mrrCurrency`    | `NPR`                                                     |
+  | `mrrPaidPlans`   | ACTIVE plans actually contributing to `mrr`               |
+  | `mrrFreePlans`   | ACTIVE plans priced 0 (the FREE tier)                     |
+  | `mrrLapsedPlans` | ACTIVE rows whose `endDate` already passed                |
+
+  `mrr: 0` with `mrrFreePlans > 0` means every owner is on FREE — MRR starts
+  moving once a paid upgrade request in `pendingApprovals` is approved.
+
+- `pendingApprovals`: `count` of `PENDING` subscription payment proofs awaiting
+  review, plus the `reviewUrl` for the review queue.
+- `recentHostels`: newest hostels with their assigned `owner` (`null` when
+  unassigned).
+- `health`: `monthlyRevenue` (current billing month collected), `totalRevenue`,
+  `pendingDues`, `rooms`, `bedsOccupied`, `activePlans`, `currency` and
+  `collectionRate` for the month.
+
+```json
+{
+  "success": true,
+  "isCached": false,
+  "cacheLevel": "L3",
+  "data": {
+    "users": 5,
+    "hostels": 4,
+    "activeResidents": 37,
+    "pendingBookings": 1,
+    "pendingLeaves": 0,
+    "unpaidFees": 2,
+    "paidAmount": 50000,
+    "outstandingAmount": 2500,
+    "generatedAt": "2026-05-10T00:00:00.000Z",
+    "stats": {
+      "totalHostels": 4,
+      "totalResidents": 37,
+      "mrr": 3199,
+      "occupancy": { "totalBeds": 10, "occupiedBeds": 4, "availableBeds": 6, "rate": 40 }
+    },
+    "pendingApprovals": { "count": 0, "reviewUrl": "/admin/subscriptions" },
+    "recentHostels": [
+      {
+        "id": "…",
+        "name": "IBInfinity Boys Hostel",
+        "type": "BOYS",
+        "city": "Kathmandu",
+        "logoUrl": null,
+        "createdAt": "2026-05-01T00:00:00.000Z",
+        "owner": null
+      }
+    ],
+    "health": {
+      "monthlyRevenue": 12000,
+      "totalRevenue": 50000,
+      "pendingDues": 2500,
+      "rooms": 9,
+      "bedsOccupied": 4,
+      "activePlans": 2,
+      "currency": "NPR",
+      "collectionRate": 80
+    }
+  }
+}
+```
+
+The legacy summary fields (`users`, `hostels`, `activeResidents`,
+`pendingBookings`, `pendingLeaves`, `unpaidFees`, `paidAmount`,
+`outstandingAmount`) stay at the top level of `data` for existing clients.
+
+### GET `/admin/dashboard/summary`
+
+Legacy alias — returns the **exact same payload** as `/admin/dashboard`,
+`stats.mrr` included, and honours `?refresh=1`. It delegates to the same service
+call, so all three admin dashboard routes share one cache entry and can never
+disagree with each other.
+
 ### GET `/admin/hostels`
 
 Lists hostels with pagination.
@@ -84,11 +180,29 @@ Creates a hostel.
 
 Assigns an owner to a hostel.
 
+### POST `/admin/hostels/:id/suspend`
+
+Suspends a hostel (admin only). Body is optional: `{ "reason": "..." }` (max 500
+chars). Sending no body suspends without a reason. Idempotent — re-suspending a
+suspended hostel just refreshes `suspendedAt` / `reason`. Suspended hostels are
+hidden from the public `GET /hostels` listing but no data is deleted.
+
+### POST `/admin/hostels/:id/reactivate`
+
+Reactivates a suspended hostel (admin only). No body. Clears `suspendedAt` /
+`suspendReason` and restores the hostel to the public listing.
+
 ## Analytics
 
 ### GET `/analytics/admin/summary`
 
-Requires role: `admin`. Returns system counts and fee totals.
+Requires role: `admin`. Returns system counts and fee totals — now the full
+admin dashboard payload (identical to `GET /admin/dashboard`, MRR included).
+
+### GET `/analytics/admin/dashboard`
+
+Alias of `GET /admin/dashboard` for analytics clients on this router — same
+payload, same `?refresh=1` cache bypass.
 
 ### GET `/analytics/owner/summary`
 
@@ -596,16 +710,16 @@ Base: `/api/v1/hostel-ghar/subscriptions`. Owner-scoped, optionally
 hostel-scoped. No `ACTIVE` non-expired row means `FREE` fallback.
 Mount: `routes.use('/subscriptions', subscriptionRouter)`.
 
-| Method | Auth | Roles | Hostel | Use |
-|---|---|---|---|---|
-| GET `/subscriptions/plans` | optional | public | no | list 4 tiers + isCurrent |
-| GET `/subscriptions/current` | yes | owner admin | required | plan + usage + daysRemaining |
-| POST `/subscriptions/subscribe` | yes | owner admin | required | FREE instant; paid = upload proof → PENDING |
-| POST `/subscriptions/cancel` | yes | owner admin | required | expire to FREE |
-| GET `/subscriptions/history` | yes | owner admin | no | rows newest first (incl. PENDING requests) |
-| GET `/subscriptions/check-limit` | yes | owner admin | required | resident capacity |
-| GET `/subscriptions/requests` | yes | admin | no | payment-proof review queue (default PENDING) |
-| POST `/subscriptions/requests/:id/review` | yes | admin | no | APPROVE (activate) / REJECT |
+| Method                                    | Auth     | Roles       | Hostel   | Use                                          |
+| ----------------------------------------- | -------- | ----------- | -------- | -------------------------------------------- |
+| GET `/subscriptions/plans`                | optional | public      | no       | list 4 tiers + isCurrent                     |
+| GET `/subscriptions/current`              | yes      | owner admin | required | plan + usage + daysRemaining                 |
+| POST `/subscriptions/subscribe`           | yes      | owner admin | required | FREE instant; paid = upload proof → PENDING  |
+| POST `/subscriptions/cancel`              | yes      | owner admin | required | expire to FREE                               |
+| GET `/subscriptions/history`              | yes      | owner admin | no       | rows newest first (incl. PENDING requests)   |
+| GET `/subscriptions/check-limit`          | yes      | owner admin | required | resident capacity                            |
+| GET `/subscriptions/requests`             | yes      | admin       | no       | payment-proof review queue (default PENDING) |
+| POST `/subscriptions/requests/:id/review` | yes      | admin       | no       | APPROVE (activate) / REJECT                  |
 
 `GET /plans` uses `optionalAuthenticate`. Valid token personalizes
 `isCurrent`. Anonymous uses `FREE`. Invalid token ignored.
