@@ -1,0 +1,60 @@
+﻿{
+  "timestamp": "2026-10-08T08:54:40.9202758Z",
+  "baseUrl": "http://localhost:8000",
+  "requests": 100,
+  "budgets": {
+    "apiP95Ms": 500,
+    "liveMs": 1000,
+    "redisP95Ms": 50,
+    "dbP95Ms": 100
+  },
+  "results": [
+    {
+      "Check": "GET /health",
+      "Status": "PASS",
+      "Detail": "200 in 83.4ms",
+      "Ms": 83.4
+    },
+    {
+      "Check": "GET /health/live",
+      "Status": "PASS",
+      "Detail": "200 in 17.6ms",
+      "Ms": 17.6
+    },
+    {
+      "Check": "GET /health/ready",
+      "Status": "PASS",
+      "Detail": "200 in 619.8ms",
+      "Ms": 619.8
+    },
+    {
+      "Check": "GET /metrics",
+      "Status": "PASS",
+      "Detail": "200 in 29.7ms",
+      "Ms": 29.7
+    },
+    {
+      "Check": "bench:api/health",
+      "Status": "FAIL",
+      "Detail": "  \"p99_ms\": 36.2799, |   \"average_ms\": 3.4407569999999996 | }",
+      "Ms": 0
+    },
+    {
+      "Check": "bench:redis/ping",
+      "Status": "SKIP",
+      "Detail": "dependency down: command.reject(new Error(\"Stream isn\u0027t writeable and enableOfflineQueue options is false\"));",
+      "Ms": 0
+    },
+    {
+      "Check": "bench:db/select-1",
+      "Status": "SKIP",
+      "Detail": "dependency down: error: password authentication failed for user \"hostelghar\"",
+      "Ms": 0
+    }
+  ],
+  "totals": {
+    "skip": 2,
+    "pass": 4,
+    "fail": 1
+  }
+}

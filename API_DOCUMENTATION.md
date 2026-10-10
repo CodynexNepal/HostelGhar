@@ -192,6 +192,66 @@ hidden from the public `GET /hostels` listing but no data is deleted.
 Reactivates a suspended hostel (admin only). No body. Clears `suspendedAt` /
 `suspendReason` and restores the hostel to the public listing.
 
+### GET `/admin/settings`
+
+Returns all platform settings sections (`general`, `billing`, `access`,
+`alerts`, `system`) with persisted values merged over built-in defaults.
+
+### GET `/admin/settings/:section`
+
+Returns one section (`general | billing | access | alerts | system`).
+Unknown section → `400`. Example `GET /admin/settings/general`:
+
+```json
+{
+  "success": true,
+  "data": {
+    "platformName": "Hostel Ghar",
+    "tagline": "Nepal's Leading Smart Hostel Management System",
+    "currency": "NPR",
+    "timezone": "Asia/Kathmandu (UTC+5:45)",
+    "supportEmail": "support@hostelghar.com",
+    "supportPhone": "+977-1-4445555",
+    "officeAddress": "Putalisadak, Kathmandu, Bagmati, Nepal"
+  }
+}
+```
+
+### PUT `/admin/settings/general`
+
+Partial update — any subset of `platformName`, `tagline`, `currency`,
+`timezone`, `supportEmail`, `supportPhone`, `officeAddress`. Returns the
+merged section. Example:
+
+```bash
+curl -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"platformName":"Hostel Ghar","currency":"NPR"}' \
+  $BASE/admin/settings/general
+```
+
+### PUT `/admin/settings/billing`
+
+Partial update — `standardPlanPrice`, `enterprisePlanPrice`,
+`freeTierResidentCap`, `gracePeriodDays`, `allowQrCheckout`,
+`autoRemindRenewals`.
+
+### PUT `/admin/settings/access`
+
+Partial update — `allowPublicHostelSignup`, `requireHostelApproval`,
+`allowResidentSelfInvite`, `requireAdmin2FA`, `sessionLifetimeDays`.
+
+### PUT `/admin/settings/alerts`
+
+Partial update — `overdueAlertThreshold`, `notifyOnSubscriptionProof`,
+`dailyDigestEmail`, `smsGatewayProvider`.
+
+### PUT `/admin/settings/system`
+
+Partial update — `maintenanceMode`, `maintenanceMessage`.
+
+Settings persist in the `platform_settings` table (one row per section,
+`migration 1795000000000`) and are cached L1 30s / L2 120s.
+
 ## Analytics
 
 ### GET `/analytics/admin/summary`
@@ -217,8 +277,19 @@ sections:
   collected and pending amounts.
 - `paymentStatus`: current-month billed, collected, pending, collection rate,
   and a breakdown for every fee status.
-- `roomOccupancy` and `capacityByRoom`: full/partial/available room counts and
-  bed capacity by room/floor.
+- `roomOccupancy`: full/partial/available/maintenance room counts (the
+  per-room `capacityByRoom` rows were dropped to keep the payload lean).
+- `mrr` and `planMix`: owner-scoped subscription revenue (yearly plans are
+  amortized over 12 months; ACTIVE rows whose endDate already passed are
+  reported as lapsed, not counted as revenue) plus paid/free/lapsed counts,
+  share percentages and the hostels covered by an active plan.
+- `finance.allTime`: all-time `collected` (SUM paidAmount) and `outstanding`
+  (SUM totalPayable - paidAmount) across every fee.
+- `feeLifecycle`: fee counts per payment status (paid / pending / overdue /
+  partiallyPaid) and the total.
+- `occupancyByHostel`: per-hostel bed occupancy (bed inventory first, room
+  capacity fallback) plus active residents — powers the occupancy chart.
+- `topHostelsByResidents`: top 5 hostels by active residents.
 - `trends.revenue` and `trends.residentGrowth`: rolling 12-month chart series.
 
 `monthlyExpenses`, `netRevenue`, and metrics named in `unavailableMetrics` are
@@ -914,11 +985,13 @@ activeResidents pendingBookings pendingLeaves unpaidFees paidAmount SUM
 paid outstanding SUM payable-paid.
 
 `GET /analytics/owner/summary`. Roles owner admin plus limiter.
-Cache owner id v2. Legacy hostels activeResidents pendingBookings
+Cache owner id v3. Legacy hostels activeResidents pendingBookings
 pendingLeaves outstandingAmount generatedAt plus hostelOptions totals
 rooms beds occupancyRate monthlyRevenue pendingAmount monthlyExpenses
 null netRevenue null occupancy paymentStatus billed collected pending
-collectionRate breakdown per FeeStatus roomOccupancy capacityByRoom
+collectionRate breakdown per FeeStatus roomOccupancy mrr planMix
+finance allTime collected outstanding feeLifecycle paid pending
+overdue partiallyPaid occupancyByHostel topHostelsByResidents
 trends revenue residentGrowth 12 YYYY-MM unavailableMetrics expenses
 maintenance residentDemographics residentCheckOuts.
 

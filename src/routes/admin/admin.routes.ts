@@ -20,6 +20,8 @@ import {
 } from '../../middleware/upload.middleware';
 import { CreateOwnerDto } from '../../dto/admin/create-owner.dto';
 import { SuspendHostelDto } from '../../dto/admin/suspend-hostel.dto';
+import { settingsRouter } from '../settings/settings.routes';
+import { platformQrAdminRouter } from '../platform-qr/platform-qr.routes';
 
 const adminRouter: Router = Router();
 const adminController = AdminFactory.create();
@@ -27,6 +29,12 @@ const analyticsController = AnalyticsFactory.create();
 
 // Protect all admin routes with JWT auth and Admin role check
 adminRouter.use(authenticate, requireRoles(IROLES.ADMIN));
+
+// Platform settings (GET + PUT per section: general | billing | access | alerts | system)
+adminRouter.use('/settings', settingsRouter);
+
+// Platform checkout QRs owners scan on /subscription (admin CRUD: list/create/update/delete)
+adminRouter.use('/platform-qrs', platformQrAdminRouter);
 
 // Single-call bootstrap for every card on the admin dashboard page.
 // `?refresh=1` forces a live DB read instead of the cached snapshot.

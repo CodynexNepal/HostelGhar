@@ -1,16 +1,17 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// FILE: index.ts (or enum.ts)
-// PURPOSE: Central export barrel for all application enums.
+// FILE: update-system-settings.dto.ts
+// PURPOSE: Validation for PUT /admin/settings/system.
 // ──────────────────────────────────────────────────────────────────────────────
 
-export * from './roles.enum';
-export * from './hostel.enum';
-export * from './leave.enum';
-export * from './booking.enum';
-export * from './fee.enum';
-export * from './room.enum';
-export * from './facility.enum';
-export * from './payment-qr.enum';
-export * from './platform-qr.enum';
-export * from './payment-proof.enum';
-export * from './subscription.enum';
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+
+export class UpdateSystemSettingsDto {
+  @IsOptional()
+  @IsBoolean()
+  maintenanceMode?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  maintenanceMessage?: string;
+}

@@ -40,6 +40,10 @@ export class AnalyticsRepository {
     const currentMonth = now.getUTCMonth() + 1;
     const currentYear = now.getUTCFullYear();
 
+    // The 12-month window start (inclusive): one year ago, month-aligned.
+    const trendStartYear = currentMonth === 12 ? currentYear : currentYear - 1;
+    const trendStartMonth = currentMonth === 12 ? 1 : currentMonth + 1;
+
     const [
       users,
       hostels,
@@ -54,6 +58,16 @@ export class AnalyticsRepository {
       roomInventory,
       bedInventory,
       recentHostels,
+      // ── NEW: per-hostel bed counts (GROUP BY hostelId) ───────────────────
+      hostelBedRows,
+      // ── NEW: per-hostel active resident counts (GROUP BY hostelId) ───────
+      hostelResidentRows,
+      // ── NEW: fee counts grouped by status (all-time) ─────────────────────
+      feeLifecycleRows,
+      // ── NEW: 12-month revenue trend (one row per billing month) ──────────
+      revenueTrendRows,
+      // ── NEW: all hostels (id, name, city) for the occupancy chart ────────
+      allHostels,
     ] = await Promise.all([
       userRepo.count(),
       hostelRepo.count(),
@@ -105,6 +119,52 @@ export class AnalyticsRepository {
         order: { createdAt: 'DESC' },
         take: spotlightLimit,
       }),
+      // Per-hostel bed occupancy (GROUP BY) — powers the "Occupancy by hostel" chart.
+      bedRepo
+        .createQueryBuilder('bed')
+        .select('bed.hostelId', 'hostelId')
+        .addSelect('COUNT(*)', 'total')
+        .addSelect("COUNT(*) FILTER (WHERE bed.status = 'OCCUPIED')", 'occupied')
+        .addSelect("COUNT(*) FILTER (WHERE bed.status = 'AVAILABLE')", 'available')
+        .groupBy('bed.hostelId')
+        .getRawMany<{ hostelId: string; total: string; occupied: string; available: string }>(),
+      // Per-hostel active resident count (GROUP BY) — powers "Top hostels by residents" table.
+      residentRepo
+        .createQueryBuilder('resident')
+        .select('resident.hostelId', 'hostelId')
+        .addSelect('COUNT(*)', 'count')
+        .where('resident.isActive = :active', { active: true })
+        .groupBy('resident.hostelId')
+        .getRawMany<{ hostelId: string; count: string }>(),
+      // Fee lifecycle counts by status (all-time) — powers the fee lifecycle chart.
+      feeRepo
+        .createQueryBuilder('fee')
+        .select('fee.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .groupBy('fee.status')
+        .getRawMany<{ status: string; count: string }>(),
+      // 12-month revenue trend — one row per billing month in the window.
+      feeRepo
+        .createQueryBuilder('fee')
+        .select('fee.billingYear', 'year')
+        .addSelect('fee.billingMonth', 'month')
+        .addSelect('COALESCE(SUM(fee.paidAmount), 0)', 'collected')
+        .addSelect('COALESCE(SUM(fee.totalPayable), 0)', 'billed')
+        .where(
+          // Include rows from trendStartYear/Month onwards (12-month window).
+          '(fee.billingYear > :sy OR (fee.billingYear = :sy AND fee.billingMonth >= :sm))',
+          { sy: trendStartYear, sm: trendStartMonth },
+        )
+        .groupBy('fee.billingYear')
+        .addGroupBy('fee.billingMonth')
+        .orderBy('fee.billingYear', 'ASC')
+        .addOrderBy('fee.billingMonth', 'ASC')
+        .getRawMany<{ year: string; month: string; collected: string; billed: string }>(),
+      // All hostels (lean: id + name + city) — for occupancyByHostel entries.
+      hostelRepo.find({
+        select: { id: true, name: true, city: true },
+        order: { name: 'ASC' },
+      }),
     ]);
 
     // ── MRR: yearly plans are billed up-front, so amortize them over 12 months
@@ -118,9 +178,6 @@ export class AnalyticsRepository {
       const price = Number(subscription.price) || 0;
       return total + (subscription.billingCycle === BillingCycle.YEARLY ? price / 12 : price);
     }, 0);
-    // MRR diagnostics: a `Rs. 0` card is only meaningful next to the reason —
-    // no plan is ACTIVE yet vs. every ACTIVE plan is FREE (price 0) vs. every
-    // ACTIVE plan has lapsed and is awaiting reaping.
     const paidPlans = activePlans.filter((subscription) => Number(subscription.price) > 0);
     const freePlans = activePlans.length - paidPlans.length;
     const lapsedPlans = activePlanRows.length - activePlans.length;
@@ -142,6 +199,81 @@ export class AnalyticsRepository {
     const pendingDues = Math.max(0, Number(revenue?.outstanding || 0));
     const monthlyRevenue = Number(monthRevenue?.paid || 0);
     const monthlyBilled = Number(monthRevenue?.billed || 0);
+    const collectionRate = monthlyBilled
+      ? Number(((monthlyRevenue / monthlyBilled) * 100).toFixed(1))
+      : 0;
+
+    // ── planMix: paid/free/lapsed percentages (same formula as owner analytics).
+    const planMixTotal = activePlanRows.length;
+    const pct = (n: number) => (planMixTotal ? Number(((n / planMixTotal) * 100).toFixed(1)) : 0);
+
+    // ── feeLifecycle: count per status (all-time).
+    const lifecycleCount = (status: FeeStatus): number =>
+      Number(feeLifecycleRows.find((r) => r.status === status)?.count ?? 0);
+    const feeLifecycle = {
+      total: feeLifecycleRows.reduce((sum, r) => sum + Number(r.count), 0),
+      paid: lifecycleCount(FeeStatus.PAID),
+      pending: lifecycleCount(FeeStatus.PENDING),
+      overdue: lifecycleCount(FeeStatus.OVERDUE),
+      partiallyPaid: lifecycleCount(FeeStatus.PARTIALLY_PAID),
+    };
+
+    // ── trends.revenue: fill every month in the 12-month window, zeroing gaps.
+    const monthKey = (y: number, m: number) => `${y}-${String(m).padStart(2, '0')}`;
+    const trendMap = new Map(
+      revenueTrendRows.map((r) => [
+        monthKey(Number(r.year), Number(r.month)),
+        { collected: Number(r.collected), billed: Number(r.billed) },
+      ]),
+    );
+    const revenueTrend = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(Date.UTC(trendStartYear, trendStartMonth - 1 + i, 1));
+      const key = monthKey(d.getUTCFullYear(), d.getUTCMonth() + 1);
+      const row = trendMap.get(key) ?? { collected: 0, billed: 0 };
+      return {
+        period: key,
+        billed: row.billed,
+        collected: row.collected,
+        pending: Math.max(0, row.billed - row.collected),
+      };
+    });
+
+    // ── occupancyByHostel: bed-level group-by joined with hostel names.
+    // Capped to top 10 by residents so the chart payload stays predictable.
+    const bedByHostel = new Map(
+      hostelBedRows.map((r) => [
+        r.hostelId,
+        { total: Number(r.total), occupied: Number(r.occupied), available: Number(r.available) },
+      ]),
+    );
+    const residentByHostel = new Map(hostelResidentRows.map((r) => [r.hostelId, Number(r.count)]));
+    const occupancyByHostel = allHostels
+      .map((hostel) => {
+        const beds = bedByHostel.get(hostel.id);
+        const total = beds?.total ?? 0;
+        const occupied = beds?.occupied ?? 0;
+        const available = beds?.available ?? 0;
+        const residents = residentByHostel.get(hostel.id) ?? 0;
+        return {
+          hostelId: hostel.id,
+          hostelName: hostel.name,
+          city: hostel.city,
+          totalBeds: total,
+          occupiedBeds: occupied,
+          availableBeds: available,
+          occupancyRate: total ? Number(((occupied / total) * 100).toFixed(1)) : 0,
+          residents,
+        };
+      })
+      .sort((a, b) => b.residents - a.residents);
+    const topHostelsByResidents = occupancyByHostel
+      .slice(0, 5)
+      .map(({ hostelId, hostelName: name, city, residents }) => ({
+        hostelId,
+        name,
+        city,
+        residents,
+      }));
 
     return {
       // ── Legacy fields, unchanged shape, for clients already on this endpoint.
@@ -153,14 +285,15 @@ export class AnalyticsRepository {
       unpaidFees,
       paidAmount: totalRevenue,
       outstandingAmount: pendingDues,
-      // ── Dashboard blocks.
+
+      // ── Meta ─────────────────────────────────────────────────────────────
       generatedAt: now.toISOString(),
+
+      // ── Headline stat cards ───────────────────────────────────────────────
       stats: {
         totalHostels: hostels,
         totalResidents: activeResidents,
         mrr: Number(mrr.toFixed(2)),
-        // MRR is subscription revenue — explain a zero instead of leaving the
-        // dashboard with a bare `Rs. 0` the admin cannot act on.
         mrrBasis: 'activeSubscriptions',
         mrrCurrency: 'NPR',
         mrrPaidPlans: paidPlans.length,
@@ -168,10 +301,45 @@ export class AnalyticsRepository {
         mrrLapsedPlans: lapsedPlans,
         occupancy: { totalBeds, occupiedBeds, availableBeds, rate: occupancyRate },
       },
+
+      // ── Finance: "Collected?" / "Outstanding?" / collection-rate badge ────
+      finance: {
+        allTime: {
+          collected: totalRevenue,
+          outstanding: pendingDues,
+        },
+        thisMonth: {
+          billed: monthlyBilled,
+          collected: monthlyRevenue,
+          pending: Math.max(0, monthlyBilled - monthlyRevenue),
+          collectionRate,
+        },
+      },
+
+      // ── Plan mix: paid/free/lapsed breakdown ─────────────────────────────
+      planMix: {
+        hostelsOnPlans: planMixTotal, // platform-wide active plan count
+        paid: paidPlans.length,
+        free: freePlans,
+        lapsed: lapsedPlans,
+        paidPercent: pct(paidPlans.length),
+        freePercent: pct(freePlans),
+        lapsedPercent: pct(lapsedPlans),
+      },
+
+      // ── Fee lifecycle chart ───────────────────────────────────────────────
+      feeLifecycle,
+
+      // ── Platform revenue trend (12 months) ───────────────────────────────
+      trends: { revenue: revenueTrend },
+
+      // ── Pending subscription-upgrade approvals ───────────────────────────
       pendingApprovals: {
         count: pendingSubscriptionRequests,
         reviewUrl: '/admin/subscriptions',
       },
+
+      // ── Recent hostels spotlight ─────────────────────────────────────────
       recentHostels: recentHostels.map((hostel) => ({
         id: hostel.id,
         name: hostel.name,
@@ -188,6 +356,14 @@ export class AnalyticsRepository {
             }
           : null,
       })),
+
+      // ── Occupancy by hostel chart ─────────────────────────────────────────
+      occupancyByHostel,
+
+      // ── Top hostels by residents table ────────────────────────────────────
+      topHostelsByResidents,
+
+      // ── Platform health card (kept for backward compat) ───────────────────
       health: {
         monthlyRevenue,
         totalRevenue,
@@ -196,9 +372,7 @@ export class AnalyticsRepository {
         bedsOccupied: occupiedBeds,
         activePlans: activePlans.length,
         currency: 'NPR',
-        collectionRate: monthlyBilled
-          ? Number(((monthlyRevenue / monthlyBilled) * 100).toFixed(1))
-          : 0,
+        collectionRate,
       },
     };
   }
@@ -215,7 +389,7 @@ export class AnalyticsRepository {
       return this.emptyOwnerSummary();
     }
 
-    const [residents, rooms, beds, fees, pendingBookings, pendingLeaves] = await Promise.all([
+    const [residents, rooms, beds, fees, activePlanRows] = await Promise.all([
       AppDataSource.getRepository(Resident).find({
         where: { hostelId: In(hostelIds) },
         select: { id: true, hostelId: true, isActive: true, createdAt: true },
@@ -225,10 +399,8 @@ export class AnalyticsRepository {
         select: {
           id: true,
           hostelId: true,
-          roomNumber: true,
           capacity: true,
           occupied: true,
-          floor: true,
         },
       }),
       AppDataSource.getRepository(Bed).find({
@@ -248,15 +420,13 @@ export class AnalyticsRepository {
           createdAt: true,
         },
       }),
-      AppDataSource.getRepository(Booking).count({
-        where: { hostelId: In(hostelIds), status: BookingStatus.PENDING },
+      // Pending booking/leave counts were dropped with the lean payload:
+      // the owner summary no longer reports them.
+      // MRR + plan mix: single active-plan query scoped to the owner (no N+1).
+      AppDataSource.getRepository(Subscription).find({
+        where: { ownerId, status: SubscriptionStatus.ACTIVE },
+        select: { id: true, hostelId: true, price: true, billingCycle: true, endDate: true },
       }),
-      AppDataSource.getRepository(LeaveRequest)
-        .createQueryBuilder('leave')
-        .leftJoin('leave.resident', 'resident')
-        .where('resident.hostelId IN (:...hostelIds)', { hostelIds })
-        .andWhere('leave.status = :status', { status: LeaveStatus.PENDING })
-        .getCount(),
     ]);
 
     const now = new Date();
@@ -301,27 +471,15 @@ export class AnalyticsRepository {
       bedsByRoom.set(bed.roomId, counts);
     }
     const roomOccupancy = { fullyOccupied: 0, partiallyOccupied: 0, available: 0, maintenance: 0 };
-    const capacityByRoom = rooms.map((room) => {
+    for (const room of rooms) {
       const counts = bedsByRoom.get(room.id);
       const occupied = counts?.occupied ?? Math.min(room.occupied, room.capacity);
-      const available = counts?.available ?? Math.max(0, room.capacity - occupied);
       const maintenance = counts?.maintenance ?? 0;
       if (maintenance === room.capacity && room.capacity > 0) roomOccupancy.maintenance++;
       else if (occupied >= room.capacity && room.capacity > 0) roomOccupancy.fullyOccupied++;
       else if (occupied > 0) roomOccupancy.partiallyOccupied++;
       else roomOccupancy.available++;
-      return {
-        roomId: room.id,
-        hostelId: room.hostelId,
-        roomNumber: room.roomNumber,
-        floor: room.floor,
-        capacity: room.capacity,
-        occupied,
-        reserved: counts?.reserved ?? 0,
-        available,
-        maintenance,
-      };
-    });
+    }
 
     const paymentStatus = Object.values(FeeStatus).map((status) => {
       const statusFees = currentFees.filter((fee) => fee.status === status);
@@ -362,32 +520,117 @@ export class AnalyticsRepository {
 
     const monthlyRevenue = sum(currentFees.map((fee) => Number(fee.paidAmount)));
     const pendingAmount = sum(currentFees.map(outstanding));
+    const billedAmount = sum(currentFees.map((fee) => Number(fee.totalPayable)));
+    const collectionRate =
+      currentFees.length && billedAmount > 0
+        ? Number(((monthlyRevenue / billedAmount) * 100).toFixed(1))
+        : 0;
+
+    // ── MRR + plan mix (owner-scoped, same amortization/lapse rule as the
+    // admin dashboard): yearly plans amortize over 12 months, ACTIVE rows
+    // whose endDate already passed are lapsed re-activation targets — not
+    // revenue.
+    const activePlans = activePlanRows.filter(
+      (subscription) =>
+        !subscription.endDate || new Date(subscription.endDate).getTime() >= now.getTime(),
+    );
+    const mrr = activePlans.reduce((total, subscription) => {
+      const price = Number(subscription.price) || 0;
+      return total + (subscription.billingCycle === BillingCycle.YEARLY ? price / 12 : price);
+    }, 0);
+    const activePlanCount = activePlans.length;
+    const paidPlanCount = activePlans.filter(
+      (subscription) => Number(subscription.price) > 0,
+    ).length;
+    const freePlanCount = activePlanCount - paidPlanCount;
+    const lapsedPlanCount = activePlanRows.length - activePlanCount;
+    const planMixTotal = activePlanRows.length;
+    const percent = (count: number) =>
+      planMixTotal ? Number(((count / planMixTotal) * 100).toFixed(1)) : 0;
+    const ownerWidePlan = activePlanRows.some((subscription) => !subscription.hostelId);
+    const coveredHostelIds = new Set(
+      activePlanRows
+        .map((subscription) => subscription.hostelId)
+        .filter((hostelId): hostelId is string => Boolean(hostelId)),
+    );
+    const hostelsOnPlans = ownerWidePlan
+      ? hostels.length
+      : hostels.filter((hostel) => coveredHostelIds.has(hostel.id)).length;
+
+    // ── All-time finance + fee lifecycle: every fee row for the owner's
+    // hostels, not just this month's.
+    const allTimeCollected = sum(fees.map((fee) => Number(fee.paidAmount)));
+    const allTimeOutstanding = sum(fees.map(outstanding));
+    const feeLifecycle = {
+      total: fees.length,
+      paid: fees.filter((fee) => fee.status === FeeStatus.PAID).length,
+      pending: fees.filter((fee) => fee.status === FeeStatus.PENDING).length,
+      overdue: fees.filter((fee) => fee.status === FeeStatus.OVERDUE).length,
+      partiallyPaid: fees.filter((fee) => fee.status === FeeStatus.PARTIALLY_PAID).length,
+    };
+
+    // ── Occupancy per hostel: bed inventory first, room-capacity fallback —
+    // the same rule as the totals above — plus the active resident count, so
+    // the same array feeds the "Occupancy by hostel" chart and the
+    // "Top hostels by residents" table.
+    const bedsByHostel = new Map<string, { total: number; occupied: number; available: number }>();
+    for (const bed of beds) {
+      const counts = bedsByHostel.get(bed.hostelId) ?? { total: 0, occupied: 0, available: 0 };
+      counts.total++;
+      if (bed.status === BedStatus.OCCUPIED) counts.occupied++;
+      if (bed.status === BedStatus.AVAILABLE) counts.available++;
+      bedsByHostel.set(bed.hostelId, counts);
+    }
+    const activeResidentsByHostel = new Map<string, number>();
+    for (const resident of residents) {
+      if (!resident.isActive) continue;
+      activeResidentsByHostel.set(
+        resident.hostelId,
+        (activeResidentsByHostel.get(resident.hostelId) ?? 0) + 1,
+      );
+    }
+    const occupancyByHostel = hostels.map((hostel) => {
+      const hostelBeds = bedsByHostel.get(hostel.id);
+      const hasHostelBeds = (hostelBeds?.total ?? 0) > 0;
+      const hostelRooms = rooms.filter((room) => room.hostelId === hostel.id);
+      const total = hasHostelBeds
+        ? hostelBeds!.total
+        : sum(hostelRooms.map((room) => room.capacity));
+      const occupied = hasHostelBeds
+        ? hostelBeds!.occupied
+        : sum(hostelRooms.map((room) => Math.min(room.occupied, room.capacity)));
+      const available = hasHostelBeds ? hostelBeds!.available : Math.max(0, total - occupied);
+      return {
+        hostelId: hostel.id,
+        hostelName: hostel.name,
+        city: hostel.city,
+        totalBeds: total,
+        occupiedBeds: occupied,
+        availableBeds: available,
+        occupancyRate: total ? Number(((occupied / total) * 100).toFixed(1)) : 0,
+        residents: activeResidentsByHostel.get(hostel.id) ?? 0,
+      };
+    });
+    const topHostelsByResidents = [...occupancyByHostel]
+      .sort((a, b) => b.residents - a.residents)
+      .slice(0, 5)
+      .map(({ hostelId, hostelName: name, city, residents }) => ({
+        hostelId,
+        name,
+        city,
+        residents,
+      }));
+
     return {
-      // Legacy fields are retained for clients already using this endpoint.
-      hostels: hostels.length,
-      activeResidents,
-      pendingBookings,
-      pendingLeaves,
-      outstandingAmount: pendingAmount,
+      // ── Headline cards ────────────────────────────────────────────────────
+      hostels: hostels.length, // "How big?" / "Total Hostels"
+      activeResidents, // "Total Residents"
       generatedAt: now.toISOString(),
+
+      // ── Hostel filter dropdown ───────────────────────────────────────────
       hostelOptions: hostels,
-      totals: {
-        hostels: hostels.length,
-        activeResidents,
-        rooms: rooms.length,
-        beds: {
-          total: totalBeds,
-          occupied: occupiedBeds,
-          available: availableBeds,
-          reserved: bedCounts.reserved,
-          maintenance: bedCounts.maintenance,
-        },
-        occupancyRate,
-        monthlyRevenue,
-        pendingAmount,
-        monthlyExpenses: null,
-        netRevenue: null,
-      },
+
+      // ── Occupancy: "How full?" / "Occupied Beds" card ────────────────────
       occupancy: {
         totalBeds,
         occupiedBeds,
@@ -395,24 +638,60 @@ export class AnalyticsRepository {
         occupancyRate,
         source: hasBedInventory ? 'beds' : 'rooms',
       },
+
+      // ── Finance ──────────────────────────────────────────────────────────
+      finance: {
+        // All-time: "Collected?" and "Outstanding?" headline cards.
+        allTime: {
+          collected: allTimeCollected,
+          outstanding: allTimeOutstanding,
+        },
+        // This month: collection-rate badge + platform-revenue chart y-axis.
+        thisMonth: {
+          billed: billedAmount,
+          collected: monthlyRevenue,
+          pending: pendingAmount,
+          collectionRate,
+        },
+      },
+
+      // ── Payment status: this month's fees, split per fee status ──────────
       paymentStatus: {
-        billed: sum(currentFees.map((fee) => Number(fee.totalPayable))),
+        billed: billedAmount,
         collected: monthlyRevenue,
         pending: pendingAmount,
-        collectionRate: currentFees.length
-          ? Number(
-              (
-                (monthlyRevenue / sum(currentFees.map((fee) => Number(fee.totalPayable)))) *
-                100
-              ).toFixed(1),
-            )
-          : 0,
+        collectionRate,
         breakdown: paymentStatus,
       },
-      roomOccupancy,
-      capacityByRoom,
+
+      // ── MRR + plan mix ────────────────────────────────────────────────────
+      mrr: {
+        amount: Number(mrr.toFixed(2)),
+        currency: 'NPR',
+        basis: 'activeSubscriptions',
+        paidPlans: paidPlanCount,
+        freePlans: freePlanCount,
+        lapsedPlans: lapsedPlanCount,
+      },
+      planMix: {
+        hostelsOnPlans,
+        paid: paidPlanCount,
+        free: freePlanCount,
+        lapsed: lapsedPlanCount,
+        paidPercent: percent(paidPlanCount),
+        freePercent: percent(freePlanCount),
+        lapsedPercent: percent(lapsedPlanCount),
+      },
+
+      // ── Fee lifecycle chart ───────────────────────────────────────────────
+      feeLifecycle,
+
+      // ── Charts ───────────────────────────────────────────────────────────
       trends: { revenue: revenueTrend, residentGrowth },
-      unavailableMetrics: ['expenses', 'maintenance', 'residentDemographics', 'residentCheckOuts'],
+
+      // ── Tables ────────────────────────────────────────────────────────────
+      occupancyByHostel,
+      topHostelsByResidents,
     };
   }
 
@@ -420,34 +699,41 @@ export class AnalyticsRepository {
     return {
       hostels: 0,
       activeResidents: 0,
-      pendingBookings: 0,
-      pendingLeaves: 0,
-      outstandingAmount: 0,
       generatedAt: new Date().toISOString(),
       hostelOptions: [],
-      totals: {
-        hostels: 0,
-        activeResidents: 0,
-        rooms: 0,
-        beds: { total: 0, occupied: 0, available: 0, reserved: 0, maintenance: 0 },
-        occupancyRate: 0,
-        monthlyRevenue: 0,
-        pendingAmount: 0,
-        monthlyExpenses: null,
-        netRevenue: null,
-      },
       occupancy: {
         totalBeds: 0,
         occupiedBeds: 0,
         availableBeds: 0,
         occupancyRate: 0,
-        source: 'beds',
+        source: 'beds' as const,
+      },
+      finance: {
+        allTime: { collected: 0, outstanding: 0 },
+        thisMonth: { billed: 0, collected: 0, pending: 0, collectionRate: 0 },
       },
       paymentStatus: { billed: 0, collected: 0, pending: 0, collectionRate: 0, breakdown: [] },
-      roomOccupancy: { fullyOccupied: 0, partiallyOccupied: 0, available: 0, maintenance: 0 },
-      capacityByRoom: [],
+      mrr: {
+        amount: 0,
+        currency: 'NPR',
+        basis: 'activeSubscriptions',
+        paidPlans: 0,
+        freePlans: 0,
+        lapsedPlans: 0,
+      },
+      planMix: {
+        hostelsOnPlans: 0,
+        paid: 0,
+        free: 0,
+        lapsed: 0,
+        paidPercent: 0,
+        freePercent: 0,
+        lapsedPercent: 0,
+      },
+      feeLifecycle: { total: 0, paid: 0, pending: 0, overdue: 0, partiallyPaid: 0 },
       trends: { revenue: [], residentGrowth: [] },
-      unavailableMetrics: ['expenses', 'maintenance', 'residentDemographics', 'residentCheckOuts'],
+      occupancyByHostel: [],
+      topHostelsByResidents: [],
     };
   }
 }

@@ -12,6 +12,7 @@ import { feeRouter } from './fee/fee.routes';
 import { roomRouter } from './room/room.routes';
 import { bedRouter } from './bed/bed.routes';
 import { paymentQrRouter } from './payment-qr/payment-qr.routes';
+import { platformQrPublicRouter } from './platform-qr/platform-qr.routes';
 import { paymentProofRouter } from './payment-proof/payment-proof.routes';
 import { expenseRouter } from './expense/expense.routes';
 import { subscriptionRouter } from './subscription/subscription.routes';
@@ -32,6 +33,7 @@ routes.use('/fees', feeRouter);
 routes.use('/rooms', roomRouter);
 routes.use('/beds', bedRouter);
 routes.use('/payment-qrs', paymentQrRouter);
+routes.use('/', platformQrPublicRouter);
 routes.use('/expenses', expenseRouter);
 routes.use('/subscriptions', subscriptionRouter);
 

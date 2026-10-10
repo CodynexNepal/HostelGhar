@@ -236,6 +236,35 @@ export const uploadPaymentQr = multer({
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
 }).fields(PAYMENT_QR_FIELD_NAMES.map((name) => ({ name, maxCount: 1 })));
 
+// ─── 6b. PLATFORM CHECKOUT QR Upload (Max 4MB) ───────────────────────────────
+// The dashboard uploads the platform checkout QR under the `qrImage` field
+// (multipart) or sends a JSON `qrImageUrl`. Accept the common fallbacks too.
+const PLATFORM_QR_FIELD_NAMES = ['qrImage', 'qr', 'image', 'file', 'qrCode'];
+
+export const pickPlatformQrFile = (req: Request): Express.Multer.File | undefined => {
+  const single = (req as Request & { file?: Express.Multer.File }).file;
+  if (single) return single;
+
+  const files = req.files as
+    { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[] | undefined;
+  if (!files) return undefined;
+  if (Array.isArray(files)) return files[0];
+
+  for (const name of PLATFORM_QR_FIELD_NAMES) {
+    const match = files[name]?.[0];
+    if (match) return match;
+  }
+
+  const firstFile = Object.values(files)[0]?.[0];
+  return firstFile;
+};
+
+export const uploadPlatformQr = multer({
+  storage: memoryStorage,
+  fileFilter: imageFileFilter,
+  limits: { fileSize: 4 * 1024 * 1024, files: 1 },
+}).fields(PLATFORM_QR_FIELD_NAMES.map((name) => ({ name, maxCount: 1 })));
+
 // ─── 7. Resident Payment Proof Screenshot Upload (Max 4MB) ───────────────────
 // The dashboard appends the SAME screenshot under two field names
 // (`screenshot` AND `receipt`), so accept both plus generic fallbacks.

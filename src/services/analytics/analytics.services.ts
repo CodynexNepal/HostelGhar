@@ -12,7 +12,7 @@ export class AnalyticsService {
   public async getAdminDashboard(options: { refresh?: boolean } = {}) {
     // v3: adds the stats/pendingApprovals/recentHostels/health blocks, so an
     // older L2 entry must never be served to the new client.
-    const cacheKey = cacheService.generateKey('analytics', { name: 'admin-dashboard', v: 3 });
+    const cacheKey = cacheService.generateKey('analytics', { name: 'admin-dashboard', v: 4 });
     const fresh = options.refresh === true;
 
     return await cacheService.wrap(
@@ -35,7 +35,7 @@ export class AnalyticsService {
   public async getOwnerSummary(ownerId: string) {
     // Bump the response version whenever its shape changes, so an L2 cache entry
     // created by an older server cannot be returned to the analytics client.
-    const cacheKey = cacheService.generateKey('analytics:owner', { ownerId, v: 2 });
+    const cacheKey = cacheService.generateKey('analytics:owner', { ownerId, v: 3 });
 
     return await cacheService.wrap(
       cacheKey,

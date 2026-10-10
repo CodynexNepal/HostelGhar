@@ -1,16 +1,13 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// FILE: index.ts (or enum.ts)
-// PURPOSE: Central export barrel for all application enums.
+// FILE: platform-qr.enum.ts
+// PURPOSE: Payment methods for Hostel Ghar PLATFORM checkout QRs — the official
+//          accounts owners pay TO when buying a subscription (eSewa / Khalti / Bank).
+//          Intentionally separate from `payment-qr.enum.ts` (hostel QRs), whose
+//          bank value is `BANK_TRANSFER`; the platform contract uses `BANK`.
 // ──────────────────────────────────────────────────────────────────────────────
 
-export * from './roles.enum';
-export * from './hostel.enum';
-export * from './leave.enum';
-export * from './booking.enum';
-export * from './fee.enum';
-export * from './room.enum';
-export * from './facility.enum';
-export * from './payment-qr.enum';
-export * from './platform-qr.enum';
-export * from './payment-proof.enum';
-export * from './subscription.enum';
+export enum PlatformQrMethod {
+  ESEWA = 'ESEWA',
+  KHALTI = 'KHALTI',
+  BANK = 'BANK',
+}

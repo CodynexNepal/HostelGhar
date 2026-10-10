@@ -255,6 +255,52 @@ export class ImageUploadService {
   }
 
   /**
+   * ─── 9. PLATFORM CHECKOUT QR UPLOAD LOGIC ──────────────────────────────────
+   * - Target Folder: `hostelghar/platform/qr-codes`
+   * - Transformation: 600x600 limit fit, PNG/WEBP format, automatic quality
+   * - Cleans up previous QR asset from Cloudinary if replacing
+   *
+   * Unlike hostel payment QRs, platform QRs are global (one per method), so the
+   * public_id is namespaced by method only — no hostel id.
+   */
+  public async uploadPlatformQrCode(
+    file: Express.Multer.File,
+    method: string,
+    previousPublicId?: string | null,
+  ): Promise<ImageUploadResponse> {
+    if (!file || !file.buffer) {
+      throw createHttpError(STATUS_CODE.BAD_REQUEST, 'Platform QR image file is required');
+    }
+
+    const result: CloudinaryUploadResult = await CloudinaryUtil.uploadBuffer(file.buffer, {
+      folder: 'hostelghar/platform/qr-codes',
+      public_id: `platform_qr_${method.toLowerCase()}_${Date.now()}`,
+      overwrite: true,
+      transformation: [
+        { width: 600, height: 600, crop: 'limit' },
+        { quality: 'auto:good', fetch_format: 'png' },
+      ],
+      tags: ['platform_qr', method.toLowerCase()],
+    });
+
+    if (previousPublicId) {
+      CloudinaryUtil.deleteByPublicId(previousPublicId).catch((err) =>
+        console.warn(
+          `[ImageUploadService] Could not delete old platform QR image ${previousPublicId}:`,
+          err,
+        ),
+      );
+    }
+
+    return {
+      url: result.secureUrl,
+      publicId: result.publicId,
+      bytes: result.bytes,
+      format: result.format,
+    };
+  }
+
+  /**
    * ─── 7. PAYMENT PROOF SCREENSHOT UPLOAD LOGIC ─────────────────────────────
    * - Target Folder: `hostelghar/payments/proofs`
    * - Transformation: capped at 1600px (keeps receipt text legible), auto format

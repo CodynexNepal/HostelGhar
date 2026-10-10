@@ -1,0 +1,60 @@
+﻿{
+  "timestamp": "2026-10-08T08:53:43.7260329Z",
+  "baseUrl": "http://localhost:8000",
+  "requests": 100,
+  "budgets": {
+    "apiP95Ms": 500,
+    "liveMs": 1000,
+    "redisP95Ms": 50,
+    "dbP95Ms": 100
+  },
+  "results": [
+    {
+      "Check": "GET /health",
+      "Status": "SKIP",
+      "Detail": "unreachable: Unable to connect to the remote server",
+      "Ms": 4137.7
+    },
+    {
+      "Check": "GET /health/live",
+      "Status": "SKIP",
+      "Detail": "unreachable: Unable to connect to the remote server",
+      "Ms": 4070
+    },
+    {
+      "Check": "GET /health/ready",
+      "Status": "SKIP",
+      "Detail": "unreachable: Unable to connect to the remote server",
+      "Ms": 4036.7
+    },
+    {
+      "Check": "GET /metrics",
+      "Status": "SKIP",
+      "Detail": "unreachable: Unable to connect to the remote server",
+      "Ms": 4040
+    },
+    {
+      "Check": "bench:api/health",
+      "Status": "SKIP",
+      "Detail": "server down - start with npm run dev",
+      "Ms": 0
+    },
+    {
+      "Check": "bench:redis/ping",
+      "Status": "SKIP",
+      "Detail": "dependency down: command.reject(new Error(\"Stream isn\u0027t writeable and enableOfflineQueue options is false\"));",
+      "Ms": 0
+    },
+    {
+      "Check": "bench:db/select-1",
+      "Status": "SKIP",
+      "Detail": "dependency down: error: password authentication failed for user \"hostelghar\"",
+      "Ms": 0
+    }
+  ],
+  "totals": {
+    "skip": 7,
+    "pass": 0,
+    "fail": 0
+  }
+}

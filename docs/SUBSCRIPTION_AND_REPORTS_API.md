@@ -165,11 +165,13 @@ activeResidents pendingBookings pendingLeaves unpaidFees paidAmount SUM
 paid outstanding SUM payable-paid.
 
 8.2 GET analytics owner summary. Roles owner admin plus limiter.
-Cache owner id v2. Legacy hostels activeResidents pendingBookings
+Cache owner id v3. Legacy hostels activeResidents pendingBookings
 pendingLeaves outstandingAmount generatedAt plus hostelOptions totals
 rooms beds occupancyRate monthlyRevenue pendingAmount monthlyExpenses
 null netRevenue null occupancy paymentStatus billed collected pending
-collectionRate breakdown per FeeStatus roomOccupancy capacityByRoom
+collectionRate breakdown per FeeStatus roomOccupancy mrr planMix
+finance allTime collected outstanding feeLifecycle paid pending
+overdue partiallyPaid occupancyByHostel topHostelsByResidents
 trends revenue residentGrowth 12 YYYY-MM unavailableMetrics expenses
 maintenance residentDemographics residentCheckOuts.
 
