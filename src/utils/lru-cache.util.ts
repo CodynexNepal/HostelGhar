@@ -118,6 +118,24 @@ export class LRUCache<T = any> {
   }
 
   /**
+   * Returns full keys containing the substring (for cross-tier purges).
+   */
+  public keysContaining(substring: string): string[] {
+    if (!substring) return [];
+    const out: string[] = [];
+    for (const key of [...this.cache.keys()]) {
+      const entry = this.cache.get(key);
+      if (!entry) continue;
+      if (Date.now() > entry.expiresAt) {
+        this.cache.delete(key);
+        continue;
+      }
+      if (key.includes(substring)) out.push(key);
+    }
+    return out;
+  }
+
+  /**
    * Clears the entire memory cache.
    */
   public clear(): void {

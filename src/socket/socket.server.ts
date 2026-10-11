@@ -156,6 +156,29 @@ class SocketService {
     this.getIO().to(room).emit(event, data);
   }
 
+  /**
+   * Force-disconnect every socket in the user's room (production logout).
+   * Emits first (handled by caller), then disconnects so other devices die
+   * instantly. Never throws — safe when io is not initialised (tests).
+   */
+  public async disconnectUser(userId: string): Promise<number> {
+    try {
+      const sockets = await this.getIO().in(`user:${userId}`).fetchSockets();
+      let n = 0;
+      for (const s of sockets) {
+        try {
+          s.disconnect(true);
+          n++;
+        } catch {
+          continue;
+        }
+      }
+      return n;
+    } catch {
+      return 0;
+    }
+  }
+
   public broadcast(event: string, data: any): void {
     this.getIO().emit(event, data);
   }

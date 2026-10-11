@@ -66,7 +66,36 @@ Rotates tokens using the `refresh_token` cookie (or `refreshToken` body field).
 
 ### POST `/auth/logout`
 
-Clears auth cookies and revokes the stored refresh token. Requires auth.
+Idempotent production logout — works with NO token, an EXPIRED token, or a
+valid token (never 401s just so you can log out). Tears down everything:
+
+- denylists the presented access + refresh tokens in Redis (SHA-256 hashes,
+  TTL = remaining lifetime, self-cleaning)
+- nulls the stored refresh-token hash in Postgres (when the refresh token
+  belongs to the resolved user)
+- purges every L1 (in-memory LRU) + L2 (Redis `cache:*`) entry containing
+  the user id (dashboards, rosters, fees, bookings, analytics snapshots)
+- emits `auth:logged_out` to `user:<id>` sockets, then force-disconnects
+  them so other tabs/devices die instantly
+- always clears `access_token` + `refresh_token` cookies, even on partial
+  failure — the browser never looks stuck logged-in
+
+Optional `logoutAll` (`{ "logoutAll": true }` body or `?logoutAll=true` /
+`?all=true` query) also writes `auth:revoked-before:<userId>`, instantly
+killing EVERY device/session (password change does this too).
+
+```json
+{
+  "success": true,
+  "message": "Logout successful",
+  "data": { "devicesRevoked": "current", "cacheKeysPurged": 7 }
+}
+```
+
+### POST `/auth/logout/all`
+
+Explicit all-devices kill switch — same teardown as `logoutAll: true`.
+Requires auth identity when available, but stays idempotent (no 401 loop).
 
 ## Admin
 

@@ -59,22 +59,18 @@ vi.mock('../../src/factory/platform-qr/platform-qr.factory', () => {
             .json({ success: true, message: 'Platform QR created successfully', data: created });
         },
         update: async (req: express.Request, res: express.Response) => {
-          res
-            .status(200)
-            .json({
-              success: true,
-              message: 'Platform QR updated successfully',
-              data: { id: req.params.id, ...(req.body ?? {}) },
-            });
+          res.status(200).json({
+            success: true,
+            message: 'Platform QR updated successfully',
+            data: { id: req.params.id, ...(req.body ?? {}) },
+          });
         },
         remove: async (req: express.Request, res: express.Response) => {
-          res
-            .status(200)
-            .json({
-              success: true,
-              message: 'Platform QR removed successfully',
-              id: req.params.id,
-            });
+          res.status(200).json({
+            success: true,
+            message: 'Platform QR removed successfully',
+            id: req.params.id,
+          });
         },
       }),
     },

@@ -39,7 +39,7 @@ import { AuthFactory } from '../../factory/auth/auth.factory';
 //Import the Rate Limit
 
 import { authRateLimiter, sensitiveActionLimiter } from '../../configs/rateLimiter.config';
-import { authenticate } from '../../middleware/auth.middleware';
+import { authenticate, optionalAuthenticate } from '../../middleware/auth.middleware';
 
 // ─── Create Router Instance ─────────────────────────────────────────────────
 
@@ -89,9 +89,15 @@ authRouter.put(
 // dashboard to redirect to (admin | owner | resident | user).
 authRouter.get('/me', authenticate, authController.me);
 
-// Token rotation + logout.
+// Token rotation + logout. Logout is idempotent by design: it accepts an
+// EXPIRED access token (optionalAuthenticate fills req.user when possible,
+// then authenticate is skipped on failure) so a client with a stale token
+// can still kill its session/caches instead of being stuck 401-logged-in.
+// POST /auth/logout            -> current device (?logoutAll=true -> all)
+// POST /auth/logout/all        -> explicit all-devices kill switch
 authRouter.post('/refresh', authController.refresh);
-authRouter.post('/logout', authenticate, authController.logout);
+authRouter.post('/logout', optionalAuthenticate, authController.logout);
+authRouter.post('/logout/all', optionalAuthenticate, authController.logoutAll);
 
 // ─── Export ─────────────────────────────────────────────────────────────────
 

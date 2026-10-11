@@ -7,6 +7,11 @@ import { Request, Response, NextFunction } from 'express';
 import { JwtTokenService, ITokenPayload } from '../utils/jwt-token.util';
 import { STATUS_CODE } from '../constant/statusCode.interface';
 import { IROLES } from '../enum/roles.enum';
+import {
+  isTokenBlocklisted,
+  isRevokedByLogoutAll,
+  getTokenIssuedAtMs,
+} from '../utils/token-blocklist.util';
 
 // Extend Express Request
 declare global {
@@ -21,7 +26,11 @@ declare global {
 /**
  * Authenticates JWT token from Authorization header or cookies
  */
-export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
+export const authenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
   const authHeader = req.headers.authorization;
   let token: string | undefined;
 
@@ -48,7 +57,44 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
     return;
   }
 
-  req.user = payload as unknown as ITokenPayload;
+  const user = payload as unknown as ITokenPayload;
+  try {
+    if (await isTokenBlocklisted(token)) {
+      res.status(STATUS_CODE.UNAUTHORIZED).json({
+        success: false,
+        message: 'Session revoked. Please sign in again.',
+      });
+      return;
+    }
+    if (user?.userId && (await isRevokedByLogoutAll(user.userId, getTokenIssuedAtMs(token)))) {
+      res.status(STATUS_CODE.UNAUTHORIZED).json({
+        success: false,
+        message: 'Session revoked. Please sign in again.',
+      });
+      return;
+    }
+  } catch {
+    // Fail open is handled inside the blocklist helpers; continue.
+  }
+
+  req.user = user;
+  next();
+};
+
+export const optionalAuthenticate = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const authHeader = req.headers.authorization;
+  const token =
+    authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.split(' ')[1]
+      : req.cookies?.access_token;
+  if (token) {
+    const payload = JwtTokenService.verifyAccessToken(token);
+    if (payload) req.user = payload as unknown as ITokenPayload;
+  }
   next();
 };
 

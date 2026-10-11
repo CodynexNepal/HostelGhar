@@ -245,6 +245,42 @@ export class MultiLevelCacheService {
   }
 
   /**
+   * Deletes all keys whose full key CONTAINS the substring (L1 + L2).
+   * Needed for logout: user ids are embedded inside serialized JSON keys
+   * (e.g. cache:owner:residents:{"ownerId":"<uuid>",...}) so a prefix match
+   * on the user id alone would miss them. Bounded SCAN + chunked DEL.
+   */
+  public async invalidateContaining(substring: string): Promise<number> {
+    if (!substring) return 0;
+    let l1Removed = 0;
+    try {
+      const l1Keys = this.l1Cache.keysContaining(substring);
+      for (const k of l1Keys) this.l1Cache.delete(k);
+      l1Removed = l1Keys.length;
+    } catch (err: any) {
+      console.warn(`[MultiLevelCache] L1 substring invalidate failed:`, err.message);
+    }
+    let l2Removed = 0;
+    try {
+      const keys: string[] = [];
+      let cursor = '0';
+      do {
+        const result = await redisClient.scan(cursor, 'MATCH', 'cache:*', 'COUNT', 200);
+        cursor = result[0];
+        for (const k of result[1]) if (k.includes(substring)) keys.push(k);
+        if (keys.length >= 2000) break;
+      } while (cursor !== '0');
+      for (let i = 0; i < keys.length; i += 200) {
+        await redisClient.del(...keys.slice(i, i + 200));
+      }
+      l2Removed = keys.length;
+    } catch (err: any) {
+      console.warn(`[MultiLevelCache] L2 substring invalidate failed:`, err.message);
+    }
+    return l1Removed + l2Removed;
+  }
+
+  /**
    * Telemetry and observability stats for all caching tiers.
    */
   public getStats() {

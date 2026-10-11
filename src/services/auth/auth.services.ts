@@ -12,6 +12,14 @@ import { ILoginResult, IRegisterResult, SafeUserResponse } from '../../types/typ
 import { createHttpError } from '../../utils/createHttpError';
 import { normalizeEmail } from '../../utils/normalize.util';
 import { eventDispatcher } from '../../utils/event-dispatcher.util';
+import { dotEnvConfig } from '../../configs/envConfig';
+import {
+  getTokenIssuedAtMs,
+  isRevokedByLogoutAll,
+  isTokenBlocklisted,
+  markUserLoggedOutAll,
+  parseExpiryToSeconds,
+} from '../../utils/token-blocklist.util';
 import { JobType } from '../../constant/queue.constants';
 import {
   renderPasswordChangedEmail,
@@ -163,6 +171,10 @@ export class AuthService {
 
     const hashedPassword = await PasswordHasher.hash(dto.newPassword);
     await this.userRepository.updatePassword(user.id, hashedPassword);
+    await markUserLoggedOutAll(
+      user.id,
+      parseExpiryToSeconds(dotEnvConfig.REFRESH_TOKEN_EXPIRY, 604800),
+    );
 
     const template = renderPasswordChangedEmail(user.firstName);
     await eventDispatcher.queueEmail(JobType.SEND_PASSWORD_RESET, {
@@ -192,8 +204,15 @@ export class AuthService {
    * bcrypt hash, then issue a fresh token pair.
    */
   public async refresh(refreshToken: string): Promise<ILoginResult> {
+    if (await isTokenBlocklisted(refreshToken)) {
+      throw createHttpError(MESSAGES.SESSION_INVALID, STATUS_CODE.UNAUTHORIZED);
+    }
     const payload = JwtTokenService.verifyRefreshToken(refreshToken);
     if (!payload?.userId) {
+      throw createHttpError(MESSAGES.SESSION_INVALID, STATUS_CODE.UNAUTHORIZED);
+    }
+
+    if (await isRevokedByLogoutAll(payload.userId as string, getTokenIssuedAtMs(refreshToken))) {
       throw createHttpError(MESSAGES.SESSION_INVALID, STATUS_CODE.UNAUTHORIZED);
     }
 
