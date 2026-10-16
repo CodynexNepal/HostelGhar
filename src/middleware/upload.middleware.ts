@@ -295,6 +295,140 @@ export const uploadPaymentProof = multer({
   limits: { fileSize: 4 * 1024 * 1024, files: PAYMENT_PROOF_FIELD_NAMES.length },
 }).fields(PAYMENT_PROOF_FIELD_NAMES.map((name) => ({ name, maxCount: 1 })));
 
+// ─── 9. Staff Photo Upload Middleware (Max 5MB, single `photo` field) ───────
+export const uploadStaffPhoto = multer({
+  storage: memoryStorage,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit — matches "PNG, JPG or WEBP · up to 5 MB"
+    files: 1,
+  },
+}).single('photo');
+
+/**
+ * Normalizes staff form field aliases BEFORE DTO validation runs.
+ *
+ * The dashboard staff form posts `name` (full name) and `salary` (monthly
+ * salary), while the API DTO uses `fullName` / `monthlySalary`. Because
+ * `validateDto` runs with `forbidNonWhitelisted: true`, unknown keys are
+ * rejected outright — so rename them here instead of failing the request.
+ * Also drops empty-string optional fields from multipart forms so `@IsOptional`
+ * / `@ValidateIf` treat them as absent.
+ */
+export const normalizeStaffFields = (
+  req: Request,
+  _res: unknown,
+  next: (err?: unknown) => void,
+): void => {
+  if (req.body && typeof req.body === 'object') {
+    const body = req.body as Record<string, unknown>;
+    const aliases: Array<[string, string]> = [
+      ['name', 'fullName'],
+      ['full_name', 'fullName'],
+      ['salary', 'monthlySalary'],
+      ['monthly_salary', 'monthlySalary'],
+      ['phoneNumber', 'phone'],
+      ['phone_number', 'phone'],
+      ['emergency_contact', 'emergencyContact'],
+    ];
+    for (const [alias, canonical] of aliases) {
+      if (body[canonical] === undefined && body[alias] !== undefined) {
+        body[canonical] = body[alias];
+      }
+      delete body[alias];
+    }
+    for (const key of ['hostelId', 'fullName', 'email', 'monthlySalary', 'emergencyContact']) {
+      if (body[key] === '') delete body[key];
+    }
+  }
+  next();
+};
+
+/**
+ * Normalizes invoice form field aliases BEFORE DTO validation runs.
+ * Dashboard "Create invoice" forms post resident_name / due_date / total /
+ * sendNow-style keys; the DTO uses residentName / dueDate / amount / sendMode.
+ * Strict whitelist mode would 422 unknown keys, so rename them here.
+ */
+export const normalizeInvoiceFields = (
+  req: Request,
+  _res: unknown,
+  next: (err?: unknown) => void,
+): void => {
+  if (req.body && typeof req.body === 'object') {
+    const body = req.body as Record<string, unknown>;
+    const pick = (...keys: string[]): unknown => {
+      for (const key of keys) {
+        const value = body[key];
+        if (value !== undefined && value !== null && value !== '') return value;
+      }
+      return undefined;
+    };
+    const resident = pick('residentName', 'resident_name', 'resident', 'name', 'studentName');
+    if (resident !== undefined) body.residentName = resident;
+    const amount = pick('amount', 'total', 'totalPayable', 'total_payable', 'price');
+    if (amount !== undefined) body.amount = amount;
+    const due = pick('dueDate', 'due_date', 'due', 'deadline');
+    if (due !== undefined) body.dueDate = due;
+    const month = pick('billingMonth', 'billing_month', 'month', 'billingPeriod', 'billing_period');
+    if (month !== undefined) body.billingMonth = month;
+    const year = pick('billingYear', 'billing_year', 'year');
+    if (year !== undefined) body.billingYear = year;
+    const mode = pick('sendMode', 'send_mode', 'mode', 'action', 'status');
+    if (mode !== undefined && body.sendMode === undefined && body.status === undefined) {
+      body.sendMode = mode;
+    }
+    const sendNow = pick('sendNow', 'send_now', 'sendEmail', 'send_email', 'notify');
+    if (sendNow !== undefined) body.sendNow = sendNow;
+    for (const stale of [
+      'resident_name',
+      'resident',
+      'name',
+      'studentName',
+      'total',
+      'totalPayable',
+      'total_payable',
+      'price',
+      'due_date',
+      'due',
+      'deadline',
+      'billing_month',
+      'month',
+      'billingPeriod',
+      'billing_period',
+      'billing_year',
+      'year',
+      'send_mode',
+      'mode',
+      'action',
+      'send_now',
+      'sendEmail',
+      'send_email',
+      'notify',
+    ]) {
+      delete body[stale];
+    }
+    for (const key of ['hostelId', 'residentId', 'residentEmail', 'due_date']) {
+      if (body[key] === '') delete body[key];
+    }
+  }
+  next();
+};
+
+/**
+ * Picks the uploaded staff photo file (`photo` field) regardless of
+ * single vs fields storage shape.
+ */
+export const pickStaffPhotoFile = (req: Request): Express.Multer.File | undefined => {
+  const single = (req as Request & { file?: Express.Multer.File }).file;
+  if (single) return single;
+  const files = req.files as
+    { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[] | undefined;
+  if (!files) return undefined;
+  if (Array.isArray(files)) return files[0];
+  return files['photo']?.[0];
+};
+
 // ─── 8. Subscription Payment Proof Screenshot Upload (Max 4MB) ───────────────
 // The dashboard uploads the plan-upgrade payment screenshot under the `proof`
 // field; other clients may use `screenshot` / `image` / `file` / `receipt`.

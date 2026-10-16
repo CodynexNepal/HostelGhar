@@ -6,16 +6,21 @@
 //          order and all routes are mounted.
 //
 // MIDDLEWARE ORDER MATTERS:
-//   1. Security middleware (helmet) — must run first to set security headers
-//      on EVERY response, even error responses.
-//   2. CORS — must run before route handlers to handle preflight requests.
+//   1. Observability first (request-id logging, metrics) — passive listeners
+//      that must observe every request, including blocked/failed ones.
+//   2. Security middleware (helmet) — must run first among response writers
+//      to set security headers on EVERY response, even error responses.
+//   3. CORS — must run before route handlers to handle preflight requests.
 //      An explicit OPTIONS short-circuit is registered FIRST so a browser
 //      preflight can NEVER hang waiting on body parsers / rate limiters.
-//   3. Body parsers (json, cookie-parser) — must run before routes so that
+//   4. Compression — AFTER helmet/CORS (so it never compresses preflights or
+//      strips security headers), BEFORE body parsers/routes (so its
+//      res.write/res.end overrides wrap every API/error response).
+//   5. Body parsers (json, cookie-parser) — must run before routes so that
 //      `req.body` and `req.cookies` are populated when controllers read them.
-//   4. Rate limiter — AFTER body parsers (auth limiter keys on req.body.email)
+//   6. Rate limiter — AFTER body parsers (auth limiter keys on req.body.email)
 //      and NEVER on OPTIONS (skipPreflight inside every limiter).
-//   5. Routes — the actual API endpoints.
+//   7. Routes — the actual API endpoints.
 //
 // OOP PRINCIPLE: This function follows the Factory Pattern — it creates and
 //                returns a fully-configured Express app. The caller (index.ts)
@@ -67,7 +72,6 @@ export const createApp = (): Express => {
   app.set('trust proxy', 1);
   app.use(httpLoggingMiddleware);
   app.use(metricsMiddleware);
-  registerPerformanceMiddleware(app);
   app.use(requestTimeout(Number(process.env.HTTP_TIMEOUT_MS || 30000)));
 
   // ─── Security Middleware ──────────────────────────────────────────────
@@ -86,6 +90,18 @@ export const createApp = (): Express => {
   // hang. Do NOT add `app.options('*', ...)` — the bare `'*'` pattern throws
   // a PathError on Express 5 (path-to-regexp v8) and would crash startup.
   app.use(cors(corsConfig));
+
+  // ─── Response Compression ────────────────────────────────────────────
+  // AFTER helmet/CORS (never compresses preflights, never strips security
+  // headers), BEFORE body parsers/routes/rate-limiters/error handlers so the
+  // res.write/res.end overrides wrap every API, health, metrics and error
+  // response. See src/performance/http/compression.ts for the full policy
+  // (Brotli-first, 1 KiB threshold, Set-Cookie/SSE/206 exclusions).
+  // Hosting note: Render / Docker compose in this repo has NO reverse proxy
+  // that compresses (no nginx/CDN layer) — this middleware is the single
+  // compression point, so there is no double-compression risk. If a CDN or
+  // proxy with compression is added later, disable one of the two layers.
+  registerPerformanceMiddleware(app);
 
   // ─── Body Parsers ────────────────────────────────────────────────────
 

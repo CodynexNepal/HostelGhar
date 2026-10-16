@@ -33,6 +33,42 @@ app.get('/no-transform', (_req, res) => {
   res.json(LARGE_JSON);
 });
 app.get('/opt-out', (_req, res) => res.json(LARGE_JSON));
+// Auth-shaped response: sets cookies (BREACH precaution must skip it even
+// though the JSON body itself is compressible).
+app.get('/login-like', (_req, res) => {
+  res.cookie('access_token', 'secret-jwt-value', { httpOnly: true });
+  res.json(LARGE_JSON);
+});
+// SSE-shaped response: must stream untouched, never buffered/compressed.
+app.get('/events', (_req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.write('data: hello\n\n');
+  res.end();
+});
+// CSV export shaped like the resident-import template download.
+app.get('/export.csv', (_req, res) => {
+  const csv = `name,email,room\n${'Resident,One,r1@example.com,101\n'.repeat(100)}`;
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="residents.csv"');
+  res.send(csv);
+});
+// PDF-shaped binary export: already-compressed format, must pass through.
+app.get('/report.pdf', (_req, res) => {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.end(Buffer.alloc(4096, 9));
+});
+// Error-shaped JSON (like the global error handler emits).
+app.get('/boom', (_req, res) => {
+  res.status(500).json({ success: false, message: 'kaboom', items: LARGE_JSON.items });
+});
+// Multi-write JSON: content-type lands late; every chunk must still compress.
+app.get('/multi', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.write(JSON.stringify(LARGE_JSON).slice(0, 1000));
+  res.write(JSON.stringify(LARGE_JSON).slice(1000));
+  res.end();
+});
+app.get('/empty', (_req, res) => res.status(204).end());
 
 interface RawResponse {
   status: number;
@@ -158,6 +194,58 @@ describe('brotli-first response compression', () => {
     });
     expect(optOut.headers['content-encoding']).toBeUndefined();
     expect(optOut.body.toString()).toBe(RAW_JSON);
+  });
+
+  it('leaves Set-Cookie auth responses uncompressed (BREACH precaution)', async () => {
+    const response = await fetchRaw('/login-like', { 'Accept-Encoding': 'br' });
+
+    expect(response.headers['content-encoding']).toBeUndefined();
+    expect(String(response.headers['set-cookie'] ?? '')).toContain('access_token');
+    expect(response.body.toString()).toBe(RAW_JSON);
+  });
+
+  it('streams SSE untouched without buffering or encoding', async () => {
+    const response = await fetchRaw('/events', { 'Accept-Encoding': 'br' });
+
+    expect(response.headers['content-encoding']).toBeUndefined();
+    expect(String(response.headers['content-type'] ?? '')).toContain('text/event-stream');
+    expect(response.body.toString()).toBe('data: hello\n\n');
+  });
+
+  it('compresses CSV exports but never PDF binaries', async () => {
+    const csv = await fetchRaw('/export.csv', { 'Accept-Encoding': 'br' });
+    expect(csv.headers['content-encoding']).toBe('br');
+    expect(zlib.brotliDecompressSync(csv.body).toString()).toContain('Resident,One');
+
+    const pdf = await fetchRaw('/report.pdf', { 'Accept-Encoding': 'br' });
+    expect(pdf.headers['content-encoding']).toBeUndefined();
+    expect(pdf.body.length).toBe(4096);
+  });
+
+  it('compresses error JSON payloads and preserves their shape', async () => {
+    const response = await fetchRaw('/boom', { 'Accept-Encoding': 'gzip' });
+
+    expect(response.status).toBe(500);
+    expect(response.headers['content-encoding']).toBe('gzip');
+    const payload = JSON.parse(zlib.gunzipSync(response.body).toString());
+    expect(payload.success).toBe(false);
+    expect(payload.message).toBe('kaboom');
+    expect(payload.items).toEqual(LARGE_JSON.items);
+  });
+
+  it('compresses multi-write responses whose headers land late', async () => {
+    const response = await fetchRaw('/multi', { 'Accept-Encoding': 'br' });
+
+    expect(response.headers['content-encoding']).toBe('br');
+    expect(zlib.brotliDecompressSync(response.body).toString()).toBe(RAW_JSON);
+  });
+
+  it('leaves empty 204 responses alone', async () => {
+    const response = await fetchRaw('/empty', { 'Accept-Encoding': 'br' });
+
+    expect(response.status).toBe(204);
+    expect(response.headers['content-encoding']).toBeUndefined();
+    expect(response.body.length).toBe(0);
   });
 
   it('counts compressed responses and saved bytes in the metrics registry', async () => {

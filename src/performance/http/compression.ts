@@ -24,6 +24,13 @@
 //   - Skips HEAD, 1xx/204/205/304, already-encoded bodies, non-compressible
 //     content types, bodies below `COMPRESSION_THRESHOLD_BYTES`,
 //     `Cache-Control: no-transform` and `x-no-compression` opt-outs.
+//   - Skips `text/event-stream` (SSE), chunked/flushed streams and 206 partial
+//     content: buffering those would break real-time delivery.
+//   - Skips responses that set cookies (`Set-Cookie`): login / register /
+//     refresh bodies carry auth secrets next to potentially attacker-influenced
+//     fields (e.g. email), so they are left uncompressed as a BREACH
+//     side-channel precaution. These bodies are ~200-400 B (below the 1 KiB
+//     threshold) so skipping them costs no measurable bandwidth.
 //   - If compression does not shrink the body, the ORIGINAL bytes are sent — a
 //     compression problem must never fail a request.
 //
@@ -235,11 +242,48 @@ export const createCompressionMiddleware = (overrides: CompressionOptions = {}) 
       if (res.getHeader('content-encoding') !== undefined) return false;
       const status = res.statusCode;
       if (status < 200 || status === 204 || status === 205 || status === 304) return false;
-      // SSE and other streaming text must never be buffered.
-      if (!isCompressibleContentType(String(res.getHeader('content-type') ?? ''))) return false;
+      // 206 partial content: ranges are byte-exact; never transform them.
+      if (status === 206) return false;
+      // BREACH precaution: responses that set auth cookies pair a secret with
+      // potentially attacker-influenced fields (e.g. login email reflector).
+      // These bodies are ~200-400 B (below the 1 KiB threshold) so skipping
+      // them costs no measurable bandwidth.
+      if (res.getHeader('set-cookie') !== undefined) return false;
+      const contentType = String(res.getHeader('content-type') ?? '');
+      // SSE and other open-ended text streams must never be buffered: holding
+      // their first chunk until `res.end()` would break real-time delivery.
+      if (/text\/event-stream/i.test(contentType)) return false;
+      if (!isCompressibleContentType(contentType)) return false;
+      // A handler that flushed headers early (streaming / hijacked socket /
+      // explicit chunked framing) owns the wire — do not buffer behind it.
+      const transferEncoding = String(res.getHeader('transfer-encoding') ?? '');
+      if (/chunked/i.test(transferEncoding)) return false;
       if (/no-transform/i.test(String(res.getHeader('cache-control') ?? ''))) return false;
       if (req.headers['x-no-compression'] !== undefined) return false;
       return true;
+    };
+
+    /**
+     * Write-path eligibility: like {@link shouldCompress} but WITHOUT the
+     * content-type check. Express sets `Content-Type` lazily — the first
+     * `res.write()` of a multi-write response may run before the handler sets
+     * it, and treating "no content-type yet" as ineligible would lock the
+     * response into pass-through forever. So `res.write` only bails on signals
+     * that are already definitive (status, cookies, SSE, opt-outs); the final
+     * content-type verdict happens once in `res.end`, when headers are final.
+     */
+    const isDefinitivelyIneligible = (): boolean => {
+      if (passThrough || res.headersSent) return true;
+      if (res.getHeader('content-encoding') !== undefined) return true;
+      const status = res.statusCode;
+      if (status < 200 || status === 204 || status === 205 || status === 304 || status === 206)
+        return true;
+      if (res.getHeader('set-cookie') !== undefined) return true;
+      if (/text\/event-stream/i.test(String(res.getHeader('content-type') ?? ''))) return true;
+      if (/chunked/i.test(String(res.getHeader('transfer-encoding') ?? ''))) return true;
+      if (/no-transform/i.test(String(res.getHeader('cache-control') ?? ''))) return true;
+      if (req.headers['x-no-compression'] !== undefined) return true;
+      return false;
     };
 
     const runCallbacks = (error?: Error | null): void => {
@@ -271,7 +315,10 @@ export const createCompressionMiddleware = (overrides: CompressionOptions = {}) 
         typeof encodingOrCallback === 'string' ? (encodingOrCallback as BufferEncoding) : undefined;
       if (cb !== undefined) pendingCallbacks.push(cb);
 
-      if (!shouldCompress()) {
+      // Only bail on definitive signals here (see isDefinitivelyIneligible):
+      // content-type may not be set until the handler's first res.json/res.send,
+      // and the final verdict happens in res.end when headers are final.
+      if (isDefinitivelyIneligible()) {
         passThrough = true;
         releaseBuffers();
         const written = rawWrite(chunk, encoding);

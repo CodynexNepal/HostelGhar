@@ -10,9 +10,12 @@ import { ApplyLeaveDto } from '../../dto/leave/apply-leave.dto';
 import { authenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { uploadStudentPhoto, uploadStudentDocument } from '../../middleware/upload.middleware';
+import { AttendanceFactory } from '../../factory/attendance/attendance.factory';
+import { MarkAttendanceDto } from '../../dto/attendance/mark-attendance.dto';
 
 const residentRouter: Router = Router();
 const residentController = ResidentFactory.create();
+const attendanceController = AttendanceFactory.create();
 
 // Protect resident routes
 residentRouter.use(authenticate, requireRoles(IROLES.RESIDENT, IROLES.ADMIN));
@@ -22,6 +25,16 @@ residentRouter.post('/leaves/apply', validateDto(ApplyLeaveDto), residentControl
 residentRouter.get('/leaves', residentController.getMyLeaves);
 residentRouter.get('/fees', residentController.getMyFees);
 residentRouter.get('/payment-qrs', residentController.getMyPaymentQrs);
+
+// ─── Attendance (self check-in) ──────────────────────────────────────────────
+// Resident marks self PRESENT/LATE for today (Nepal date). One record per
+// resident per day — repeat check-ins return 409.
+residentRouter.post(
+  '/attendance/check-in',
+  validateDto(MarkAttendanceDto),
+  attendanceController.checkIn,
+);
+residentRouter.get('/attendance', attendanceController.getMyAttendance);
 
 // ─── Student Self-Service Media Upload Routes ────────────────────────────────
 // 1. Upload/Update own student photo

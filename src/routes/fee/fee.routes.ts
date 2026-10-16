@@ -1,14 +1,18 @@
 import { Router } from 'express';
 import { FeeFactory } from '../../factory/fee/fee.factory';
+import { InvoiceController } from '../../controller/fee/invoice.controller';
 import { authenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { sensitiveActionLimiter } from '../../configs/rateLimiter.config';
 import { requireParam } from '../../decorators/http.decorator';
 import { validateDto } from '../../middleware/validate-dto.middleware';
 import { UpdateFeeStatusDto } from '../../dto/fee/update-fee-status.dto';
+import { CreateInvoiceDto } from '../../dto/fee/create-invoice.dto';
+import { normalizeInvoiceFields } from '../../middleware/upload.middleware';
 
 const feeRouter = Router();
 const feeController = FeeFactory.create();
+const invoiceController = new InvoiceController();
 
 // NOTE: auth guards are applied PER ROUTE (never `feeRouter.use(...)`) on purpose.
 // A router-level `requireRoles(ADMIN, OWNER)` also runs for UNMATCHED `/fees/*`
@@ -17,6 +21,14 @@ const feeController = FeeFactory.create();
 const ownerOrAdmin = [authenticate, requireRoles(IROLES.ADMIN, IROLES.OWNER)];
 
 feeRouter.get('/nepali-status', ...ownerOrAdmin, feeController.nepaliBillingStatus);
+feeRouter.post(
+  '/invoices',
+  ...ownerOrAdmin,
+  sensitiveActionLimiter,
+  normalizeInvoiceFields,
+  validateDto(CreateInvoiceDto),
+  invoiceController.createInvoice,
+);
 feeRouter.post(
   '/generate-monthly',
   ...ownerOrAdmin,

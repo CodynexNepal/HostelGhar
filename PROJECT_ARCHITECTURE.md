@@ -57,11 +57,11 @@ Factories live in `src/factory/**`. They compose dependencies so routes do not i
 
 ## Response Compression
 
-`src/performance/http/compression.ts` compresses eligible HTTP responses with **Brotli** (`Content-Encoding: br`) and falls back to gzip/deflate. It is registered by `registerPerformanceMiddleware` before the routes, so every handler benefits.
+`src/performance/http/compression.ts` compresses eligible HTTP responses with **Brotli** (`Content-Encoding: br`) and falls back to gzip/deflate. It is registered by `registerPerformanceMiddleware` AFTER `helmet`/CORS and BEFORE body parsers, rate limiters, routes, and error handlers in `src/configs/app.ts`, so every API/error response benefits while preflights and security headers are never touched. This stack has no compressing reverse proxy (Render/Docker serve Express directly), so it is the single compression layer — if a compressing CDN/proxy is ever added, disable one of the two.
 
 - Negotiation: `Accept-Encoding` quality values decide first; the server preference `br` → `gzip` → `deflate` breaks ties.
 - Encoding runs on the libuv threadpool (async `zlib.brotliCompress`), so large JSON bodies never block the event loop.
-- Only worthwhile responses are encoded: body ≥ `COMPRESSION_THRESHOLD_BYTES`, compressible content type, no `Cache-Control: no-transform`, status not 1xx/204/205/304, method not `HEAD`.
+- Only worthwhile responses are encoded: body ≥ `COMPRESSION_THRESHOLD_BYTES`, compressible content type, no `Cache-Control: no-transform`, status not 1xx/204/205/304/206, method not `HEAD`, no `Set-Cookie` (BREACH precaution on auth responses), no SSE/chunked streaming.
 - Negotiated responses carry `Vary: Accept-Encoding` (caches keep variants apart) and a `Content-Length` that matches the bytes actually sent.
 - A client can opt out per request with `x-no-compression: 1`.
 - Failures are silent: if compression errors or does not shrink the body, the original bytes are sent.

@@ -11,15 +11,18 @@ import { CreateLeaveTypeDto } from '../../dto/leave/create-leave-type.dto';
 import { authenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { requireParam } from '../../decorators/http.decorator';
+import { apiReadLimiter } from '../../configs/rateLimiter.config';
 import {
   uploadHostelLogo,
   uploadStudentPhoto,
   uploadStudentDocument,
 } from '../../middleware/upload.middleware';
 import { resolveHostelId } from '../../middleware/hostel-context.middleware';
+import { AttendanceFactory } from '../../factory/attendance/attendance.factory';
 
 const ownerRouter: Router = Router();
 const ownerController = OwnerFactory.create();
+const attendanceController = AttendanceFactory.create();
 
 // Protect all owner routes
 ownerRouter.use(authenticate, requireRoles(IROLES.OWNER, IROLES.ADMIN));
@@ -40,6 +43,11 @@ ownerRouter.post(
 );
 ownerRouter.post('/leave-types', validateDto(CreateLeaveTypeDto), ownerController.createLeaveType);
 ownerRouter.post('/fees/generate-now', ownerController.triggerMonthlyFees);
+
+// ─── Attendance ──────────────────────────────────────────────────────────────
+// Owner/Admin views attendance for a hostel (?hostelId=) or all owned hostels.
+// Supports ?residentId=, ?date=YYYY-MM-DD, ?status=PRESENT|ABSENT|LATE|...
+ownerRouter.get('/attendance', apiReadLimiter, attendanceController.list);
 
 // ─── Cloudinary Media Upload Routes ──────────────────────────────────────────
 // 1. Upload/Replace Hostel Logo

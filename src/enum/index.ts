@@ -14,3 +14,4 @@ export * from './payment-qr.enum';
 export * from './platform-qr.enum';
 export * from './payment-proof.enum';
 export * from './subscription.enum';
+export * from './staff.enum';

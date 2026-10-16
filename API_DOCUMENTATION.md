@@ -17,6 +17,12 @@ All protected endpoints accept `Authorization: Bearer <accessToken>` or the conf
 
 Responses are compressed with **Brotli** (`Content-Encoding: br`) when the client sends `Accept-Encoding: br`, and fall back to `gzip`/`deflate` otherwise. Clients that send no `Accept-Encoding` (or `identity`) receive uncompressed bodies, so no client changes are required — browsers and `fetch`/`axios` decompress automatically. Send `x-no-compression: 1` to opt out for a single request.
 
+Only compressible content types (`application/json`, `text/*`, `text/csv`, SVG, fonts, …) at or above 1 KiB are encoded; JPEG/PNG/WebP/MP4/ZIP/PDF and other already-compressed binaries always pass through, as do `HEAD`, `204`/`205`/`304`, `206` partial content, `Cache-Control: no-transform`, and SSE (`text/event-stream`). Responses that set cookies (login/register/refresh) are intentionally left uncompressed as a BREACH side-channel precaution — those bodies are a few hundred bytes (below threshold) so nothing is lost.
+
+Placement: the middleware (`src/performance/http/compression.ts`, registered by `registerPerformanceMiddleware`) runs AFTER `helmet`/CORS and BEFORE body parsers, rate limiters, routes, and error handlers in `src/configs/app.ts`, so every API/error response is covered and preflights/security headers are never touched. This app has no compressing reverse proxy (Render/Docker serve Node directly), so there is exactly one compression layer and no double-compression risk.
+
+Test it: `npx vitest run tests/unit/http-compression.test.ts` (15 tests covering br/gzip/deflate negotiation, payload integrity after decompression, small/binary/opt-out policy, CSV-vs-PDF, SSE, Set-Cookie, error JSON, 204). Live check: `curl -H "Accept-Encoding: br" -i <url> | head` should show `Content-Encoding: br` + `Vary: Accept-Encoding` on a large JSON list, and nothing on `/api/v1/hostel-ghar/auth/login`. Disable safely: set `COMPRESSION_ENABLED=false` (or `COMPRESSION_THRESHOLD_BYTES` very high) and redeploy — clients fall back to identity with zero contract change. Watch `http_responses_compressed_total` / `http_compression_saved_bytes_total` on `/metrics`.
+
 Large cached values are also stored Brotli-compressed in Redis via the `brotli` npm package (`src/utils/brotli.util.ts`), cutting Redis memory and fetch bandwidth. The asynchronous resident CSV import job carries its parsed rows Brotli-packed through BullMQ the same way — transparent to clients, and the import endpoints/contracts are unchanged.
 
 ## Auth
@@ -677,6 +683,17 @@ Creates a leave type policy.
 
 Triggers monthly fee generation.
 
+### GET `/owner/attendance?hostelId=<uuid>&residentId=<uuid>&date=YYYY-MM-DD&status=&page=&limit=`
+
+Requires role: `owner` or `admin`. Paginated attendance records (newest
+date first, 3-tier cached L1 30s / L2 120s — busts on every check-in).
+`hostelId` narrows to one hostel (ownership-checked; also accepts the
+`X-Hostel-Id` header); omit it to span all hostels the owner manages
+(admins see everything). Filters: `residentId`, `date` (strict
+`YYYY-MM-DD`), `status` (`PRESENT|ABSENT|LATE|HALF_DAY|ON_LEAVE`). Each
+row carries `date`, `status`, `checkInAt`, `checkOutAt`, `note`, plus the
+joined `resident` (`roomNumber`, `bedNumber`, `user.firstName/lastName`).
+
 ## Resident
 
 Requires role: `resident` or `admin`.
@@ -714,6 +731,24 @@ Lists authenticated resident leave history.
 ### GET `/resident/fees`
 
 Lists authenticated resident fee bills and dues.
+
+### POST `/resident/attendance/check-in`
+
+Resident self check-in for the current day (Nepal timezone — the day rolls
+over at Kathmandu midnight, not UTC). Body (all optional):
+
+```json
+{ "status": "PRESENT", "note": "reached late due to exam" }
+```
+
+`status` defaults to `PRESENT`; only `PRESENT` and `LATE` are accepted
+residents cannot mark themselves `ABSENT`/`HALF_DAY`/`ON_LEAVE` — 422
+otherwise. One record per resident per day: repeat check-ins return 409
+with the existing record. Response 201 with the saved attendance row.
+
+### GET `/resident/attendance?page=&limit=`
+
+The authenticated resident's own attendance history (paginated, cached).
 
 ## Leave
 
