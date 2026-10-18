@@ -63,6 +63,19 @@ export class AttendanceController {
   };
 
   /**
+   * POST /resident/attendance/check-out
+   * Resident: marks self checked out for today (Nepal date).
+   */
+  public checkOut = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = await this.attendanceService.checkOut(req.user!.userId);
+      res.status(STATUS_CODE.OK).json({ success: true, message: 'Checked out successfully', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * GET /resident/attendance — the resident's own attendance history.
    */
   public getMyAttendance = async (

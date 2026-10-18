@@ -167,6 +167,38 @@ export class AttendanceService {
     return saved;
   }
 
+  /**
+   * Resident self check-out for today (Nepal date). Closes today's check-in.
+   */
+  public async checkOut(userId: string): Promise<Attendance> {
+    const resident = await AppDataSource.getRepository(Resident).findOne({
+      where: { userId, isActive: true },
+    });
+    if (!resident) {
+      throw createHttpError(
+        STATUS_CODE.NOT_FOUND,
+        'Active resident record not found for your account',
+      );
+    }
+
+    const date = todayAttendanceDate();
+    const existing = await this.attendanceRepository.findByResidentAndDate(resident.id, date);
+    if (!existing) {
+      throw createHttpError(STATUS_CODE.BAD_REQUEST, 'You have not checked in for today');
+    }
+    if (existing.checkOutAt) {
+      throw createHttpError(STATUS_CODE.CONFLICT, `You have already checked out for ${date}`);
+    }
+
+    existing.checkOutAt = new Date();
+    const saved = await this.attendanceRepository.save(existing);
+
+    await cacheService.invalidatePattern('attendance:list');
+    await cacheService.invalidatePattern('attendance:resident');
+
+    return saved;
+  }
+
   /** Resident's own attendance history, newest first. */
   public async getMyAttendance(
     userId: string,

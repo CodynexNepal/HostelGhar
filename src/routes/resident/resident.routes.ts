@@ -34,6 +34,7 @@ residentRouter.post(
   validateDto(MarkAttendanceDto),
   attendanceController.checkIn,
 );
+residentRouter.post('/attendance/check-out', attendanceController.checkOut);
 residentRouter.get('/attendance', attendanceController.getMyAttendance);
 
 // ─── Student Self-Service Media Upload Routes ────────────────────────────────
