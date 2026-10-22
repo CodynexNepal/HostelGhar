@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-10-22T03:25:03.445Z",
+  "uncompressed_json_bytes": 11391,
+  "brotli_bytes": 666,
+  "gzip_bytes": 1519,
+  "deflate_bytes": 1507,
+  "brotli_ratio": 0.058,
+  "gzip_ratio": 0.133,
+  "brotli_saved_bytes": 10725,
+  "csv_brotli_bytes": 60,
+  "tiny_stays_uncompressed": true,
+  "avg_encode_ms": {
+    "br": 1.79,
+    "gzip": 1.09,
+    "deflate": 0.97
+  }
+}
