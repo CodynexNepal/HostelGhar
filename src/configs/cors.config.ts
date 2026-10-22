@@ -47,7 +47,8 @@ export const corsConfig: CorsOptions = {
       callback(null, true);
       return;
     }
-    callback(new Error(`CORS blocked origin: ${origin}`));
+    // Deny disallowed origins gracefully without throwing an internal server 500 error
+    callback(null, false);
   },
   credentials: true,
   // Must answer preflight with 204 (some browsers choke on 200 + body).
