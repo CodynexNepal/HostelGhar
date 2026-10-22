@@ -22,3 +22,4 @@ mkdir -p "$APP_DIR/tmp"
 touch "$APP_DIR/tmp/restart.txt"
 
 echo "Previous application release restored successfully."
+

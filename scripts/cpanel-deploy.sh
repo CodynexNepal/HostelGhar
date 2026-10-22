@@ -58,3 +58,4 @@ echo "Deployment files installed successfully for $DEPLOY_SHA"
 
 rm -rf "$STAGING"
 rm -f "$ARCHIVE"
+
