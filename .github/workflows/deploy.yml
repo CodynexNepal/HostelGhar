@@ -44,6 +44,10 @@ jobs:
         run: npm run lint --if-present
 
       - name: Run tests
+        env:
+          NODE_ENV: test
+          ACCESS_TOKEN_SECRET: ci-test-access-secret-not-for-production
+          REFRESH_TOKEN_SECRET: ci-test-refresh-secret-not-for-production
         run: npm test --if-present
 
       - name: Build backend
@@ -161,73 +165,13 @@ jobs:
         run: |
           set -euo pipefail
 
+          sed -i 's/\r$//' scripts/cpanel-deploy.sh
           ssh -T \
             -i "$HOME/.ssh/cpanel_key" \
             -p "$CPANEL_PORT" \
             -o IdentitiesOnly=yes \
             "$CPANEL_USER@$CPANEL_HOST" \
-            "DEPLOY_SHA='$GITHUB_SHA' APP_DIR='$APP_DIR' bash -s" <<'REMOTE'
-          set -eu
-
-          ARCHIVE="$HOME/hostelghar-deploy-${DEPLOY_SHA}.tar.gz"
-          BACKUP="$HOME/hostelghar-backup-${DEPLOY_SHA}.tar.gz"
-          STAGING="$HOME/hostelghar-staging-${DEPLOY_SHA}"
-
-          test -s "$ARCHIVE"
-          test -d "$APP_DIR"
-          test -f "$APP_DIR/package.json"
-          test -f "$APP_DIR/package-lock.json"
-
-          # Use the cPanel-provided Node environment.
-          source "$HOME/nodevenv/hostelghar_api/20/bin/activate"
-
-          node --version
-          npm --version
-
-          # Preserve the previous production build and manifests.
-          tar -czf "$BACKUP" \
-            -C "$APP_DIR" \
-            dist package.json package-lock.json
-
-          rm -rf "$STAGING"
-          mkdir -p "$STAGING"
-          tar -xzf "$ARCHIVE" -C "$STAGING"
-
-          test -f "$STAGING/dist/index.js"
-          test -f "$STAGING/package.json"
-          test -f "$STAGING/package-lock.json"
-
-          # Do not replace the production .env file.
-          # Keep the existing cPanel app root and startup configuration.
-          cp -a "$STAGING/dist" "$APP_DIR/dist.new"
-          mv "$APP_DIR/dist" "$APP_DIR/dist.previous"
-          mv "$APP_DIR/dist.new" "$APP_DIR/dist"
-
-          cp "$STAGING/package.json" "$APP_DIR/package.json.new"
-          cp "$STAGING/package-lock.json" "$APP_DIR/package-lock.json.new"
-          mv "$APP_DIR/package.json.new" "$APP_DIR/package.json"
-          mv "$APP_DIR/package-lock.json.new" "$APP_DIR/package-lock.json"
-
-          if ! (
-            cd "$APP_DIR"
-            npm ci --omit=dev
-          ); then
-            echo "Production dependency installation failed."
-            mv "$APP_DIR/dist.previous" "$APP_DIR/dist"
-            tar -xzf "$BACKUP" -C "$APP_DIR"
-            exit 1
-          fi
-
-          # Passenger/cPanel commonly monitors this restart marker.
-          # Confirm this matches the configured application type.
-          mkdir -p "$APP_DIR/tmp"
-          touch "$APP_DIR/tmp/restart.txt"
-
-          echo "Deployment files installed for $DEPLOY_SHA"
-
-          rm -rf "$STAGING"
-          rm -f "$ARCHIVE"
-          REMOTE
+            "DEPLOY_SHA='$GITHUB_SHA' APP_DIR='$APP_DIR' bash -s" < scripts/cpanel-deploy.sh
 
       - name: Verify production API
         id: healthcheck
@@ -264,36 +208,14 @@ jobs:
         run: |
           set -euo pipefail
 
+          sed -i 's/\r$//' scripts/cpanel-rollback.sh
           ssh -T \
             -i "$HOME/.ssh/cpanel_key" \
             -p "$CPANEL_PORT" \
             -o IdentitiesOnly=yes \
             "$CPANEL_USER@$CPANEL_HOST" \
-            "DEPLOY_SHA='$GITHUB_SHA' APP_DIR='$APP_DIR' bash -s" <<'REMOTE'
-          set -eu
-
-          BACKUP="$HOME/hostelghar-backup-${DEPLOY_SHA}.tar.gz"
-
-          if [ ! -s "$BACKUP" ]; then
-            echo "No backup found; automatic rollback is unavailable."
-            exit 1
-          fi
-
-          source "$HOME/nodevenv/hostelghar_api/20/bin/activate"
-
-          tar -xzf "$BACKUP" -C "$APP_DIR"
-
-          if ! (cd "$APP_DIR" && npm ci --omit=dev); then
-            echo "Rollback restored files, but dependency installation failed."
-            exit 1
-          fi
-
-          mkdir -p "$APP_DIR/tmp"
-          touch "$APP_DIR/tmp/restart.txt"
-
-          echo "Previous application files restored."
-          REMOTE
+            "DEPLOY_SHA='$GITHUB_SHA' APP_DIR='$APP_DIR' bash -s" < scripts/cpanel-rollback.sh
 
       - name: Clean up SSH key
         if: always()
-        run: rm -f "$HOME/.ssh/cpanel_key",
+        run: rm -f "$HOME/.ssh/cpanel_key"

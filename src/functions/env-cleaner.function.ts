@@ -56,6 +56,14 @@ export function cleanEnvConfig(): CleanEnvConfig {
       ? undefined
       : 'postgresql://hostelghar:hostelghar_dev_pass@127.0.0.1:5432/hostelghar_dev';
   const defaultRedisUrl = nodeEnv === 'production' ? undefined : 'redis://127.0.0.1:6379';
+  const defaultAccessSecret =
+    nodeEnv === 'production'
+      ? undefined
+      : 'dev-or-test-access-token-secret-must-be-at-least-32-chars-long';
+  const defaultRefreshSecret =
+    nodeEnv === 'production'
+      ? undefined
+      : 'dev-or-test-refresh-token-secret-must-be-at-least-32-chars-long';
 
   const config: CleanEnvConfig = {
     PORT: Number.isNaN(port) ? 3000 : port,
@@ -68,8 +76,14 @@ export function cleanEnvConfig(): CleanEnvConfig {
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
-    ACCESS_TOKEN_SECRET: getRequiredEnv('ACCESS_TOKEN_SECRET'),
-    REFRESH_TOKEN_SECRET: getRequiredEnv('REFRESH_TOKEN_SECRET'),
+    ACCESS_TOKEN_SECRET: getRequiredEnv(
+      'ACCESS_TOKEN_SECRET',
+      process.env.ACCESS_TOKEN_SECRET || defaultAccessSecret,
+    ),
+    REFRESH_TOKEN_SECRET: getRequiredEnv(
+      'REFRESH_TOKEN_SECRET',
+      process.env.REFRESH_TOKEN_SECRET || defaultRefreshSecret,
+    ),
     ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY || '15m',
     REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || '7d',
     SALT_ROUNDS: Number.isNaN(saltRounds) ? 10 : saltRounds,
