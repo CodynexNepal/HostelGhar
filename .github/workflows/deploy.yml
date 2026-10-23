@@ -132,31 +132,85 @@ jobs:
             ssh-keygen -p -P "$SSH_PASSPHRASE" -N "" -f "$KEY_FILE" >/dev/null 2>&1 || true
           fi
 
+          # Start SSH agent and load the key
+          eval "$(ssh-agent -s)"
+          ssh-add "$KEY_FILE"
+
+          ssh-keyscan -p "$CPANEL_PORT" -H "$CPANEL_HOST" \
+            >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
           ssh-keyscan -p "$CPANEL_PORT" "$CPANEL_HOST" \
             >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
 
           {
             echo "SSH_KEY_PATH=$KEY_FILE"
+            echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK"
+            echo "SSH_AGENT_PID=$SSH_AGENT_PID"
             echo "CPANEL_HOST=$CPANEL_HOST"
             echo "CPANEL_USER=$CPANEL_USER"
             echo "CPANEL_PORT=$CPANEL_PORT"
           } >> "$GITHUB_ENV"
 
-          echo "SSH private key validated successfully."
+          echo "SSH private key validated and loaded successfully."
 
-      - name: Transfer bundle and deploy on cPanel
+      - name: Upload and deploy backend
+        shell: bash
+        env:
+          SSH_AUTH_SOCK: ${{ env.SSH_AUTH_SOCK }}
         run: |
+          set -euo pipefail
+
+          SSH_OPTS=(
+            -p "$CPANEL_PORT"
+            -i "$SSH_KEY_PATH"
+            -o BatchMode=yes
+            -o ConnectTimeout=30
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=4
+            -o TCPKeepAlive=yes
+            -o StrictHostKeyChecking=accept-new
+          )
+
           APP_DIR="/home/hostelgh/hostelghar_api"
           BACKUP_DIR="/home/hostelgh/hostelghar_api_backups"
           TMP_DIR="/home/hostelgh/tmp_api_deploy"
 
-          echo "1. Uploading deployment bundle and scripts to cPanel..."
-          ssh -p "$CPANEL_PORT" -i "$SSH_KEY_PATH" "$CPANEL_USER@$CPANEL_HOST" "mkdir -p $TMP_DIR $BACKUP_DIR $APP_DIR"
-          scp -P "$CPANEL_PORT" -i "$SSH_KEY_PATH" deploy-bundle.tar.gz "$CPANEL_USER@$CPANEL_HOST:$TMP_DIR/deploy-bundle.tar.gz"
-          scp -P "$CPANEL_PORT" -i "$SSH_KEY_PATH" scripts/remote-deploy.sh "$CPANEL_USER@$CPANEL_HOST:$TMP_DIR/remote-deploy.sh"
+          echo "1. Testing SSH connection..."
+          ssh "${SSH_OPTS[@]}" \
+            "$CPANEL_USER@$CPANEL_HOST" \
+            'echo "SSH connection successful"; whoami'
 
-          echo "2. Executing safe atomic deployment on cPanel..."
-          ssh -p "$CPANEL_PORT" -i "$SSH_KEY_PATH" "$CPANEL_USER@$CPANEL_HOST" "bash $TMP_DIR/remote-deploy.sh"
+          echo "2. Creating deployment directories..."
+          ssh "${SSH_OPTS[@]}" "$CPANEL_USER@$CPANEL_HOST" \
+            "mkdir -p '$TMP_DIR' '$BACKUP_DIR' '$APP_DIR'"
+
+          echo "3. Uploading deployment bundle..."
+          scp -P "$CPANEL_PORT" \
+            -i "$SSH_KEY_PATH" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=30 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
+            -o StrictHostKeyChecking=accept-new \
+            deploy-bundle.tar.gz \
+            "$CPANEL_USER@$CPANEL_HOST:$TMP_DIR/deploy-bundle.tar.gz"
+
+          echo "4. Uploading deployment script..."
+          scp -P "$CPANEL_PORT" \
+            -i "$SSH_KEY_PATH" \
+            -o BatchMode=yes \
+            -o ConnectTimeout=30 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
+            -o StrictHostKeyChecking=accept-new \
+            scripts/remote-deploy.sh \
+            "$CPANEL_USER@$CPANEL_HOST:$TMP_DIR/remote-deploy.sh"
+
+          echo "5. Executing deployment..."
+          ssh "${SSH_OPTS[@]}" \
+            "$CPANEL_USER@$CPANEL_HOST" \
+            "bash '$TMP_DIR/remote-deploy.sh'"
+
+          echo "Deployment command completed."
 
       - name: Verify production deployment (Health Check)
         run: |
