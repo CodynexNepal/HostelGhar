@@ -4,11 +4,15 @@ export class CreatePlatformQrs1796000000000 implements MigrationInterface {
   name = 'CreatePlatformQrs1796000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `CREATE TYPE "platform_qr_method_enum" AS ENUM ('ESEWA', 'KHALTI', 'BANK')`,
-    );
     await queryRunner.query(`
-      CREATE TABLE "platform_qrs" (
+      DO $$ BEGIN
+        CREATE TYPE "platform_qr_method_enum" AS ENUM ('ESEWA', 'KHALTI', 'BANK');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS "platform_qrs" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "method" "platform_qr_method_enum" NOT NULL,
         "qrImageUrl" text NOT NULL,

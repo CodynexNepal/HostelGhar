@@ -17,19 +17,23 @@ export class SubscriptionPaymentProofReview1793000000000 implements MigrationInt
 
     await queryRunner.query(`
       ALTER TABLE "subscriptions"
-        ADD COLUMN "paymentMethod" "payment_proof_method_enum" DEFAULT NULL,
-        ADD COLUMN "proofUrl" character varying(500) DEFAULT NULL,
-        ADD COLUMN "proofPublicId" character varying(255) DEFAULT NULL,
-        ADD COLUMN "reviewedBy" uuid DEFAULT NULL,
-        ADD COLUMN "reviewedAt" TIMESTAMPTZ DEFAULT NULL,
-        ADD COLUMN "reviewNote" text DEFAULT NULL
+        ADD COLUMN IF NOT EXISTS "paymentMethod" "payment_proof_method_enum" DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS "proofUrl" character varying(500) DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS "proofPublicId" character varying(255) DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS "reviewedBy" uuid DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS "reviewedAt" TIMESTAMPTZ DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS "reviewNote" text DEFAULT NULL
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "subscriptions"
-        ADD CONSTRAINT "FK_subscriptions_reviewed_by"
-        FOREIGN KEY ("reviewedBy") REFERENCES "users"("id")
-        ON DELETE SET NULL ON UPDATE NO ACTION
+      DO $$ BEGIN
+        ALTER TABLE "subscriptions"
+          ADD CONSTRAINT "FK_subscriptions_reviewed_by"
+          FOREIGN KEY ("reviewedBy") REFERENCES "users"("id")
+          ON DELETE SET NULL ON UPDATE NO ACTION;
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
     `);
   }
 
@@ -46,6 +50,5 @@ export class SubscriptionPaymentProofReview1793000000000 implements MigrationInt
         DROP COLUMN IF EXISTS "proofUrl",
         DROP COLUMN IF EXISTS "paymentMethod"
     `);
-    // Postgres cannot remove a value from an enum type — 'REJECTED' stays.
   }
 }

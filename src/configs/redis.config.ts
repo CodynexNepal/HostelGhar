@@ -56,6 +56,8 @@ function trackClient(client: Redis, clientName: string): void {
   });
   client.on('ready', () => {
     console.log(`[Redis:${clientName}] Ready`);
+    // Attempt to set eviction policy to noeviction for BullMQ stability
+    client.config('SET', 'maxmemory-policy', 'noeviction').catch(() => {});
   });
   client.on('error', (err) => {
     console.error(`[Redis:${clientName}] Connection Error:`, err.message);

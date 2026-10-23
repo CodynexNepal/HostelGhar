@@ -4,11 +4,15 @@ export class CreateAttendances1798000000000 implements MigrationInterface {
   name = 'CreateAttendances1798000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `CREATE TYPE "attendance_status_enum" AS ENUM ('PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'ON_LEAVE')`,
-    );
     await queryRunner.query(`
-      CREATE TABLE "attendances" (
+      DO $$ BEGIN
+        CREATE TYPE "attendance_status_enum" AS ENUM ('PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'ON_LEAVE');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS "attendances" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "hostelId" uuid NOT NULL,
         "residentId" uuid NOT NULL,
@@ -28,10 +32,10 @@ export class CreateAttendances1798000000000 implements MigrationInterface {
       )
     `);
     await queryRunner.query(
-      `CREATE INDEX "idx_attendances_hostel_date" ON "attendances" ("hostelId", "date")`,
+      `CREATE INDEX IF NOT EXISTS "idx_attendances_hostel_date" ON "attendances" ("hostelId", "date")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "idx_attendances_resident_date" ON "attendances" ("residentId", "date")`,
+      `CREATE INDEX IF NOT EXISTS "idx_attendances_resident_date" ON "attendances" ("residentId", "date")`,
     );
   }
 

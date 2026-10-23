@@ -9,9 +9,13 @@ export class CreateResidentImports1758000000000 implements MigrationInterface {
   name = 'CreateResidentImports1758000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `CREATE TYPE IF NOT EXISTS resident_import_status AS ENUM ('QUEUED','PROCESSING','COMPLETED','COMPLETED_WITH_ERRORS','FAILED')`,
-    );
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE resident_import_status AS ENUM ('QUEUED','PROCESSING','COMPLETED','COMPLETED_WITH_ERRORS','FAILED');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
     await queryRunner.query(
       `CREATE TABLE IF NOT EXISTS resident_imports (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

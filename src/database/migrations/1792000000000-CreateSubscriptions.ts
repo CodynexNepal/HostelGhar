@@ -4,17 +4,29 @@ export class CreateSubscriptions1792000000000 implements MigrationInterface {
   name = 'CreateSubscriptions1792000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `CREATE TYPE "subscription_plan_enum" AS ENUM ('FREE', 'BASIC', 'PRO', 'ENTERPRISE')`,
-    );
-    await queryRunner.query(
-      `CREATE TYPE "subscription_status_enum" AS ENUM ('ACTIVE', 'EXPIRED', 'CANCELLED', 'PENDING')`,
-    );
-    await queryRunner.query(
-      `CREATE TYPE "subscription_billing_cycle_enum" AS ENUM ('MONTHLY', 'YEARLY')`,
-    );
     await queryRunner.query(`
-      CREATE TABLE "subscriptions" (
+      DO $$ BEGIN
+        CREATE TYPE "subscription_plan_enum" AS ENUM ('FREE', 'BASIC', 'PRO', 'ENTERPRISE');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "subscription_status_enum" AS ENUM ('ACTIVE', 'EXPIRED', 'CANCELLED', 'PENDING');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "subscription_billing_cycle_enum" AS ENUM ('MONTHLY', 'YEARLY');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS "subscriptions" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "ownerId" uuid NOT NULL,
         "hostelId" uuid,
@@ -37,17 +49,19 @@ export class CreateSubscriptions1792000000000 implements MigrationInterface {
       )
     `);
     await queryRunner.query(
-      `CREATE INDEX "idx_subscriptions_owner_id" ON "subscriptions" ("ownerId")`,
+      `CREATE INDEX IF NOT EXISTS "idx_subscriptions_owner_id" ON "subscriptions" ("ownerId")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "idx_subscriptions_hostel_id" ON "subscriptions" ("hostelId")`,
-    );
-    await queryRunner.query(`CREATE INDEX "idx_subscriptions_plan" ON "subscriptions" ("plan")`);
-    await queryRunner.query(
-      `CREATE INDEX "idx_subscriptions_status" ON "subscriptions" ("status")`,
+      `CREATE INDEX IF NOT EXISTS "idx_subscriptions_hostel_id" ON "subscriptions" ("hostelId")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "idx_subscriptions_owner_active" ON "subscriptions" ("ownerId", "status")`,
+      `CREATE INDEX IF NOT EXISTS "idx_subscriptions_plan" ON "subscriptions" ("plan")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_subscriptions_status" ON "subscriptions" ("status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_subscriptions_owner_active" ON "subscriptions" ("ownerId", "status")`,
     );
   }
 

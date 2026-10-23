@@ -5,11 +5,15 @@ export class CreateBeds1727598200000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TYPE "bed_status_enum" AS ENUM ('AVAILABLE', 'OCCUPIED', 'RESERVED', 'MAINTENANCE')
+      DO $$ BEGIN
+        CREATE TYPE "bed_status_enum" AS ENUM ('AVAILABLE', 'OCCUPIED', 'RESERVED', 'MAINTENANCE');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "beds" (
+      CREATE TABLE IF NOT EXISTS "beds" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "hostelId" uuid NOT NULL,
         "roomId" uuid NOT NULL,
@@ -28,16 +32,16 @@ export class CreateBeds1727598200000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_beds_hostel_id" ON "beds" ("hostelId")
+      CREATE INDEX IF NOT EXISTS "IDX_beds_hostel_id" ON "beds" ("hostelId")
     `);
     await queryRunner.query(`
-      CREATE INDEX "IDX_beds_room_id" ON "beds" ("roomId")
+      CREATE INDEX IF NOT EXISTS "IDX_beds_room_id" ON "beds" ("roomId")
     `);
     await queryRunner.query(`
-      CREATE INDEX "IDX_beds_owner_id" ON "beds" ("ownerId")
+      CREATE INDEX IF NOT EXISTS "IDX_beds_owner_id" ON "beds" ("ownerId")
     `);
     await queryRunner.query(`
-      CREATE INDEX "IDX_beds_status" ON "beds" ("status")
+      CREATE INDEX IF NOT EXISTS "IDX_beds_status" ON "beds" ("status")
     `);
   }
 

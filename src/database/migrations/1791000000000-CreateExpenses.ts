@@ -4,14 +4,22 @@ export class CreateExpenses1791000000000 implements MigrationInterface {
   name = 'CreateExpenses1791000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `CREATE TYPE "expense_category_enum" AS ENUM ('STAFF', 'FOOD', 'MAINTENANCE', 'UTILITIES', 'ELECTRICITY', 'WATER', 'SUPPLIES', 'INTERNET', 'OTHER')`,
-    );
-    await queryRunner.query(
-      `CREATE TYPE "expense_status_enum" AS ENUM ('PENDING', 'PAID', 'CANCELLED')`,
-    );
     await queryRunner.query(`
-      CREATE TABLE "expenses" (
+      DO $$ BEGIN
+        CREATE TYPE "expense_category_enum" AS ENUM ('STAFF', 'FOOD', 'MAINTENANCE', 'UTILITIES', 'ELECTRICITY', 'WATER', 'SUPPLIES', 'INTERNET', 'OTHER');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "expense_status_enum" AS ENUM ('PENDING', 'PAID', 'CANCELLED');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS "expenses" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "hostelId" uuid NOT NULL,
         "title" character varying(150) NOT NULL,
@@ -28,13 +36,15 @@ export class CreateExpenses1791000000000 implements MigrationInterface {
         CONSTRAINT "FK_expenses_created_by" FOREIGN KEY ("createdById") REFERENCES "users"("id") ON DELETE RESTRICT
       )
     `);
-    await queryRunner.query(
-      `CREATE INDEX "idx_expenses_hostel_date" ON "expenses" ("hostelId", "expenseDate")`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "idx_expenses_hostel_category" ON "expenses" ("hostelId", "category")`,
-    );
-    await queryRunner.query(`CREATE INDEX "idx_expenses_status" ON "expenses" ("status")`);
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "idx_expenses_hostel_date" ON "expenses" ("hostelId", "expenseDate")
+    `);
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "idx_expenses_hostel_category" ON "expenses" ("hostelId", "category")
+    `);
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "idx_expenses_status" ON "expenses" ("status")
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

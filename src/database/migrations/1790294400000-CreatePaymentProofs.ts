@@ -5,15 +5,23 @@ export class CreatePaymentProofs1790294400000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TYPE "payment_proof_method_enum" AS ENUM ('ESEWA', 'KHALTI', 'BANK', 'CASH')
+      DO $$ BEGIN
+        CREATE TYPE "payment_proof_method_enum" AS ENUM ('ESEWA', 'KHALTI', 'BANK', 'CASH');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "payment_proof_status_enum" AS ENUM ('PENDING', 'APPROVED', 'REJECTED')
+      DO $$ BEGIN
+        CREATE TYPE "payment_proof_status_enum" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "payment_proofs" (
+      CREATE TABLE IF NOT EXISTS "payment_proofs" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "feeId" uuid NOT NULL,
         "hostelId" uuid NOT NULL,
@@ -39,13 +47,13 @@ export class CreatePaymentProofs1790294400000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "idx_payment_proofs_hostel_status" ON "payment_proofs" ("hostelId", "status")
+      CREATE INDEX IF NOT EXISTS "idx_payment_proofs_hostel_status" ON "payment_proofs" ("hostelId", "status")
     `);
     await queryRunner.query(`
-      CREATE INDEX "idx_payment_proofs_resident" ON "payment_proofs" ("residentId")
+      CREATE INDEX IF NOT EXISTS "idx_payment_proofs_resident" ON "payment_proofs" ("residentId")
     `);
     await queryRunner.query(`
-      CREATE INDEX "idx_payment_proofs_fee" ON "payment_proofs" ("feeId")
+      CREATE INDEX IF NOT EXISTS "idx_payment_proofs_fee" ON "payment_proofs" ("feeId")
     `);
   }
 

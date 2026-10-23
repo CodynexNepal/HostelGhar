@@ -4,17 +4,29 @@ export class CreateStaff1797000000000 implements MigrationInterface {
   name = 'CreateStaff1797000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `CREATE TYPE "staff_role_enum" AS ENUM ('WARDEN', 'MANAGER', 'COOK', 'CLEANER', 'GUARD', 'SECURITY_GUARD', 'ACCOUNTANT', 'RECEPTIONIST', 'MAINTENANCE', 'DRIVER', 'OTHER')`,
-    );
-    await queryRunner.query(
-      `CREATE TYPE "staff_shift_enum" AS ENUM ('DAY', 'NIGHT', 'MORNING', 'EVENING', 'FULL_DAY')`,
-    );
-    await queryRunner.query(
-      `CREATE TYPE "staff_status_enum" AS ENUM ('ACTIVE', 'INACTIVE', 'ON_LEAVE', 'TERMINATED')`,
-    );
     await queryRunner.query(`
-      CREATE TABLE "staff" (
+      DO $$ BEGIN
+        CREATE TYPE "staff_role_enum" AS ENUM ('WARDEN', 'MANAGER', 'COOK', 'CLEANER', 'GUARD', 'SECURITY_GUARD', 'ACCOUNTANT', 'RECEPTIONIST', 'MAINTENANCE', 'DRIVER', 'OTHER');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "staff_shift_enum" AS ENUM ('DAY', 'NIGHT', 'MORNING', 'EVENING', 'FULL_DAY');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "staff_status_enum" AS ENUM ('ACTIVE', 'INACTIVE', 'ON_LEAVE', 'TERMINATED');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS "staff" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "hostelId" uuid NOT NULL,
         "fullName" character varying(120) NOT NULL,
@@ -35,11 +47,15 @@ export class CreateStaff1797000000000 implements MigrationInterface {
         CONSTRAINT "FK_staff_created_by" FOREIGN KEY ("createdById") REFERENCES "users"("id") ON DELETE RESTRICT
       )
     `);
-    await queryRunner.query(`CREATE INDEX "idx_staff_hostel" ON "staff" ("hostelId")`);
     await queryRunner.query(
-      `CREATE INDEX "idx_staff_hostel_status" ON "staff" ("hostelId", "status")`,
+      `CREATE INDEX IF NOT EXISTS "idx_staff_hostel" ON "staff" ("hostelId")`,
     );
-    await queryRunner.query(`CREATE INDEX "idx_staff_hostel_role" ON "staff" ("hostelId", "role")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_staff_hostel_status" ON "staff" ("hostelId", "status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_staff_hostel_role" ON "staff" ("hostelId", "role")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
