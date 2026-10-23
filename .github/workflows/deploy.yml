@@ -111,24 +111,26 @@ jobs:
           CPANEL_HOST: ${{ secrets.CPANEL_HOST || vars.CPANEL_HOST || 'server2.bisuphost.com' }}
           CPANEL_USER: ${{ secrets.CPANEL_USER || vars.CPANEL_USER || 'hostelgh' }}
           CPANEL_PORT: ${{ secrets.CPANEL_PORT || vars.CPANEL_PORT || '22' }}
-          SSH_KEY: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY }}
+          SSH_KEY: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY || secrets.DEPLOY_KEY || secrets.PRIVATE_KEY || secrets.CPANEL_KEY }}
         run: |
           ERRORS=0
           if [ -z "$CPANEL_HOST" ]; then
-            echo "::error::Required secret CPANEL_HOST is not configured in repository secrets."
+            echo "::error::Required host is not configured."
             ERRORS=$((ERRORS + 1))
           fi
           if [ -z "$CPANEL_USER" ]; then
-            echo "::error::Required secret CPANEL_USER is not configured in repository secrets."
+            echo "::error::Required user is not configured."
             ERRORS=$((ERRORS + 1))
           fi
           if [ -z "$SSH_KEY" ]; then
-            echo "::error::Required secret CPANEL_SSH_KEY (or HOSTELGHAR_API / HOSTELGHAR_FRONTEND) is not configured in repository secrets."
+            echo "::error::No SSH private key secret found."
+            echo "Please configure the secret in repository: Settings -> Secrets and variables -> Actions"
+            echo "Secret Name: CPANEL_SSH_KEY"
+            echo "Direct link: https://github.com/${{ github.repository }}/settings/secrets/actions/new"
             ERRORS=$((ERRORS + 1))
           fi
 
           if [ $ERRORS -gt 0 ]; then
-            echo "Please configure the missing GitHub Secrets under: Settings -> Secrets and variables -> Actions"
             exit 1
           fi
 

@@ -28,3 +28,4 @@ mkdir -p "$APP_DIR/tmp"
 touch "$APP_DIR/tmp/restart.txt"
 
 echo "=== Backend Rollback Successfully Completed ==="
+
