@@ -106,46 +106,38 @@ jobs:
         with:
           name: backend-deploy-bundle
 
-      - name: Validate secrets & configure SSH
+      - name: Configure SSH key
         env:
           CPANEL_HOST: ${{ secrets.CPANEL_HOST || vars.CPANEL_HOST || 'server2.bisuphost.com' }}
           CPANEL_USER: ${{ secrets.CPANEL_USER || vars.CPANEL_USER || 'hostelgh' }}
           CPANEL_PORT: ${{ secrets.CPANEL_PORT || vars.CPANEL_PORT || '22' }}
-          SSH_KEY: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY || secrets.DEPLOY_KEY || secrets.PRIVATE_KEY || secrets.CPANEL_KEY }}
+          SSH_KEY_B64: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY || secrets.DEPLOY_KEY || secrets.PRIVATE_KEY || secrets.CPANEL_KEY }}
+        shell: bash
         run: |
-          ERRORS=0
-          if [ -z "$CPANEL_HOST" ]; then
-            echo "::error::Required host is not configured."
-            ERRORS=$((ERRORS + 1))
-          fi
-          if [ -z "$CPANEL_USER" ]; then
-            echo "::error::Required user is not configured."
-            ERRORS=$((ERRORS + 1))
-          fi
-          if [ -z "$SSH_KEY" ]; then
-            echo "::error::No SSH private key secret found."
-            echo "Please configure the secret in repository: Settings -> Secrets and variables -> Actions"
-            echo "Secret Name: CPANEL_SSH_KEY"
-            echo "Direct link: https://github.com/${{ github.repository }}/settings/secrets/actions/new"
-            ERRORS=$((ERRORS + 1))
-          fi
-
-          if [ $ERRORS -gt 0 ]; then
+          set -euo pipefail
+          if [ -z "$SSH_KEY_B64" ]; then
+            echo "::error::No SSH key found in secrets (checked CPANEL_SSH_KEY, HOSTELGHAR_API, HOSTELGHAR_BACKEND, HOSTELGHAR_FRONTEND, SSH_PRIVATE_KEY)."
             exit 1
           fi
 
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          SSH_KEY_FILE="$RUNNER_TEMP/cpanel_deploy_key"
-          echo "$SSH_KEY" | tr -d '\r' > "$SSH_KEY_FILE"
-          chmod 600 "$SSH_KEY_FILE"
+          # Decode base64 if encoded, or write raw key
+          if printf '%s' "$SSH_KEY_B64" | base64 --decode > ~/.ssh/cpanel_deploy_key 2>/dev/null && ssh-keygen -y -f ~/.ssh/cpanel_deploy_key > /dev/null 2>&1; then
+            echo "SSH key decoded from base64 successfully."
+          else
+            printf '%s\n' "$SSH_KEY_B64" | tr -d '\r' > ~/.ssh/cpanel_deploy_key
+          fi
+
+          chmod 600 ~/.ssh/cpanel_deploy_key
+          ssh-keygen -y -f ~/.ssh/cpanel_deploy_key > /dev/null
 
           echo "Scanning SSH host keys for $CPANEL_HOST on port $CPANEL_PORT..."
           ssh-keyscan -p "$CPANEL_PORT" -H "$CPANEL_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          # Export key path for subsequent steps
-          echo "SSH_KEY_PATH=$SSH_KEY_FILE" >> $GITHUB_ENV
+          # Export key path and connection variables for subsequent steps
+          echo "SSH_KEY_PATH=$HOME/.ssh/cpanel_deploy_key" >> $GITHUB_ENV
           echo "CPANEL_PORT=$CPANEL_PORT" >> $GITHUB_ENV
           echo "CPANEL_HOST=$CPANEL_HOST" >> $GITHUB_ENV
           echo "CPANEL_USER=$CPANEL_USER" >> $GITHUB_ENV
