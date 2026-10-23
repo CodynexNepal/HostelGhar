@@ -17,8 +17,11 @@ echo "Restoring from $LATEST_BACKUP into $APP_DIR..."
 tar -xzf "$LATEST_BACKUP" -C "$APP_DIR"
 
 if [ -f "$HOME/nodevenv/hostelghar_api/20/bin/activate" ]; then
+  set +u
+  export CL_VIRTUAL_ENV="${CL_VIRTUAL_ENV:-}"
   # shellcheck source=/dev/null
   source "$HOME/nodevenv/hostelghar_api/20/bin/activate"
+  set -u
 fi
 
 cd "$APP_DIR"

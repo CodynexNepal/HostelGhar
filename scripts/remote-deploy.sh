@@ -11,8 +11,11 @@ echo "=== Starting Hostel Ghar Backend Deployment on cPanel ==="
 
 # 1. Activate cPanel Node.js 20 virtual environment
 if [ -f "$HOME/nodevenv/hostelghar_api/20/bin/activate" ]; then
+  set +u
+  export CL_VIRTUAL_ENV="${CL_VIRTUAL_ENV:-}"
   # shellcheck source=/dev/null
   source "$HOME/nodevenv/hostelghar_api/20/bin/activate"
+  set -u
 fi
 
 echo "Node version: $(node -v)"
