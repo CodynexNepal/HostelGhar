@@ -117,7 +117,7 @@ jobs:
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
 
-          KEY_FILE="$RUNNER_TEMP/cpanel_deploy_key"
+          KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
 
@@ -135,7 +135,12 @@ jobs:
           chmod 700 "$ASKPASS_HELPER"
 
           DISPLAY=dummy SSH_ASKPASS="$ASKPASS_HELPER" SSH_ASKPASS_REQUIRE=force ssh-add "$KEY_FILE"
-          rm -f "$ASKPASS_HELPER" "$KEY_FILE"
+          rm -f "$ASKPASS_HELPER"
+
+          # Unlock the local key file on the runner so -i also works directly
+          if [ -n "$SSH_PASSPHRASE" ]; then
+            ssh-keygen -p -P "$SSH_PASSPHRASE" -N "" -f "$KEY_FILE" >/dev/null 2>&1 || true
+          fi
 
           echo "Loaded identities in ssh-agent:"
           ssh-add -l -E sha256
@@ -146,6 +151,7 @@ jobs:
           chmod 644 "$HOME/.ssh/known_hosts"
 
           {
+            echo "SSH_KEY_PATH=$KEY_FILE"
             echo "CPANEL_HOST=$CPANEL_HOST"
             echo "CPANEL_USER=$CPANEL_USER"
             echo "CPANEL_PORT=$CPANEL_PORT"
@@ -163,8 +169,8 @@ jobs:
           SSH_OPTS=(
             -T
             -p "$CPANEL_PORT"
+            -i "$SSH_KEY_PATH"
             -o BatchMode=yes
-            -o IdentitiesOnly=yes
             -o ConnectTimeout=20
             -o ServerAliveInterval=15
             -o ServerAliveCountMax=4
@@ -185,8 +191,8 @@ jobs:
           SSH_OPTS=(
             -T
             -p "$CPANEL_PORT"
+            -i "$SSH_KEY_PATH"
             -o BatchMode=yes
-            -o IdentitiesOnly=yes
             -o ConnectTimeout=30
             -o ServerAliveInterval=15
             -o ServerAliveCountMax=4
@@ -196,8 +202,8 @@ jobs:
 
           SCP_OPTS=(
             -P "$CPANEL_PORT"
+            -i "$SSH_KEY_PATH"
             -o BatchMode=yes
-            -o IdentitiesOnly=yes
             -o ConnectTimeout=30
             -o ServerAliveInterval=15
             -o ServerAliveCountMax=4
@@ -251,8 +257,8 @@ jobs:
             SSH_OPTS=(
               -T
               -p "$CPANEL_PORT"
+              -i "$SSH_KEY_PATH"
               -o BatchMode=yes
-              -o IdentitiesOnly=yes
               -o ConnectTimeout=20
               -o StrictHostKeyChecking=accept-new
             )
@@ -265,4 +271,7 @@ jobs:
         run: |
           if [ -n "${SSH_AGENT_PID:-}" ]; then
             ssh-agent -k || true
+          fi
+          if [ -n "${SSH_KEY_PATH:-}" ] && [ -f "$SSH_KEY_PATH" ]; then
+            shred -u "$SSH_KEY_PATH" 2>/dev/null || rm -f "$SSH_KEY_PATH"
           fi

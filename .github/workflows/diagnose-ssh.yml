@@ -29,13 +29,14 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          KEY_FILE="$RUNNER_TEMP/diag_key"
+          KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
 
           eval "$(ssh-agent -s)"
           echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
           echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+          echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
 
           ASKPASS="$RUNNER_TEMP/askpass.sh"
           cat << 'EOF' > "$ASKPASS"
@@ -45,7 +46,11 @@ jobs:
           chmod 700 "$ASKPASS"
 
           DISPLAY=dummy SSH_ASKPASS="$ASKPASS" SSH_ASKPASS_REQUIRE=force ssh-add "$KEY_FILE"
-          rm -f "$ASKPASS" "$KEY_FILE"
+          rm -f "$ASKPASS"
+
+          if [ -n "$SSH_PASSPHRASE" ]; then
+            ssh-keygen -p -P "$SSH_PASSPHRASE" -N "" -f "$KEY_FILE" >/dev/null 2>&1 || true
+          fi
 
           echo "=== Loaded Identities ==="
           ssh-add -l -E sha256
@@ -56,6 +61,7 @@ jobs:
           CPANEL_USER: ${{ secrets.CPANEL_USER || 'hostelgh' }}
           CPANEL_PORT: ${{ secrets.CPANEL_PORT || '22' }}
           SSH_AUTH_SOCK: ${{ env.SSH_AUTH_SOCK }}
+          SSH_KEY_PATH: ${{ env.SSH_KEY_PATH }}
         run: |
           set -u
 
@@ -66,8 +72,8 @@ jobs:
           echo "=== Executing Verbose SSH Test ==="
           ssh -vvv -T \
             -p "$CPANEL_PORT" \
+            -i "$SSH_KEY_PATH" \
             -o BatchMode=yes \
-            -o IdentitiesOnly=yes \
             -o ConnectTimeout=20 \
             -o StrictHostKeyChecking=accept-new \
             "$CPANEL_USER@$CPANEL_HOST" \
@@ -82,4 +88,7 @@ jobs:
         run: |
           if [ -n "${SSH_AGENT_PID:-}" ]; then
             ssh-agent -k || true
+          fi
+          if [ -n "${SSH_KEY_PATH:-}" ] && [ -f "$SSH_KEY_PATH" ]; then
+            shred -u "$SSH_KEY_PATH" 2>/dev/null || rm -f "$SSH_KEY_PATH"
           fi
