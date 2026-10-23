@@ -110,6 +110,7 @@ jobs:
         shell: bash
         env:
           SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY || secrets.DEPLOY_KEY || secrets.PRIVATE_KEY || secrets.CPANEL_KEY }}
+          SSH_PASSPHRASE: ${{ secrets.CPANEL_SSH_PASSPHRASE || secrets.SSH_PASSPHRASE || '' }}
           CPANEL_HOST: ${{ secrets.CPANEL_HOST || vars.CPANEL_HOST || 'server2.bisuphost.com' }}
           CPANEL_USER: ${{ secrets.CPANEL_USER || vars.CPANEL_USER || 'hostelgh' }}
           CPANEL_PORT: ${{ secrets.CPANEL_PORT || vars.CPANEL_PORT || '22' }}
@@ -119,13 +120,16 @@ jobs:
           chmod 700 "$HOME/.ssh"
 
           KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
-          printf '%s\n' "$SSH_PRIVATE_KEY" |
-            sed 's/\r$//' > "$KEY_FILE"
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
 
-          if ! ssh-keygen -y -f "$KEY_FILE" >/dev/null; then
-            echo "::error::Secret is not a valid readable private key. Check its header, footer, and complete contents."
+          if ! ssh-keygen -y -P "$SSH_PASSPHRASE" -f "$KEY_FILE" >/dev/null; then
+            echo "::error::Private key or passphrase is incorrect."
             exit 1
+          fi
+
+          if [ -n "$SSH_PASSPHRASE" ]; then
+            ssh-keygen -p -P "$SSH_PASSPHRASE" -N "" -f "$KEY_FILE" >/dev/null 2>&1 || true
           fi
 
           ssh-keyscan -p "$CPANEL_PORT" "$CPANEL_HOST" \
