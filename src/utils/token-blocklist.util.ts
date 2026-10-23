@@ -47,6 +47,7 @@ export const getTokenIssuedAtMs = (token: string): number => {
 export const blocklistToken = async (token: string, ttl: number): Promise<boolean> => {
   try {
     if (!token || ttl <= 0) return false;
+    if (redisClient.status !== 'ready') return false;
     await redisClient.set(bKey(hashToken(token)), '1', 'EX', Math.ceil(ttl));
     return true;
   } catch (e: any) {
@@ -58,6 +59,7 @@ export const blocklistToken = async (token: string, ttl: number): Promise<boolea
 export const isTokenBlocklisted = async (token: string): Promise<boolean> => {
   try {
     if (!token) return false;
+    if (redisClient.status !== 'ready') return false;
     return (await redisClient.get(bKey(hashToken(token)))) === '1';
   } catch (e: any) {
     console.warn(`[AuthBlocklist] read failed (fail-open): ${e?.message ?? e}`);
@@ -68,6 +70,7 @@ export const isTokenBlocklisted = async (token: string): Promise<boolean> => {
 export const markUserLoggedOutAll = async (userId: string, ttl: number): Promise<void> => {
   try {
     if (!userId) return;
+    if (redisClient.status !== 'ready') return;
     await redisClient.set(rKey(userId), String(Date.now()), 'EX', Math.ceil(ttl));
   } catch (e: any) {
     console.warn(`[AuthBlocklist] logout-all failed: ${e?.message ?? e}`);
@@ -77,6 +80,7 @@ export const markUserLoggedOutAll = async (userId: string, ttl: number): Promise
 export const getUserRevokedBefore = async (userId: string): Promise<number> => {
   try {
     if (!userId) return 0;
+    if (redisClient.status !== 'ready') return 0;
     const v = Number(await redisClient.get(rKey(userId)));
     return Number.isFinite(v) && v > 0 ? v : 0;
   } catch (e: any) {

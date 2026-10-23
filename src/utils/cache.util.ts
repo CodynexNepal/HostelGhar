@@ -98,7 +98,7 @@ export class MultiLevelCacheService {
     }
 
     // ── Check Level 2: Distributed Redis Cache ────────────────────────────────
-    if (!options.skipL2) {
+    if (!options.skipL2 && redisClient.status === 'ready') {
       try {
         const cached = await redisClient.get(key);
         if (cached) {
@@ -146,7 +146,7 @@ export class MultiLevelCacheService {
     }
 
     // 2. Write to Level 2 Distributed Redis (Brotli-compressed via `brotli` npm)
-    if (!opts.skipL2) {
+    if (!opts.skipL2 && redisClient.status === 'ready') {
       try {
         // L1 keeps the live object (no decompress cost on the hot path); L2
         // stores `br1:` when it saves bytes — less Redis memory + bandwidth.
@@ -210,10 +210,12 @@ export class MultiLevelCacheService {
    */
   public async invalidate(key: string): Promise<void> {
     this.l1Cache.delete(key);
-    try {
-      await redisClient.del(key);
-    } catch (err: any) {
-      console.warn(`[MultiLevelCache] Invalidation error for key "${key}":`, err.message);
+    if (redisClient.status === 'ready') {
+      try {
+        await redisClient.del(key);
+      } catch (err: any) {
+        console.warn(`[MultiLevelCache] Invalidation error for key "${key}":`, err.message);
+      }
     }
   }
 
@@ -225,22 +227,24 @@ export class MultiLevelCacheService {
     const l1Removed = this.l1Cache.deletePattern(`cache:${pattern}*`);
 
     // 2. Invalidate L2 Distributed Redis keys matching pattern
-    try {
-      const keys: string[] = [];
-      let cursor = '0';
-      do {
-        const result = await redisClient.scan(cursor, 'MATCH', `cache:${pattern}*`, 'COUNT', 100);
-        cursor = result[0];
-        keys.push(...result[1]);
-      } while (cursor !== '0');
-      if (keys.length > 0) {
-        await redisClient.del(...keys);
-        console.log(
-          `[MultiLevelCache] Invalidated pattern "cache:${pattern}*" (L1: ${l1Removed}, L2: ${keys.length})`,
-        );
+    if (redisClient.status === 'ready') {
+      try {
+        const keys: string[] = [];
+        let cursor = '0';
+        do {
+          const result = await redisClient.scan(cursor, 'MATCH', `cache:${pattern}*`, 'COUNT', 100);
+          cursor = result[0];
+          keys.push(...result[1]);
+        } while (cursor !== '0');
+        if (keys.length > 0) {
+          await redisClient.del(...keys);
+          console.log(
+            `[MultiLevelCache] Invalidated pattern "cache:${pattern}*" (L1: ${l1Removed}, L2: ${keys.length})`,
+          );
+        }
+      } catch (err: any) {
+        console.warn(`[MultiLevelCache] Pattern invalidation error for "${pattern}":`, err.message);
       }
-    } catch (err: any) {
-      console.warn(`[MultiLevelCache] Pattern invalidation error for "${pattern}":`, err.message);
     }
   }
 
@@ -261,21 +265,23 @@ export class MultiLevelCacheService {
       console.warn(`[MultiLevelCache] L1 substring invalidate failed:`, err.message);
     }
     let l2Removed = 0;
-    try {
-      const keys: string[] = [];
-      let cursor = '0';
-      do {
-        const result = await redisClient.scan(cursor, 'MATCH', 'cache:*', 'COUNT', 200);
-        cursor = result[0];
-        for (const k of result[1]) if (k.includes(substring)) keys.push(k);
-        if (keys.length >= 2000) break;
-      } while (cursor !== '0');
-      for (let i = 0; i < keys.length; i += 200) {
-        await redisClient.del(...keys.slice(i, i + 200));
+    if (redisClient.status === 'ready') {
+      try {
+        const keys: string[] = [];
+        let cursor = '0';
+        do {
+          const result = await redisClient.scan(cursor, 'MATCH', 'cache:*', 'COUNT', 200);
+          cursor = result[0];
+          for (const k of result[1]) if (k.includes(substring)) keys.push(k);
+          if (keys.length >= 2000) break;
+        } while (cursor !== '0');
+        for (let i = 0; i < keys.length; i += 200) {
+          await redisClient.del(...keys.slice(i, i + 200));
+        }
+        l2Removed = keys.length;
+      } catch (err: any) {
+        console.warn(`[MultiLevelCache] L2 substring invalidate failed:`, err.message);
       }
-      l2Removed = keys.length;
-    } catch (err: any) {
-      console.warn(`[MultiLevelCache] L2 substring invalidate failed:`, err.message);
     }
     return l1Removed + l2Removed;
   }

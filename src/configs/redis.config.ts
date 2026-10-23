@@ -9,14 +9,19 @@ import Redis, { RedisOptions } from 'ioredis';
 import { dotEnvConfig } from './envConfig';
 
 const redisUrl = dotEnvConfig.REDIS_URL || 'redis://127.0.0.1:6379';
+const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
 
 export const redisOptions: RedisOptions = {
-  maxRetriesPerRequest: null,
+  maxRetriesPerRequest: isTest ? 1 : null,
   enableReadyCheck: false,
-  enableOfflineQueue: true,
+  enableOfflineQueue: !isTest,
+  lazyConnect: isTest,
   keepAlive: 10000,
-  connectTimeout: 10000,
+  connectTimeout: isTest ? 1000 : 10000,
   retryStrategy: (times: number) => {
+    if (isTest) {
+      return null;
+    }
     if (times > 20) {
       console.error('[Redis] Giving up reconnection after 20 attempts.');
       return null;
@@ -28,6 +33,9 @@ export const redisOptions: RedisOptions = {
     return delay;
   },
   reconnectOnError: (err) => {
+    if (isTest) {
+      return false;
+    }
     if (err.message.includes('max number of clients')) {
       console.error('[Redis] Server full (max clients). Not retrying aggressively.');
       return false;
