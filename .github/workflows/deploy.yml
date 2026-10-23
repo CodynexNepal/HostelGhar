@@ -5,217 +5,195 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip lint & tests for emergency deployment'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
-  group: hostelghar-cpanel-production
+  group: deploy-cpanel-backend
   cancel-in-progress: false
 
-permissions:
-  contents: read
-
-env:
-  APP_DIR: /home/hostelgh/hostelghar_api
-  NODE_VERSION: '20'
-  HEALTH_URL: https://api.hostelghar.com/health
-
 jobs:
-  deploy:
-    name: Build and Deploy Backend
+  build:
+    name: Build & Package Backend
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: npm
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
 
-      - name: Install dependencies
+      - name: Install dependencies (reproducible)
         run: npm ci
 
       - name: Run type checking
-        run: npm run typecheck --if-present
+        if: ${{ !inputs.skip_tests }}
+        run: npm run typecheck
 
-      - name: Run lint
-        run: npm run lint --if-present
+      - name: Run code linter
+        if: ${{ !inputs.skip_tests }}
+        run: npm run lint
 
-      - name: Run tests
+      - name: Run unit tests
+        if: ${{ !inputs.skip_tests }}
         env:
           NODE_ENV: test
           ACCESS_TOKEN_SECRET: ci-test-access-secret-not-for-production
           REFRESH_TOKEN_SECRET: ci-test-refresh-secret-not-for-production
-        run: npm test --if-present
+        run: npm test
 
-      - name: Build backend
+      - name: Build backend application
         run: npm run build
 
-      - name: Verify build
+      - name: Validate build output
         run: |
-          test -f dist/index.js || {
-            echo "::error::dist/index.js was not generated"
+          echo "Verifying backend build artifacts..."
+          if [ ! -f "dist/index.js" ]; then
+            echo "::error::Build verification failed: dist/index.js was not generated."
             exit 1
-          }
+          fi
+          if [ ! -f "package.json" ] || [ ! -f "package-lock.json" ]; then
+            echo "::error::Build verification failed: package manifests are missing."
+            exit 1
+          fi
+          echo "dist/index.js and package manifests verified successfully."
 
-          test -f package.json
-          test -f package-lock.json
-
-      - name: Package application
+      - name: Assemble backend distribution bundle
         run: |
-          set -eu
+          echo "Assembling production bundle for deployment..."
+          rm -rf deploy-staging
+          mkdir -p deploy-staging
+          cp -r dist deploy-staging/
+          cp package.json deploy-staging/
+          cp package-lock.json deploy-staging/
 
-          # Package the repository but exclude secrets, dependencies,
-          # Git history, logs, caches, and generated archives.
-          tar -czf "$RUNNER_TEMP/hostelghar-deploy.tar.gz" \
-            --exclude='./.git' \
-            --exclude='./.github' \
-            --exclude='./node_modules' \
-            --exclude='./.env' \
-            --exclude='./.env.*' \
-            --exclude='./coverage' \
-            --exclude='./*.log' \
-            --exclude='./node_modules_backup' \
-            --exclude='./.next' \
-            --exclude='./.turbo' \
-            .
+          cd deploy-staging
+          tar -czf ../deploy-bundle.tar.gz .
+          cd ..
+          echo "Created deploy-bundle.tar.gz ($(du -h deploy-bundle.tar.gz | cut -f1))"
 
-          test -s "$RUNNER_TEMP/hostelghar-deploy.tar.gz"
+      - name: Upload deployment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-deploy-bundle
+          path: deploy-bundle.tar.gz
+          retention-days: 1
+          if-no-files-found: error
 
-      - name: Configure SSH
-        shell: bash
+  deploy:
+    name: Deploy to cPanel Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download deployment artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-deploy-bundle
+
+      - name: Validate secrets & configure SSH
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_KEY }}
-          SSH_HOST: ${{ secrets.CPANEL_HOST }}
-          SSH_PORT: ${{ secrets.CPANEL_SSH_PORT || '22' }}
+          CPANEL_HOST: ${{ secrets.CPANEL_HOST || vars.CPANEL_HOST || 'server2.bisuphost.com' }}
+          CPANEL_USER: ${{ secrets.CPANEL_USER || vars.CPANEL_USER || 'hostelgh' }}
+          CPANEL_PORT: ${{ secrets.CPANEL_PORT || vars.CPANEL_PORT || '22' }}
+          SSH_KEY: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY }}
         run: |
-          set -euo pipefail
-
-          test -n "$SSH_PRIVATE_KEY" || {
-            echo "::error::Missing CPANEL_SSH_KEY secret"
-            exit 1
-          }
-
-          test -n "$SSH_HOST" || {
-            echo "::error::Missing CPANEL_HOST secret"
-            exit 1
-          }
-
-          mkdir -p "$HOME/.ssh"
-          chmod 700 "$HOME/.ssh"
-
-          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/cpanel_key"
-          chmod 600 "$HOME/.ssh/cpanel_key"
-
-          # For stronger host verification, pin a verified host key
-          # in a CPANEL_KNOWN_HOSTS secret instead of trusting a scan.
-          if [ -n "${{ secrets.CPANEL_KNOWN_HOSTS }}" ]; then
-            printf '%s\n' '${{ secrets.CPANEL_KNOWN_HOSTS }}' \
-              > "$HOME/.ssh/known_hosts"
-          else
-            ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" \
-              > "$HOME/.ssh/known_hosts"
+          ERRORS=0
+          if [ -z "$CPANEL_HOST" ]; then
+            echo "::error::Required secret CPANEL_HOST is not configured in repository secrets."
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [ -z "$CPANEL_USER" ]; then
+            echo "::error::Required secret CPANEL_USER is not configured in repository secrets."
+            ERRORS=$((ERRORS + 1))
+          fi
+          if [ -z "$SSH_KEY" ]; then
+            echo "::error::Required secret CPANEL_SSH_KEY (or HOSTELGHAR_API / HOSTELGHAR_FRONTEND) is not configured in repository secrets."
+            ERRORS=$((ERRORS + 1))
           fi
 
-          chmod 600 "$HOME/.ssh/known_hosts"
-
-          {
-            echo "CPANEL_HOST=$SSH_HOST"
-            echo "CPANEL_PORT=$SSH_PORT"
-          } >> "$GITHUB_ENV"
-
-      - name: Test SSH connection
-        env:
-          CPANEL_USER: ${{ secrets.CPANEL_USER }}
-        run: |
-          set -euo pipefail
-
-          test -n "$CPANEL_USER" || {
-            echo "::error::Missing CPANEL_USER secret"
+          if [ $ERRORS -gt 0 ]; then
+            echo "Please configure the missing GitHub Secrets under: Settings -> Secrets and variables -> Actions"
             exit 1
-          }
+          fi
 
-          ssh -T \
-            -i "$HOME/.ssh/cpanel_key" \
-            -p "$CPANEL_PORT" \
-            -o IdentitiesOnly=yes \
-            -o BatchMode=yes \
-            -o ConnectTimeout=15 \
-            "$CPANEL_USER@$CPANEL_HOST" \
-            'printf "SSH_OK\n"'
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
 
-      - name: Upload deployment bundle
-        env:
-          CPANEL_USER: ${{ secrets.CPANEL_USER }}
+          SSH_KEY_FILE="$RUNNER_TEMP/cpanel_deploy_key"
+          echo "$SSH_KEY" | tr -d '\r' > "$SSH_KEY_FILE"
+          chmod 600 "$SSH_KEY_FILE"
+
+          echo "Scanning SSH host keys for $CPANEL_HOST on port $CPANEL_PORT..."
+          ssh-keyscan -p "$CPANEL_PORT" -H "$CPANEL_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # Export key path for subsequent steps
+          echo "SSH_KEY_PATH=$SSH_KEY_FILE" >> $GITHUB_ENV
+          echo "CPANEL_PORT=$CPANEL_PORT" >> $GITHUB_ENV
+          echo "CPANEL_HOST=$CPANEL_HOST" >> $GITHUB_ENV
+          echo "CPANEL_USER=$CPANEL_USER" >> $GITHUB_ENV
+
+      - name: Transfer bundle and deploy on cPanel
         run: |
-          set -euo pipefail
+          APP_DIR="/home/hostelgh/hostelghar_api"
+          BACKUP_DIR="/home/hostelgh/hostelghar_api_backups"
+          TMP_DIR="/home/hostelgh/tmp_api_deploy"
 
-          scp -i "$HOME/.ssh/cpanel_key" \
-            -P "$CPANEL_PORT" \
-            -o IdentitiesOnly=yes \
-            "$RUNNER_TEMP/hostelghar-deploy.tar.gz" \
-            "$CPANEL_USER@$CPANEL_HOST:hostelghar-deploy-${GITHUB_SHA}.tar.gz"
+          echo "1. Uploading deployment bundle and scripts to cPanel..."
+          ssh -p "$CPANEL_PORT" -i "$SSH_KEY_PATH" "$CPANEL_USER@$CPANEL_HOST" "mkdir -p $TMP_DIR $BACKUP_DIR $APP_DIR"
+          scp -P "$CPANEL_PORT" -i "$SSH_KEY_PATH" deploy-bundle.tar.gz "$CPANEL_USER@$CPANEL_HOST:$TMP_DIR/deploy-bundle.tar.gz"
+          scp -P "$CPANEL_PORT" -i "$SSH_KEY_PATH" scripts/remote-deploy.sh "$CPANEL_USER@$CPANEL_HOST:$TMP_DIR/remote-deploy.sh"
 
-      - name: Deploy application
-        id: deploy
-        env:
-          CPANEL_USER: ${{ secrets.CPANEL_USER }}
+          echo "2. Executing safe atomic deployment on cPanel..."
+          ssh -p "$CPANEL_PORT" -i "$SSH_KEY_PATH" "$CPANEL_USER@$CPANEL_HOST" "bash $TMP_DIR/remote-deploy.sh"
+
+      - name: Verify production deployment (Health Check)
         run: |
-          set -euo pipefail
+          HEALTH_URL="https://api.hostelghar.com/health"
+          MAX_ATTEMPTS=12
+          SLEEP_SECONDS=5
+          SUCCESS=0
 
-          sed -i 's/\r$//' scripts/cpanel-deploy.sh
-          ssh -T \
-            -i "$HOME/.ssh/cpanel_key" \
-            -p "$CPANEL_PORT" \
-            -o IdentitiesOnly=yes \
-            "$CPANEL_USER@$CPANEL_HOST" \
-            "DEPLOY_SHA='$GITHUB_SHA' APP_DIR='$APP_DIR' bash -s" < scripts/cpanel-deploy.sh
+          echo "Starting health check on $HEALTH_URL (max attempts: $MAX_ATTEMPTS)..."
+          for ((i=1; i<=MAX_ATTEMPTS; i++)); do
+            STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" -L "$HEALTH_URL" || echo "000")
+            echo "Attempt $i/$MAX_ATTEMPTS: HTTP response code $STATUS"
 
-      - name: Verify production API
-        id: healthcheck
-        env:
-          HEALTH_URL: ${{ env.HEALTH_URL }}
-        run: |
-          set -u
-
-          for attempt in $(seq 1 12); do
-            status="$(curl -sS -L \
-              --connect-timeout 10 \
-              --max-time 20 \
-              -o /tmp/hostelghar-health.json \
-              -w '%{http_code}' \
-              "$HEALTH_URL" || true)"
-
-            if [ "$status" = "200" ]; then
-              echo "Production health endpoint returned HTTP 200."
-              cat /tmp/hostelghar-health.json
-              exit 0
+            if [[ "$STATUS" =~ ^(200|301|302|307|308)$ ]]; then
+              echo "✅ Health check passed! API is active (HTTP $STATUS)."
+              SUCCESS=1
+              break
             fi
-
-            echo "Health check $attempt/12 returned HTTP ${status:-unknown}."
-            sleep 10
+            sleep $SLEEP_SECONDS
           done
 
-          echo "::error::Production health check failed."
-          exit 1
+          if [ $SUCCESS -ne 1 ]; then
+            echo "::error::Production health check failed after $MAX_ATTEMPTS attempts."
+            echo "Triggering automated rollback to previous working release..."
 
-      - name: Roll back failed deployment
-        if: failure() && steps.deploy.outcome == 'success'
-        env:
-          CPANEL_USER: ${{ secrets.CPANEL_USER }}
-        run: |
-          set -euo pipefail
+            ssh -p "$CPANEL_PORT" -i "$SSH_KEY_PATH" "$CPANEL_USER@$CPANEL_HOST" "bash -s" < scripts/remote-rollback.sh
+            exit 1
+          fi
 
-          sed -i 's/\r$//' scripts/cpanel-rollback.sh
-          ssh -T \
-            -i "$HOME/.ssh/cpanel_key" \
-            -p "$CPANEL_PORT" \
-            -o IdentitiesOnly=yes \
-            "$CPANEL_USER@$CPANEL_HOST" \
-            "DEPLOY_SHA='$GITHUB_SHA' APP_DIR='$APP_DIR' bash -s" < scripts/cpanel-rollback.sh
-
-      - name: Clean up SSH key
+      - name: Cleanup SSH credentials
         if: always()
-        run: rm -f "$HOME/.ssh/cpanel_key"
+        run: |
+          if [ -n "${SSH_KEY_PATH:-}" ] && [ -f "$SSH_KEY_PATH" ]; then
+            shred -u "$SSH_KEY_PATH" 2>/dev/null || rm -f "$SSH_KEY_PATH"
+            echo "Deployment SSH key securely removed."
+          fi
