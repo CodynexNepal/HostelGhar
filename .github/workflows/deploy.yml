@@ -117,17 +117,19 @@ jobs:
           set -euo pipefail
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
-          KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
 
-          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
+          KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
+          printf '%s\n' "$SSH_PRIVATE_KEY" |
+            sed 's/\r$//' > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
 
-          if ! ssh-keygen -y -f "$KEY_FILE" >/dev/null 2>&1; then
-            echo "::error::Raw private key is invalid. Verify CPANEL_SSH_KEY contains the full private key."
+          if ! ssh-keygen -y -f "$KEY_FILE" >/dev/null; then
+            echo "::error::Secret is not a valid readable private key. Check its header, footer, and complete contents."
             exit 1
           fi
 
-          ssh-keyscan -p "$CPANEL_PORT" "$CPANEL_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+          ssh-keyscan -p "$CPANEL_PORT" "$CPANEL_HOST" \
+            >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
 
           {
             echo "SSH_KEY_PATH=$KEY_FILE"
