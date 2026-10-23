@@ -109,59 +109,39 @@ jobs:
       - name: Configure SSH key
         shell: bash
         env:
+          SSH_KEY_B64: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY || secrets.DEPLOY_KEY || secrets.PRIVATE_KEY || secrets.CPANEL_KEY }}
           CPANEL_HOST: ${{ secrets.CPANEL_HOST || vars.CPANEL_HOST || 'server2.bisuphost.com' }}
           CPANEL_USER: ${{ secrets.CPANEL_USER || vars.CPANEL_USER || 'hostelgh' }}
           CPANEL_PORT: ${{ secrets.CPANEL_PORT || vars.CPANEL_PORT || '22' }}
-          SSH_KEY_B64: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY || secrets.DEPLOY_KEY || secrets.PRIVATE_KEY || secrets.CPANEL_KEY }}
         run: |
           set -euo pipefail
 
-          if [ -z "${SSH_KEY_B64:-}" ]; then
-            echo "::error::CPANEL_SSH_KEY is missing or empty."
-            exit 1
-          fi
-
+          KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
 
-          KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
-          TEMP_KEY="$HOME/.ssh/cpanel_deploy_key.tmp"
-
-          # First, try decoding a Base64-encoded private key.
-          if printf '%s' "$SSH_KEY_B64" |
-             base64 --decode > "$TEMP_KEY" 2>/dev/null &&
-             ssh-keygen -y -f "$TEMP_KEY" >/dev/null 2>&1; then
-            mv "$TEMP_KEY" "$KEY_FILE"
-            echo "SSH private key validated (Base64 format)."
-
-          # Otherwise, try the secret as a raw private key.
-          elif printf '%s\n' "$SSH_KEY_B64" | tr -d '\r' > "$TEMP_KEY" &&
-               ssh-keygen -y -f "$TEMP_KEY" >/dev/null 2>&1; then
-            mv "$TEMP_KEY" "$KEY_FILE"
-            echo "SSH private key validated (raw format)."
-
-          else
-            rm -f "$TEMP_KEY" "$KEY_FILE"
-            echo "::error::SSH key is invalid or unsupported."
-            echo "::error::Check the secret contents and key format."
+          if ! printf '%s' "$SSH_KEY_B64" |
+               base64 --decode > "$KEY_FILE" 2>/dev/null; then
+            echo "::error::Secret is not valid Base64. Re-copy it from PowerShell."
             exit 1
           fi
 
           chmod 600 "$KEY_FILE"
 
-          # Verify the key can be read without displaying private material.
-          ssh-keygen -y -f "$KEY_FILE" >/dev/null
+          if ! ssh-keygen -y -P '' -f "$KEY_FILE" >/dev/null 2>&1; then
+            echo "::error::Decoded secret is not a readable unencrypted private key."
+            exit 1
+          fi
 
           echo "Scanning SSH host keys for $CPANEL_HOST on port $CPANEL_PORT..."
-          ssh-keyscan -p "$CPANEL_PORT" -H "$CPANEL_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -p "$CPANEL_PORT" -H "$CPANEL_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
 
-          # Export key path and connection variables for subsequent steps
-          echo "SSH_KEY_PATH=$KEY_FILE" >> $GITHUB_ENV
-          echo "CPANEL_PORT=$CPANEL_PORT" >> $GITHUB_ENV
-          echo "CPANEL_HOST=$CPANEL_HOST" >> $GITHUB_ENV
-          echo "CPANEL_USER=$CPANEL_USER" >> $GITHUB_ENV
+          echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
+          echo "CPANEL_HOST=$CPANEL_HOST" >> "$GITHUB_ENV"
+          echo "CPANEL_USER=$CPANEL_USER" >> "$GITHUB_ENV"
+          echo "CPANEL_PORT=$CPANEL_PORT" >> "$GITHUB_ENV"
 
-          echo "SSH key setup completed."
+          echo "SSH private key validated successfully."
 
       - name: Transfer bundle and deploy on cPanel
         run: |
