@@ -1,4 +1,4 @@
-name: Deploy to cPanel
+name: Deploy Hostel Ghar Backend to cPanel
 
 on:
   push:
@@ -44,7 +44,7 @@ jobs:
         if: ${{ !inputs.skip_tests }}
         run: npm run lint
 
-      - name: Run unit tests
+      - name: Run unit tests (hermetic)
         if: ${{ !inputs.skip_tests }}
         env:
           NODE_ENV: test
@@ -58,17 +58,12 @@ jobs:
       - name: Validate build output
         run: |
           echo "Verifying backend build artifacts..."
-          if [ ! -f "dist/index.js" ]; then
-            echo "::error::Build verification failed: dist/index.js was not generated."
-            exit 1
-          fi
-          if [ ! -f "package.json" ] || [ ! -f "package-lock.json" ]; then
-            echo "::error::Build verification failed: package manifests are missing."
-            exit 1
-          fi
-          echo "dist/index.js and package manifests verified successfully."
+          test -f "dist/index.js" || { echo "::error::dist/index.js was not generated."; exit 1; }
+          test -f "package.json" || { echo "::error::package.json missing."; exit 1; }
+          test -f "package-lock.json" || { echo "::error::package-lock.json missing."; exit 1; }
+          echo "Build artifacts verified successfully."
 
-      - name: Assemble backend distribution bundle
+      - name: Assemble production distribution bundle
         run: |
           echo "Assembling production bundle for deployment..."
           rm -rf deploy-staging
@@ -76,6 +71,9 @@ jobs:
           cp -r dist deploy-staging/
           cp package.json deploy-staging/
           cp package-lock.json deploy-staging/
+          if [ -f "app.js" ]; then
+            cp app.js deploy-staging/
+          fi
 
           cd deploy-staging
           tar -czf ../deploy-bundle.tar.gz .
@@ -106,7 +104,7 @@ jobs:
         with:
           name: backend-deploy-bundle
 
-      - name: Configure SSH key
+      - name: Configure SSH key and agent
         shell: bash
         env:
           SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY || secrets.DEPLOY_KEY || secrets.PRIVATE_KEY || secrets.CPANEL_KEY }}
@@ -119,40 +117,43 @@ jobs:
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
 
-          KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
+          KEY_FILE="$RUNNER_TEMP/cpanel_deploy_key"
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
 
-          if ! ssh-keygen -y -P "$SSH_PASSPHRASE" -f "$KEY_FILE" >/dev/null; then
-            echo "::error::Private key or passphrase is incorrect."
-            exit 1
-          fi
-
-          if [ -n "$SSH_PASSPHRASE" ]; then
-            ssh-keygen -p -P "$SSH_PASSPHRASE" -N "" -f "$KEY_FILE" >/dev/null 2>&1 || true
-          fi
-
-          # Start SSH agent and load the key
+          # Start ssh-agent
           eval "$(ssh-agent -s)"
-          ssh-add "$KEY_FILE"
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
 
-          ssh-keyscan -p "$CPANEL_PORT" -H "$CPANEL_HOST" \
-            >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
-          ssh-keyscan -p "$CPANEL_PORT" "$CPANEL_HOST" \
-            >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+          # Non-interactive ssh-add using secure askpass helper
+          ASKPASS_HELPER="$RUNNER_TEMP/askpass.sh"
+          cat << 'EOF' > "$ASKPASS_HELPER"
+          #!/bin/sh
+          echo "$SSH_PASSPHRASE"
+          EOF
+          chmod 700 "$ASKPASS_HELPER"
+
+          DISPLAY=dummy SSH_ASKPASS="$ASKPASS_HELPER" SSH_ASKPASS_REQUIRE=force ssh-add "$KEY_FILE"
+          rm -f "$ASKPASS_HELPER" "$KEY_FILE"
+
+          echo "Loaded identities in ssh-agent:"
+          ssh-add -l -E sha256
+
+          # Register host keys in known_hosts
+          ssh-keyscan -p "$CPANEL_PORT" -H "$CPANEL_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+          ssh-keyscan -p "$CPANEL_PORT" "$CPANEL_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+          chmod 644 "$HOME/.ssh/known_hosts"
 
           {
-            echo "SSH_KEY_PATH=$KEY_FILE"
-            echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK"
-            echo "SSH_AGENT_PID=$SSH_AGENT_PID"
             echo "CPANEL_HOST=$CPANEL_HOST"
             echo "CPANEL_USER=$CPANEL_USER"
             echo "CPANEL_PORT=$CPANEL_PORT"
           } >> "$GITHUB_ENV"
 
-          echo "SSH private key validated and loaded successfully."
+          echo "✅ SSH Agent initialized and key loaded."
 
-      - name: Upload and deploy backend
+      - name: Pre-deployment remote connectivity check
         shell: bash
         env:
           SSH_AUTH_SOCK: ${{ env.SSH_AUTH_SOCK }}
@@ -160,9 +161,43 @@ jobs:
           set -euo pipefail
 
           SSH_OPTS=(
+            -T
             -p "$CPANEL_PORT"
-            -i "$SSH_KEY_PATH"
             -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o ConnectTimeout=20
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=4
+            -o TCPKeepAlive=yes
+            -o StrictHostKeyChecking=accept-new
+          )
+
+          echo "Testing remote command execution on $CPANEL_HOST..."
+          ssh "${SSH_OPTS[@]}" "$CPANEL_USER@$CPANEL_HOST" 'echo "SSH_CONNECTION_SUCCESSFUL"; whoami; pwd'
+
+      - name: Upload bundle and deploy backend on cPanel
+        shell: bash
+        env:
+          SSH_AUTH_SOCK: ${{ env.SSH_AUTH_SOCK }}
+        run: |
+          set -euo pipefail
+
+          SSH_OPTS=(
+            -T
+            -p "$CPANEL_PORT"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o ConnectTimeout=30
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=4
+            -o TCPKeepAlive=yes
+            -o StrictHostKeyChecking=accept-new
+          )
+
+          SCP_OPTS=(
+            -P "$CPANEL_PORT"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
             -o ConnectTimeout=30
             -o ServerAliveInterval=15
             -o ServerAliveCountMax=4
@@ -174,58 +209,35 @@ jobs:
           BACKUP_DIR="/home/hostelgh/hostelghar_api_backups"
           TMP_DIR="/home/hostelgh/tmp_api_deploy"
 
-          echo "1. Testing SSH connection..."
-          ssh "${SSH_OPTS[@]}" \
-            "$CPANEL_USER@$CPANEL_HOST" \
-            'echo "SSH connection successful"; whoami'
+          echo "1. Creating remote directories if missing..."
+          ssh "${SSH_OPTS[@]}" "$CPANEL_USER@$CPANEL_HOST" "mkdir -p '$TMP_DIR' '$BACKUP_DIR' '$APP_DIR'"
 
-          echo "2. Creating deployment directories..."
-          ssh "${SSH_OPTS[@]}" "$CPANEL_USER@$CPANEL_HOST" \
-            "mkdir -p '$TMP_DIR' '$BACKUP_DIR' '$APP_DIR'"
+          echo "2. Uploading deployment bundle..."
+          scp "${SCP_OPTS[@]}" deploy-bundle.tar.gz "$CPANEL_USER@$CPANEL_HOST:$TMP_DIR/deploy-bundle.tar.gz"
 
-          echo "3. Uploading deployment bundle..."
-          scp -P "$CPANEL_PORT" \
-            -i "$SSH_KEY_PATH" \
-            -o BatchMode=yes \
-            -o ConnectTimeout=30 \
-            -o ServerAliveInterval=15 \
-            -o ServerAliveCountMax=4 \
-            -o StrictHostKeyChecking=accept-new \
-            deploy-bundle.tar.gz \
-            "$CPANEL_USER@$CPANEL_HOST:$TMP_DIR/deploy-bundle.tar.gz"
+          echo "3. Uploading remote deployment script..."
+          scp "${SCP_OPTS[@]}" scripts/remote-deploy.sh "$CPANEL_USER@$CPANEL_HOST:$TMP_DIR/remote-deploy.sh"
 
-          echo "4. Uploading deployment script..."
-          scp -P "$CPANEL_PORT" \
-            -i "$SSH_KEY_PATH" \
-            -o BatchMode=yes \
-            -o ConnectTimeout=30 \
-            -o ServerAliveInterval=15 \
-            -o ServerAliveCountMax=4 \
-            -o StrictHostKeyChecking=accept-new \
-            scripts/remote-deploy.sh \
-            "$CPANEL_USER@$CPANEL_HOST:$TMP_DIR/remote-deploy.sh"
+          echo "4. Executing remote deployment script..."
+          ssh "${SSH_OPTS[@]}" "$CPANEL_USER@$CPANEL_HOST" "bash '$TMP_DIR/remote-deploy.sh'"
 
-          echo "5. Executing deployment..."
-          ssh "${SSH_OPTS[@]}" \
-            "$CPANEL_USER@$CPANEL_HOST" \
-            "bash '$TMP_DIR/remote-deploy.sh'"
-
-          echo "Deployment command completed."
+          echo "✅ Remote deployment completed."
 
       - name: Verify production deployment (Health Check)
+        shell: bash
         run: |
           HEALTH_URL="https://api.hostelghar.com/health"
           MAX_ATTEMPTS=12
           SLEEP_SECONDS=5
           SUCCESS=0
 
-          echo "Starting health check on $HEALTH_URL (max attempts: $MAX_ATTEMPTS)..."
+          echo "Starting health check against $HEALTH_URL..."
           for ((i=1; i<=MAX_ATTEMPTS; i++)); do
             STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" -L "$HEALTH_URL" || echo "000")
-            echo "Attempt $i/$MAX_ATTEMPTS: HTTP response code $STATUS"
+            echo "Attempt $i/$MAX_ATTEMPTS: HTTP status $STATUS"
 
             if [[ "$STATUS" =~ ^(200|301|302|307|308)$ ]]; then
-              echo "✅ Health check passed! API is active (HTTP $STATUS)."
+              echo "✅ Health check passed! API is live and responding (HTTP $STATUS)."
               SUCCESS=1
               break
             fi
@@ -233,17 +245,24 @@ jobs:
           done
 
           if [ $SUCCESS -ne 1 ]; then
-            echo "::error::Production health check failed after $MAX_ATTEMPTS attempts."
-            echo "Triggering automated rollback to previous working release..."
+            echo "::error::Health check failed after $MAX_ATTEMPTS attempts."
+            echo "Initiating automated rollback to previous release..."
 
-            ssh -p "$CPANEL_PORT" -i "$SSH_KEY_PATH" "$CPANEL_USER@$CPANEL_HOST" "bash -s" < scripts/remote-rollback.sh
+            SSH_OPTS=(
+              -T
+              -p "$CPANEL_PORT"
+              -o BatchMode=yes
+              -o IdentitiesOnly=yes
+              -o ConnectTimeout=20
+              -o StrictHostKeyChecking=accept-new
+            )
+            ssh "${SSH_OPTS[@]}" "$CPANEL_USER@$CPANEL_HOST" "bash -s" < scripts/remote-rollback.sh
             exit 1
           fi
 
       - name: Cleanup SSH credentials
         if: always()
         run: |
-          if [ -n "${SSH_KEY_PATH:-}" ] && [ -f "$SSH_KEY_PATH" ]; then
-            shred -u "$SSH_KEY_PATH" 2>/dev/null || rm -f "$SSH_KEY_PATH"
-            echo "Deployment SSH key securely removed."
+          if [ -n "${SSH_AGENT_PID:-}" ]; then
+            ssh-agent -k || true
           fi

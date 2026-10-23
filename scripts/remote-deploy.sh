@@ -42,6 +42,9 @@ mkdir -p "$APP_DIR"
 cp -r "$STAGING_DIR/dist" "$APP_DIR/dist.new"
 cp "$STAGING_DIR/package.json" "$APP_DIR/package.json.new"
 cp "$STAGING_DIR/package-lock.json" "$APP_DIR/package-lock.json.new"
+if [ -f "$STAGING_DIR/app.js" ]; then
+  cp "$STAGING_DIR/app.js" "$APP_DIR/app.js.new"
+fi
 
 # Atomic swap
 rm -rf "$APP_DIR/dist.old"
@@ -51,6 +54,9 @@ fi
 mv "$APP_DIR/dist.new" "$APP_DIR/dist"
 mv "$APP_DIR/package.json.new" "$APP_DIR/package.json"
 mv "$APP_DIR/package-lock.json.new" "$APP_DIR/package-lock.json"
+if [ -f "$APP_DIR/app.js.new" ]; then
+  mv "$APP_DIR/app.js.new" "$APP_DIR/app.js"
+fi
 
 # 5. Install production dependencies
 echo "Installing production dependencies..."
@@ -58,8 +64,16 @@ cd "$APP_DIR"
 npm ci --omit=dev --no-audit --no-fund
 
 # 6. Restart Passenger / cPanel Application
+echo "Triggering application restart..."
 mkdir -p "$APP_DIR/tmp"
 touch "$APP_DIR/tmp/restart.txt"
+
+# CloudLinux selectorctl fallback if present on server
+if command -v cloudlinux-selector >/dev/null 2>&1; then
+  cloudlinux-selector restart --json --interpreter nodejs --app-root "$APP_DIR" || true
+elif [ -x /usr/sbin/cloudlinux-selector ]; then
+  /usr/sbin/cloudlinux-selector restart --json --interpreter nodejs --app-root "$APP_DIR" || true
+fi
 
 # 7. Cleanup staging artifacts
 rm -rf "$STAGING_DIR"

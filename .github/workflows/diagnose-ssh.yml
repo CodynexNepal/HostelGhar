@@ -1,0 +1,85 @@
+name: Diagnose SSH & Remote Execution
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    name: Run Network & SSH Diagnostics
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Network & Port Connectivity
+        env:
+          CPANEL_HOST: ${{ secrets.CPANEL_HOST || 'server2.bisuphost.com' }}
+          CPANEL_PORT: ${{ secrets.CPANEL_PORT || '22' }}
+        run: |
+          echo "=== 1. DNS Resolution ==="
+          getent hosts "$CPANEL_HOST" || nslookup "$CPANEL_HOST"
+
+          echo "=== 2. TCP Port $CPANEL_PORT Reachability ==="
+          nc -zv -w 10 "$CPANEL_HOST" "$CPANEL_PORT"
+
+      - name: 2. Load Passphrase Key into SSH Agent
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY || secrets.DEPLOY_KEY || secrets.PRIVATE_KEY || secrets.CPANEL_KEY }}
+          SSH_PASSPHRASE: ${{ secrets.CPANEL_SSH_PASSPHRASE || secrets.SSH_PASSPHRASE || '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          KEY_FILE="$RUNNER_TEMP/diag_key"
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+
+          eval "$(ssh-agent -s)"
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+
+          ASKPASS="$RUNNER_TEMP/askpass.sh"
+          cat << 'EOF' > "$ASKPASS"
+          #!/bin/sh
+          echo "$SSH_PASSPHRASE"
+          EOF
+          chmod 700 "$ASKPASS"
+
+          DISPLAY=dummy SSH_ASKPASS="$ASKPASS" SSH_ASKPASS_REQUIRE=force ssh-add "$KEY_FILE"
+          rm -f "$ASKPASS" "$KEY_FILE"
+
+          echo "=== Loaded Identities ==="
+          ssh-add -l -E sha256
+
+      - name: 3. Test SSH Authentication & Remote Command
+        env:
+          CPANEL_HOST: ${{ secrets.CPANEL_HOST || 'server2.bisuphost.com' }}
+          CPANEL_USER: ${{ secrets.CPANEL_USER || 'hostelgh' }}
+          CPANEL_PORT: ${{ secrets.CPANEL_PORT || '22' }}
+          SSH_AUTH_SOCK: ${{ env.SSH_AUTH_SOCK }}
+        run: |
+          set -u
+
+          ssh-keyscan -p "$CPANEL_PORT" -H "$CPANEL_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -p "$CPANEL_PORT" "$CPANEL_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 644 ~/.ssh/known_hosts
+
+          echo "=== Executing Verbose SSH Test ==="
+          ssh -vvv -T \
+            -p "$CPANEL_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o ConnectTimeout=20 \
+            -o StrictHostKeyChecking=accept-new \
+            "$CPANEL_USER@$CPANEL_HOST" \
+            'echo SSH_OK; id; pwd'
+          SSH_EXIT=$?
+
+          echo "=== SSH Process Exit Code: $SSH_EXIT ==="
+          exit $SSH_EXIT
+
+      - name: Cleanup SSH credentials
+        if: always()
+        run: |
+          if [ -n "${SSH_AGENT_PID:-}" ]; then
+            ssh-agent -k || true
+          fi
