@@ -115,31 +115,26 @@ jobs:
           CPANEL_PORT: ${{ secrets.CPANEL_PORT || vars.CPANEL_PORT || '22' }}
         run: |
           set -euo pipefail
-
-          KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
+          KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
 
-          if ! printf '%s' "$SSH_KEY_B64" |
-               base64 --decode > "$KEY_FILE" 2>/dev/null; then
-            echo "::error::Secret is not valid Base64. Re-copy it from PowerShell."
-            exit 1
-          fi
-
+          printf '%s' "$SSH_KEY_B64" | base64 --decode > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
 
           if ! ssh-keygen -y -P '' -f "$KEY_FILE" >/dev/null 2>&1; then
-            echo "::error::Decoded secret is not a readable unencrypted private key."
+            echo "::error::Secret mismatch. Recreate CPANEL_SSH_KEY from hostelghar_actions."
             exit 1
           fi
 
-          echo "Scanning SSH host keys for $CPANEL_HOST on port $CPANEL_PORT..."
-          ssh-keyscan -p "$CPANEL_PORT" -H "$CPANEL_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+          ssh-keyscan -p "$CPANEL_PORT" "$CPANEL_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
 
-          echo "SSH_KEY_PATH=$KEY_FILE" >> "$GITHUB_ENV"
-          echo "CPANEL_HOST=$CPANEL_HOST" >> "$GITHUB_ENV"
-          echo "CPANEL_USER=$CPANEL_USER" >> "$GITHUB_ENV"
-          echo "CPANEL_PORT=$CPANEL_PORT" >> "$GITHUB_ENV"
+          {
+            echo "SSH_KEY_PATH=$KEY_FILE"
+            echo "CPANEL_HOST=$CPANEL_HOST"
+            echo "CPANEL_USER=$CPANEL_USER"
+            echo "CPANEL_PORT=$CPANEL_PORT"
+          } >> "$GITHUB_ENV"
 
           echo "SSH private key validated successfully."
 
