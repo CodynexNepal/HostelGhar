@@ -111,33 +111,61 @@ jobs:
           CPANEL_HOST: ${{ secrets.CPANEL_HOST || vars.CPANEL_HOST || 'server2.bisuphost.com' }}
           CPANEL_USER: ${{ secrets.CPANEL_USER || vars.CPANEL_USER || 'hostelgh' }}
           CPANEL_PORT: ${{ secrets.CPANEL_PORT || vars.CPANEL_PORT || '22' }}
-          SSH_KEY_B64: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY || secrets.DEPLOY_KEY || secrets.PRIVATE_KEY || secrets.CPANEL_KEY }}
+          CPANEL_SSH_PASSPHRASE: ${{ secrets.CPANEL_SSH_PASSPHRASE || secrets.SSH_PASSPHRASE || '' }}
+          SSH_KEY_RAW: ${{ secrets.CPANEL_SSH_KEY || secrets.HOSTELGHAR_API || secrets.HOSTELGHAR_BACKEND || secrets.HOSTELGHAR_FRONTEND || secrets.SSH_PRIVATE_KEY || secrets.SSH_KEY || secrets.DEPLOY_KEY || secrets.PRIVATE_KEY || secrets.CPANEL_KEY }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "$SSH_KEY_B64" ]; then
+          if [ -z "$SSH_KEY_RAW" ]; then
             echo "::error::No SSH key found in secrets (checked CPANEL_SSH_KEY, HOSTELGHAR_API, HOSTELGHAR_BACKEND, HOSTELGHAR_FRONTEND, SSH_PRIVATE_KEY)."
             exit 1
           fi
 
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
+          KEY_FILE="$HOME/.ssh/cpanel_deploy_key"
 
-          # Decode base64 if encoded, or write raw key
-          if printf '%s' "$SSH_KEY_B64" | base64 --decode > ~/.ssh/cpanel_deploy_key 2>/dev/null && ssh-keygen -y -f ~/.ssh/cpanel_deploy_key > /dev/null 2>&1; then
-            echo "SSH key decoded from base64 successfully."
+          # 1. Detect if key is raw PEM/OpenSSH or base64-encoded
+          if echo "$SSH_KEY_RAW" | grep -q "PRIVATE KEY"; then
+            echo "SSH key is in raw PEM/OpenSSH format."
+            printf '%s\n' "$SSH_KEY_RAW" | tr -d '\r' > "$KEY_FILE"
           else
-            printf '%s\n' "$SSH_KEY_B64" | tr -d '\r' > ~/.ssh/cpanel_deploy_key
+            echo "SSH key appears to be base64-encoded. Decoding..."
+            printf '%s' "$SSH_KEY_RAW" | tr -d '\r\n ' | base64 -d > "$KEY_FILE" 2>/dev/null || {
+              echo "Base64 decode failed, falling back to raw output..."
+              printf '%s\n' "$SSH_KEY_RAW" | tr -d '\r' > "$KEY_FILE"
+            }
           fi
 
-          chmod 600 ~/.ssh/cpanel_deploy_key
-          ssh-keygen -y -f ~/.ssh/cpanel_deploy_key > /dev/null
+          # 2. Ensure trailing newline (required by OpenSSL/libcrypto)
+          echo "" >> "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+
+          # 3. Handle passphrase-protected private keys if passphrase secret exists
+          if [ -n "${CPANEL_SSH_PASSPHRASE:-}" ]; then
+            echo "Attempting to decrypt passphrase-protected key..."
+            ssh-keygen -p -P "$CPANEL_SSH_PASSPHRASE" -N "" -f "$KEY_FILE" 2>/dev/null || true
+          fi
+
+          # 4. Validate the key with ssh-keygen
+          if ! ssh-keygen -y -f "$KEY_FILE" > /dev/null 2>&1; then
+            echo "::error::OpenSSH failed to load the private key ('error in libcrypto')."
+            echo "Common causes:"
+            echo "1. The private key in cPanel was created with a PASSPHRASE. If so, add secret CPANEL_SSH_PASSPHRASE, or generate an unencrypted key in cPanel without a passphrase."
+            echo "2. The key was copied without the header (-----BEGIN ...) or footer (-----END ...)."
+            echo "3. The key is in PuTTY .ppk format instead of OpenSSH format."
+            echo "Header found: $(head -n 1 "$KEY_FILE")"
+            echo "Total lines: $(wc -l < "$KEY_FILE")"
+            exit 1
+          fi
+
+          echo "✅ SSH private key successfully loaded and validated!"
 
           echo "Scanning SSH host keys for $CPANEL_HOST on port $CPANEL_PORT..."
           ssh-keyscan -p "$CPANEL_PORT" -H "$CPANEL_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
           # Export key path and connection variables for subsequent steps
-          echo "SSH_KEY_PATH=$HOME/.ssh/cpanel_deploy_key" >> $GITHUB_ENV
+          echo "SSH_KEY_PATH=$KEY_FILE" >> $GITHUB_ENV
           echo "CPANEL_PORT=$CPANEL_PORT" >> $GITHUB_ENV
           echo "CPANEL_HOST=$CPANEL_HOST" >> $GITHUB_ENV
           echo "CPANEL_USER=$CPANEL_USER" >> $GITHUB_ENV
