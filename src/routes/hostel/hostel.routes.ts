@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { HostelFactory } from '../../factory/hostel/hostel.factory';
-import { authenticate, requireRoles } from '../../middleware/auth.middleware';
+import { authenticate, optionalAuthenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { apiReadLimiter } from '../../configs/rateLimiter.config';
 import { requireParam } from '../../decorators/http.decorator';
@@ -18,6 +18,10 @@ hostelRouter.use('/:hostelId/facilities', authenticate, facilityRouter);
 
 // Public hostel detail by ID
 hostelRouter.get('/:id', requireParam('id'), apiReadLimiter, hostelController.getHostel);
+
+// Ratings endpoints
+hostelRouter.get('/:id/ratings', requireParam('id'), apiReadLimiter, hostelController.getRatings);
+hostelRouter.post('/:id/ratings', optionalAuthenticate, requireParam('id'), hostelController.addRating);
 
 // Protected routes (require authentication)
 hostelRouter.get(

@@ -66,4 +66,30 @@ export class HostelController {
       next(error);
     }
   };
+
+  public addRating = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const hostelId = getRequiredParam(req, 'id');
+      const { rating, comment } = req.body;
+      const userId = req.user?.userId;
+      const result = await this.hostelService.addRating(hostelId, Number(rating), comment, userId);
+      if (result.error) {
+        res.status(result.error.status).json({ success: false, message: result.error.message });
+        return;
+      }
+      res.status(STATUS_CODE.OK).json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public getRatings = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const hostelId = getRequiredParam(req, 'id');
+      const result = await this.hostelService.getRatings(hostelId);
+      res.status(STATUS_CODE.OK).json({ success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

@@ -15,7 +15,11 @@ export class AuthController {
       res.status(STATUS_CODE.CREATED).json({
         success: true,
         message: MESSAGES.USER_CREATED_SUCCESS,
-        data: { user: result.user },
+        data: {
+          user: result.user,
+          token: result.accessToken,
+          accessToken: result.accessToken,
+        },
       });
     } catch (error) {
       next(error);
@@ -29,7 +33,11 @@ export class AuthController {
       res.status(STATUS_CODE.SUCCESS).json({
         success: true,
         message: MESSAGES.LOGIN_SUCCESS,
-        data: { user: result.user },
+        data: {
+          user: result.user,
+          token: result.accessToken,
+          accessToken: result.accessToken,
+        },
       });
     } catch (error) {
       next(error);
