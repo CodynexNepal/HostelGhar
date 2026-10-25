@@ -53,4 +53,3 @@ export class HostelRating {
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt!: Date;
 }
-

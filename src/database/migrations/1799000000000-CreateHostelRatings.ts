@@ -38,4 +38,3 @@ export class CreateHostelRatings1799000000000 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS "hostel_ratings"`);
   }
 }
-

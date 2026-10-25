@@ -67,4 +67,3 @@ describe('HostelRating Entity & Service logic', () => {
     });
   });
 });
-
