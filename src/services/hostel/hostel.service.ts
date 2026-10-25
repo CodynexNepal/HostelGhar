@@ -18,7 +18,7 @@ export class HostelService {
   constructor(private readonly hostelRepository: HostelRepository) {}
 
   public async listHostels(page: number, limit: number) {
-    const cacheKey = cacheService.generateKey('public:hostels:list', { page, limit, v: 2 });
+    const cacheKey = cacheService.generateKey('public:hostels:list', { page, limit, v: 3 });
 
     // 3-Level Caching: L1 Memory LRU -> L2 Redis -> L3 Database Loader
     const { data, isCached, cacheLevel } = await cacheService.wrap(

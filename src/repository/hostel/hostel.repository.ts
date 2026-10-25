@@ -6,6 +6,41 @@ import { LeaveType } from '../../entities/leave/leave-type.entity';
 import { Fee } from '../../entities/fee/fee.entity';
 import { Room } from '../../entities/room/room.entity';
 import { HostelRating } from '../../entities/rating/hostel-rating.entity';
+import { Bed } from '../../entities/bed/bed.entity';
+import { HostelFacility } from '../../entities/facility/hostel-facility.entity';
+import { BedStatus } from '../../enum/bed.enum';
+import { HostelType } from '../../enum/hostel.enum';
+
+export interface HostelListItem {
+  id: string;
+  name: string;
+  type: HostelType;
+  category: string;
+  city: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  logoUrl: string | null;
+  isFeatured: boolean;
+  discountPercent?: number;
+  rating: number;
+  reviewCount: number;
+  availableBeds: number;
+  totalStudents: number;
+  monthlyRent: number;
+  currency: string;
+  facilities: string[];
+  detailUrl: string;
+  owner?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+    avatarUrl: string | null;
+  } | null;
+  createdAt: Date;
+}
 
 export class HostelRepository {
   private readonly hostelRepo: Repository<Hostel>;
@@ -14,6 +49,8 @@ export class HostelRepository {
   private readonly feeRepo: Repository<Fee>;
   private readonly roomRepo: Repository<Room>;
   private readonly ratingRepo: Repository<HostelRating>;
+  private readonly bedRepo: Repository<Bed>;
+  private readonly hostelFacilityRepo: Repository<HostelFacility>;
 
   constructor() {
     this.hostelRepo = AppDataSource.getRepository(Hostel);
@@ -22,10 +59,12 @@ export class HostelRepository {
     this.feeRepo = AppDataSource.getRepository(Fee);
     this.roomRepo = AppDataSource.getRepository(Room);
     this.ratingRepo = AppDataSource.getRepository(HostelRating);
+    this.bedRepo = AppDataSource.getRepository(Bed);
+    this.hostelFacilityRepo = AppDataSource.getRepository(HostelFacility);
   }
 
-  public async findAll(page: number, limit: number): Promise<[Hostel[], number]> {
-    return this.hostelRepo.findAndCount({
+  public async findAll(page: number, limit: number): Promise<[HostelListItem[], number]> {
+    const [hostels, total] = await this.hostelRepo.findAndCount({
       where: { isActive: true },
       relations: { owner: true },
       select: {
@@ -52,6 +91,173 @@ export class HostelRepository {
       skip: (page - 1) * limit,
       take: limit,
     });
+
+    if (hostels.length === 0) {
+      return [[], total];
+    }
+
+    const hostelIds = hostels.map((h) => h.id);
+
+    // Parallel aggregate queries for metrics across all hostels on the page
+    const [ratingsRaw, residentsRaw, availableBedsRaw, roomsRaw, facilitiesRaw] = await Promise.all(
+      [
+        // 1. Ratings summary (average rating & total review count)
+        this.ratingRepo
+          .createQueryBuilder('r')
+          .select('r.hostelId', 'hostelId')
+          .addSelect('AVG(r.rating)', 'avgRating')
+          .addSelect('COUNT(r.id)', 'reviewCount')
+          .where('r.hostelId IN (:...hostelIds)', { hostelIds })
+          .groupBy('r.hostelId')
+          .getRawMany<{ hostelId: string; avgRating: string; reviewCount: string }>(),
+
+        // 2. Active residents (totalStudents)
+        this.residentRepo
+          .createQueryBuilder('res')
+          .select('res.hostelId', 'hostelId')
+          .addSelect('COUNT(res.id)', 'totalStudents')
+          .where('res.hostelId IN (:...hostelIds)', { hostelIds })
+          .andWhere('res.isActive = :isActive', { isActive: true })
+          .groupBy('res.hostelId')
+          .getRawMany<{ hostelId: string; totalStudents: string }>(),
+
+        // 3. Bed-level available count and starting bed rent
+        this.bedRepo
+          .createQueryBuilder('b')
+          .select('b.hostelId', 'hostelId')
+          .addSelect('COUNT(b.id)', 'availableCount')
+          .addSelect('MIN(b.rentAmount)', 'minRent')
+          .where('b.hostelId IN (:...hostelIds)', { hostelIds })
+          .andWhere('b.status = :status', { status: BedStatus.AVAILABLE })
+          .groupBy('b.hostelId')
+          .getRawMany<{ hostelId: string; availableCount: string; minRent: string | null }>(),
+
+        // 4. Room-level capacity, occupancy & starting room rent (fallback)
+        this.roomRepo
+          .createQueryBuilder('rm')
+          .select('rm.hostelId', 'hostelId')
+          .addSelect('SUM(rm.capacity)', 'totalCapacity')
+          .addSelect('SUM(rm.occupied)', 'totalOccupied')
+          .addSelect('MIN(rm.monthlyRent)', 'minRent')
+          .where('rm.hostelId IN (:...hostelIds)', { hostelIds })
+          .groupBy('rm.hostelId')
+          .getRawMany<{
+            hostelId: string;
+            totalCapacity: string;
+            totalOccupied: string;
+            minRent: string | null;
+          }>(),
+
+        // 5. Associated facilities with title
+        this.hostelFacilityRepo
+          .createQueryBuilder('hf')
+          .innerJoinAndSelect('hf.facility', 'f')
+          .where('hf.hostelId IN (:...hostelIds)', { hostelIds })
+          .orderBy('hf.createdAt', 'ASC')
+          .getMany(),
+      ],
+    );
+
+    // Build metric lookup maps
+    const ratingMap = new Map<string, { avg: number; count: number }>();
+    for (const r of ratingsRaw) {
+      ratingMap.set(r.hostelId, {
+        avg: Math.round(Number(r.avgRating) * 10) / 10,
+        count: Number(r.reviewCount) || 0,
+      });
+    }
+
+    const residentMap = new Map<string, number>();
+    for (const res of residentsRaw) {
+      residentMap.set(res.hostelId, Number(res.totalStudents) || 0);
+    }
+
+    const bedMap = new Map<string, { available: number; minRent: number | null }>();
+    for (const b of availableBedsRaw) {
+      bedMap.set(b.hostelId, {
+        available: Number(b.availableCount) || 0,
+        minRent: b.minRent != null ? Number(b.minRent) : null,
+      });
+    }
+
+    const roomMap = new Map<
+      string,
+      { capacity: number; occupied: number; minRent: number | null }
+    >();
+    for (const rm of roomsRaw) {
+      roomMap.set(rm.hostelId, {
+        capacity: Number(rm.totalCapacity) || 0,
+        occupied: Number(rm.totalOccupied) || 0,
+        minRent: rm.minRent != null ? Number(rm.minRent) : null,
+      });
+    }
+
+    const facilityMap = new Map<string, string[]>();
+    for (const hf of facilitiesRaw) {
+      if (hf.facility?.title) {
+        const list = facilityMap.get(hf.hostelId) ?? [];
+        list.push(hf.facility.title);
+        facilityMap.set(hf.hostelId, list);
+      }
+    }
+
+    const items: HostelListItem[] = hostels.map((hostel) => {
+      const rating = ratingMap.get(hostel.id)?.avg ?? 0;
+      const reviewCount = ratingMap.get(hostel.id)?.count ?? 0;
+      const totalStudents = residentMap.get(hostel.id) ?? 0;
+
+      const bedInfo = bedMap.get(hostel.id);
+      const roomInfo = roomMap.get(hostel.id);
+
+      let availableBeds = 0;
+      if (bedInfo && bedInfo.available > 0) {
+        availableBeds = bedInfo.available;
+      } else if (roomInfo) {
+        availableBeds = Math.max(0, roomInfo.capacity - Math.max(roomInfo.occupied, totalStudents));
+      }
+
+      let monthlyRent = 0;
+      if (bedInfo?.minRent && bedInfo.minRent > 0) {
+        monthlyRent = bedInfo.minRent;
+      } else if (roomInfo?.minRent && roomInfo.minRent > 0) {
+        monthlyRent = roomInfo.minRent;
+      }
+
+      const facilities = facilityMap.get(hostel.id) ?? [];
+      const category =
+        hostel.type === HostelType.BOYS
+          ? 'Boys Hostel'
+          : hostel.type === HostelType.GIRLS
+            ? 'Girls Hostel'
+            : `${hostel.type} Hostel`;
+
+      const isFeatured = rating >= 4.8 && reviewCount > 0;
+
+      return {
+        id: hostel.id,
+        name: hostel.name,
+        type: hostel.type,
+        category,
+        city: hostel.city,
+        address: hostel.address,
+        phone: hostel.phone,
+        email: hostel.email,
+        logoUrl: hostel.logoUrl,
+        isFeatured,
+        rating,
+        reviewCount,
+        availableBeds,
+        totalStudents,
+        monthlyRent,
+        currency: 'NPR',
+        facilities,
+        detailUrl: `/hostel/${hostel.id}`,
+        owner: hostel.owner,
+        createdAt: hostel.createdAt,
+      };
+    });
+
+    return [items, total];
   }
 
   public async findById(id: string): Promise<Hostel | null> {

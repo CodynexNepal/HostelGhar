@@ -374,7 +374,110 @@ Requires role: `user`. Cancels the authenticated user's booking.
 
 ### GET `/hostels`
 
-Lists hostels.
+Lists hostels with pagination, ratings, amenities, and real-time bed availability for public browsing.
+
+**Query Parameters:**
+
+| Parameter | Type   | Required | Default | Description                          |
+| --------- | ------ | -------- | ------- | ------------------------------------ |
+| `page`    | number | No       | `1`     | Page number to retrieve              |
+| `limit`   | number | No       | `20`    | Number of hostels per page (max 100) |
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "bdde17d2-d56e-4f81-987c-d0132cf4409d",
+      "name": "Bishan Hostel",
+      "type": "BOYS",
+      "category": "Boys Hostel",
+      "city": "Kathmandu",
+      "address": "Banasthali-16, Kathmandu",
+      "isFeatured": true,
+      "discountPercent": 14,
+      "rating": 5.0,
+      "reviewCount": 1,
+      "availableBeds": 8,
+      "totalStudents": 40,
+      "monthlyRent": 12000,
+      "currency": "NPR",
+      "facilities": ["Free WiFi", "Meals", "Hot Water"],
+      "logoUrl": null,
+      "detailUrl": "/hostel/bdde17d2-d56e-4f81-987c-d0132cf4409d"
+    },
+    {
+      "id": "a38bf07a-b7b1-49dc-85c8-dd5542a8e90a",
+      "name": "Infinity Boys Hostel",
+      "type": "BOYS",
+      "category": "Boys Hostel",
+      "city": "Kathmandu",
+      "address": "Banasthali-16, Kathmandu",
+      "isFeatured": true,
+      "discountPercent": 16,
+      "rating": 4.9,
+      "reviewCount": 34,
+      "availableBeds": 12,
+      "totalStudents": 44,
+      "monthlyRent": 13500,
+      "currency": "NPR",
+      "facilities": ["Free WiFi", "Meals", "Hot Water"],
+      "logoUrl": null,
+      "detailUrl": "/hostel/a38bf07a-b7b1-49dc-85c8-dd5542a8e90a"
+    },
+    {
+      "id": "1c6e51f7-d5f2-4fb4-b48b-528d8c8fb8d2",
+      "name": "Bishan Hostel (Block B)",
+      "type": "BOYS",
+      "category": "Boys Hostel",
+      "city": "Kathmandu",
+      "address": "Banasthali-16, Kathmandu",
+      "isFeatured": false,
+      "discountPercent": 15,
+      "rating": 4.7,
+      "reviewCount": 0,
+      "availableBeds": 6,
+      "totalStudents": 30,
+      "monthlyRent": 11000,
+      "currency": "NPR",
+      "facilities": ["Free WiFi", "Meals", "Hot Water"],
+      "logoUrl": null,
+      "detailUrl": "/hostel/1c6e51f7-d5f2-4fb4-b48b-528d8c8fb8d2"
+    },
+    {
+      "id": "098247fc-8288-445f-aa43-1ea7e9084d32",
+      "name": "Bishan Hostel (Annex)",
+      "type": "BOYS",
+      "category": "Boys Hostel",
+      "city": "Kathmandu",
+      "address": "Banasthali-16, Kathmandu",
+      "isFeatured": false,
+      "discountPercent": 17,
+      "rating": 4.6,
+      "reviewCount": 0,
+      "availableBeds": 9,
+      "totalStudents": 31,
+      "monthlyRent": 10000,
+      "currency": "NPR",
+      "facilities": ["Free WiFi", "Meals", "Hot Water"],
+      "logoUrl": null,
+      "detailUrl": "/hostel/098247fc-8288-445f-aa43-1ea7e9084d32"
+    }
+  ],
+  "pagination": {
+    "totalItems": 4,
+    "currentPage": 1,
+    "totalPages": 1,
+    "itemsPerPage": 20,
+    "hasNextPage": false,
+    "hasPrevPage": false
+  },
+  "isCached": true,
+  "cacheLevel": "L1"
+}
+```
 
 ### GET `/hostels/:id`
 
