@@ -14,7 +14,8 @@ hostelRouter.get('/', apiReadLimiter, hostelController.listHostels);
 
 // Nested facility routes — hostel id comes from :hostelId PARAM.
 // Mounted before generic /:id so /:hostelId/facilities never collides.
-hostelRouter.use('/:hostelId/facilities', authenticate, facilityRouter);
+// Public for GET; mutations (PUT/POST/DELETE) are protected inside facilityRouter.
+hostelRouter.use('/:hostelId/facilities', facilityRouter);
 
 // Public hostel detail by ID
 hostelRouter.get('/:id', requireParam('id'), apiReadLimiter, hostelController.getHostel);

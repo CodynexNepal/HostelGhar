@@ -10,7 +10,7 @@ import { Router } from 'express';
 import { FacilityFactory } from '../../factory/facility/facility.factory';
 import { validateDto } from '../../middleware/validate-dto.middleware';
 import { SyncHostelFacilitiesDto, UpsertFacilityItemDto } from '../../dto/facility/facility.dto';
-import { requireRoles } from '../../middleware/auth.middleware';
+import { authenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { apiReadLimiter } from '../../configs/rateLimiter.config';
 import { requireParam } from '../../decorators/http.decorator';
@@ -18,13 +18,13 @@ import { requireParam } from '../../decorators/http.decorator';
 const facilityRouter = Router({ mergeParams: true });
 const facilityController = FacilityFactory.create();
 
-// NOTE: parent hostelRouter already runs `authenticate` — do NOT repeat it
-// here (would verify the JWT twice per request).
-
+// Public route — anyone can view facilities of a hostel without logging in.
 facilityRouter.get('/', requireParam('hostelId'), apiReadLimiter, facilityController.list);
 
+// Protected mutation routes — require authentication and OWNER/ADMIN role.
 facilityRouter.put(
   '/',
+  authenticate,
   requireParam('hostelId'),
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
   validateDto(SyncHostelFacilitiesDto),
@@ -33,6 +33,7 @@ facilityRouter.put(
 
 facilityRouter.post(
   '/',
+  authenticate,
   requireParam('hostelId'),
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
   validateDto(UpsertFacilityItemDto),
@@ -41,6 +42,7 @@ facilityRouter.post(
 
 facilityRouter.delete(
   '/:facilityKey',
+  authenticate,
   requireParam('hostelId'),
   requireParam('facilityKey'),
   requireRoles(IROLES.OWNER, IROLES.ADMIN),

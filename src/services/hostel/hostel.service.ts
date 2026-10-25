@@ -39,7 +39,7 @@ export class HostelService {
   }
 
   public async getHostel(id: string) {
-    const cacheKey = cacheService.generateKey('public:hostel:v2', id);
+    const cacheKey = cacheService.generateKey('public:hostel:v3', id);
 
     const {
       data: hostel,

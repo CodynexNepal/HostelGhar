@@ -42,6 +42,22 @@ export interface HostelListItem {
   createdAt: Date;
 }
 
+export interface HostelDetail extends Hostel {
+  totalBeds: number;
+  availableBeds: number;
+  occupiedBeds: number;
+  activeResidents: number;
+  totalStudents: number;
+  hostelFee: number;
+  monthlyRent: number;
+  currency: string;
+  beds: {
+    total: number;
+    available: number;
+    occupied: number;
+  };
+}
+
 export class HostelRepository {
   private readonly hostelRepo: Repository<Hostel>;
   private readonly residentRepo: Repository<Resident>;
@@ -260,47 +276,152 @@ export class HostelRepository {
     return [items, total];
   }
 
-  public async findById(id: string): Promise<Hostel | null> {
-    return this.hostelRepo.findOne({
-      where: { id },
-      relations: {
-        owner: true,
-        createdByAdmin: true,
-        hostelFacilities: { facility: true },
-      },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        city: true,
-        address: true,
-        phone: true,
-        email: true,
-        logoUrl: true,
-        isActive: true,
-        owner: {
+  public async findById(id: string): Promise<HostelDetail | null> {
+    const [hostel, residentRaw, bedRaw, roomRaw, feeAmountRaw] = await Promise.all([
+      this.hostelRepo.findOne({
+        where: { id },
+        relations: {
+          owner: true,
+          createdByAdmin: true,
+          hostelFacilities: { facility: true },
+        },
+        select: {
           id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
+          name: true,
+          type: true,
+          city: true,
+          address: true,
           phone: true,
-          avatarUrl: true,
+          email: true,
+          logoUrl: true,
+          isActive: true,
+          owner: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            avatarUrl: true,
+          },
+          createdByAdmin: { id: true, firstName: true, lastName: true, email: true },
+          hostelFacilities: {
+            id: true,
+            hostelId: true,
+            facilityId: true,
+            description: true,
+            tag: true,
+            clientKey: true,
+            createdAt: true,
+            updatedAt: true,
+            facility: { id: true, title: true, slug: true },
+          },
         },
-        createdByAdmin: { id: true, firstName: true, lastName: true, email: true },
-        hostelFacilities: {
-          id: true,
-          hostelId: true,
-          facilityId: true,
-          description: true,
-          tag: true,
-          clientKey: true,
-          createdAt: true,
-          updatedAt: true,
-          facility: { id: true, title: true, slug: true },
-        },
+        order: { hostelFacilities: { createdAt: 'ASC' } },
+      }),
+      this.residentRepo
+        .createQueryBuilder('res')
+        .select('COUNT(res.id)', 'count')
+        .addSelect('MIN(res.monthlyRent)', 'minRent')
+        .where('res.hostelId = :id', { id })
+        .andWhere('res.isActive = :isActive', { isActive: true })
+        .getRawOne<{ count: string; minRent: string | null }>(),
+      this.bedRepo
+        .createQueryBuilder('b')
+        .select('COUNT(b.id)', 'total')
+        .addSelect("COUNT(CASE WHEN b.status = 'AVAILABLE' THEN 1 END)", 'available')
+        .addSelect("COUNT(CASE WHEN b.status = 'OCCUPIED' THEN 1 END)", 'occupied')
+        .addSelect('MIN(b.rentAmount)', 'minRent')
+        .where('b.hostelId = :id', { id })
+        .getRawOne<{
+          total: string;
+          available: string;
+          occupied: string;
+          minRent: string | null;
+        }>(),
+      this.roomRepo
+        .createQueryBuilder('rm')
+        .select('COALESCE(SUM(rm.capacity), 0)', 'totalCapacity')
+        .addSelect('COALESCE(SUM(rm.occupied), 0)', 'totalOccupied')
+        .addSelect('MIN(rm.monthlyRent)', 'minRent')
+        .where('rm.hostelId = :id', { id })
+        .getRawOne<{ totalCapacity: string; totalOccupied: string; minRent: string | null }>(),
+      this.feeRepo
+        .createQueryBuilder('fee')
+        .select('MIN(fee.amount)', 'minAmount')
+        .where('fee.hostelId = :id', { id })
+        .andWhere('fee.amount > 0')
+        .getRawOne<{ minAmount: string | null }>(),
+    ]);
+
+    if (!hostel) {
+      return null;
+    }
+
+    const activeResidents = Number(residentRaw?.count) || 0;
+
+    const bedTotal = Number(bedRaw?.total) || 0;
+    const bedAvailable = Number(bedRaw?.available) || 0;
+    const bedOccupied = Number(bedRaw?.occupied) || 0;
+
+    const roomCapacity = Number(roomRaw?.totalCapacity) || 0;
+    const roomOccupied = Number(roomRaw?.totalOccupied) || 0;
+
+    let totalBeds = 0;
+    let availableBeds = 0;
+    let occupiedBeds = 0;
+
+    if (bedTotal > 0) {
+      if (roomCapacity > bedTotal) {
+        totalBeds = roomCapacity;
+        occupiedBeds = Math.max(bedOccupied, Math.max(roomOccupied, activeResidents));
+        availableBeds = Math.max(0, totalBeds - occupiedBeds);
+      } else {
+        totalBeds = bedTotal;
+        availableBeds = bedAvailable;
+        occupiedBeds = bedOccupied;
+      }
+    } else if (roomCapacity > 0) {
+      totalBeds = roomCapacity;
+      occupiedBeds = Math.max(roomOccupied, activeResidents);
+      availableBeds = Math.max(0, totalBeds - occupiedBeds);
+    } else {
+      totalBeds = 0;
+      occupiedBeds = activeResidents;
+      availableBeds = 0;
+    }
+
+    const bedMinRent = bedRaw?.minRent != null ? Number(bedRaw.minRent) : null;
+    const roomMinRent = roomRaw?.minRent != null ? Number(roomRaw.minRent) : null;
+    const resMinRent = residentRaw?.minRent != null ? Number(residentRaw.minRent) : null;
+    const feeMinAmount = feeAmountRaw?.minAmount != null ? Number(feeAmountRaw.minAmount) : null;
+
+    let monthlyRent = 0;
+    if (bedMinRent != null && bedMinRent > 0) {
+      monthlyRent = bedMinRent;
+    } else if (roomMinRent != null && roomMinRent > 0) {
+      monthlyRent = roomMinRent;
+    } else if (resMinRent != null && resMinRent > 0) {
+      monthlyRent = resMinRent;
+    } else if (feeMinAmount != null && feeMinAmount > 0) {
+      monthlyRent = feeMinAmount;
+    }
+
+    return {
+      ...hostel,
+      totalBeds,
+      availableBeds,
+      occupiedBeds,
+      activeResidents,
+      totalStudents: activeResidents,
+      hostelFee: monthlyRent,
+      monthlyRent,
+      currency: 'NPR',
+      beds: {
+        total: totalBeds,
+        available: availableBeds,
+        occupied: occupiedBeds,
       },
-      order: { hostelFacilities: { createdAt: 'ASC' } },
-    });
+    };
   }
 
   public async findHostelOwner(hostelId: string): Promise<Pick<Hostel, 'id' | 'ownerId'> | null> {

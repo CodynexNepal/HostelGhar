@@ -481,7 +481,72 @@ Lists hostels with pagination, ratings, amenities, and real-time bed availabilit
 
 ### GET `/hostels/:id`
 
-Gets hostel detail.
+Gets hostel detail. Public route. Returns complete hostel info including real-time bed inventory (available beds out of total beds), actual hostel fee, and active residents.
+
+**Example Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "a38bf07a-b7b1-49dc-85c8-dd5542a8e90a",
+    "name": "Infinity Boys Hostel",
+    "type": "BOYS",
+    "city": "Kathmandu",
+    "address": "Banasthali-16, Kathmandu",
+    "phone": "9817161246",
+    "email": "dinesh.tamang1519@gmail.com",
+    "logoUrl": "https://res.cloudinary.com/dwltskle/image/upload/v1789385868/hostelghar/logos/hostel_a38bf07a-b7b1-49dc-85c8-dd5542a8e90a_logo_1789385888858.webp",
+    "isActive": true,
+    "totalBeds": 56,
+    "availableBeds": 12,
+    "occupiedBeds": 44,
+    "activeResidents": 44,
+    "totalStudents": 44,
+    "hostelFee": 13500,
+    "monthlyRent": 13500,
+    "currency": "NPR",
+    "beds": {
+      "total": 56,
+      "available": 12,
+      "occupied": 44
+    },
+    "owner": {
+      "id": "a19f8b9d-0792-438e-a044-6dbc26dcecaf",
+      "firstName": "Dinesh",
+      "lastName": "Tamang",
+      "email": "dinesh.tamang1519@gmail.com",
+      "phone": "9876757875",
+      "avatarUrl": "https://res.cloudinary.com/dwltskle/image/upload/v1789385363/hostelghar/owners/avatars/owner_a19f8b9d-0792-438e-a044-6dbc26dcecaf_avatar_1789385383791.webp"
+    },
+    "createdByAdmin": {
+      "id": "01db6ee5-d8b0-4679-bf4f-97decef3ab06",
+      "firstName": "Dinesh",
+      "lastName": "Tamang",
+      "email": "dinesh.tamang123218@gmail.com"
+    },
+    "hostelFacilities": [
+      {
+        "id": "dd68abd7-91bd-42ff-92ff-7fd09f62db4d",
+        "hostelId": "a38bf07a-b7b1-49dc-85c8-dd5542a8e90a",
+        "facilityId": "8dfff98a-27f7-46bf-9754-77445de53055",
+        "description": "Emergency contacts and alerts",
+        "tag": "Extra Charge",
+        "clientKey": "emergency-support-mu5q8k7w",
+        "createdAt": "2026-09-17T16:11:00.596Z",
+        "updatedAt": "2026-09-17T16:12:49.080Z",
+        "facility": {
+          "id": "8dfff98a-27f7-46bf-9754-77445de53055",
+          "title": "Emergency Support",
+          "slug": "emergency-support"
+        }
+      }
+    ]
+  },
+  "isCached": true,
+  "cacheLevel": "L1"
+}
+```
 
 ### GET `/hostels/:id/residents`
 
@@ -528,7 +593,7 @@ Lists leave policies for a hostel.
 
 ### GET `/hostels/:hostelId/facilities`
 
-Lists normalized facilities for a hostel. `hostelId` comes from the URL param.
+Lists normalized facilities for a hostel. `hostelId` comes from the URL param. Public route (no authentication required — you do not have to be logged in to see facilities).
 
 ```json
 {
