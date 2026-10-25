@@ -5,6 +5,7 @@ import { Resident } from '../../entities/resident/resident.entity';
 import { LeaveType } from '../../entities/leave/leave-type.entity';
 import { Fee } from '../../entities/fee/fee.entity';
 import { Room } from '../../entities/room/room.entity';
+import { HostelRating } from '../../entities/rating/hostel-rating.entity';
 
 export class HostelRepository {
   private readonly hostelRepo: Repository<Hostel>;
@@ -12,6 +13,7 @@ export class HostelRepository {
   private readonly leaveTypeRepo: Repository<LeaveType>;
   private readonly feeRepo: Repository<Fee>;
   private readonly roomRepo: Repository<Room>;
+  private readonly ratingRepo: Repository<HostelRating>;
 
   constructor() {
     this.hostelRepo = AppDataSource.getRepository(Hostel);
@@ -19,6 +21,7 @@ export class HostelRepository {
     this.leaveTypeRepo = AppDataSource.getRepository(LeaveType);
     this.feeRepo = AppDataSource.getRepository(Fee);
     this.roomRepo = AppDataSource.getRepository(Room);
+    this.ratingRepo = AppDataSource.getRepository(HostelRating);
   }
 
   public async findAll(page: number, limit: number): Promise<[Hostel[], number]> {
@@ -229,5 +232,70 @@ export class HostelRepository {
       where: { hostelId },
       order: { name: 'ASC' },
     });
+  }
+
+  public async createOrUpdateRating(data: {
+    hostelId: string;
+    userId?: string | null;
+    rating: number;
+    comment?: string | null;
+  }): Promise<HostelRating> {
+    if (data.userId) {
+      const existing = await this.ratingRepo.findOne({
+        where: { hostelId: data.hostelId, userId: data.userId },
+      });
+      if (existing) {
+        existing.rating = data.rating;
+        existing.comment = data.comment ?? null;
+        return this.ratingRepo.save(existing);
+      }
+    }
+
+    const newRating = this.ratingRepo.create({
+      hostelId: data.hostelId,
+      userId: data.userId || null,
+      rating: data.rating,
+      comment: data.comment || null,
+    });
+    return this.ratingRepo.save(newRating);
+  }
+
+  public async findRatingsByHostelId(hostelId: string, limit = 10): Promise<HostelRating[]> {
+    return this.ratingRepo.find({
+      where: { hostelId },
+      relations: { user: true },
+      select: {
+        id: true,
+        hostelId: true,
+        userId: true,
+        rating: true,
+        comment: true,
+        createdAt: true,
+        updatedAt: true,
+        user: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          avatarUrl: true,
+        },
+      },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+  }
+
+  public async getRatingStatsByHostelId(
+    hostelId: string,
+  ): Promise<{ total: number; averageRating: number }> {
+    const raw = await this.ratingRepo
+      .createQueryBuilder('rating')
+      .select('COUNT(*)', 'total')
+      .addSelect('AVG(rating.rating)', 'averageRating')
+      .where('rating.hostelId = :hostelId', { hostelId })
+      .getRawOne<{ total: string; averageRating: string | null }>();
+
+    const total = parseInt(raw?.total || '0', 10);
+    const avg = raw?.averageRating ? parseFloat(parseFloat(raw.averageRating).toFixed(1)) : 0;
+    return { total, averageRating: avg };
   }
 }

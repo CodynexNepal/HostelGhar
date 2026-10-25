@@ -261,49 +261,24 @@ export class HostelService {
       return { error: { status: STATUS_CODE.NOT_FOUND, message: 'Hostel not found' } };
     }
 
-    const ratingsKey = cacheService.generateKey('hostel:ratings:v1', hostelId);
-    const cached = await cacheService.get<{
-      ratings: Array<{
-        rating: number;
-        comment?: string | undefined;
-        userId?: string | undefined;
-        createdAt: string;
-      }>;
-      total: number;
-      sum: number;
-    }>(ratingsKey);
-
-    const existing = cached?.data ?? {
-      ratings: [],
-      total: 28,
-      sum: 28 * 4.8,
-    };
-
-    const ratingEntry: {
-      rating: number;
-      comment?: string | undefined;
-      userId?: string | undefined;
-      createdAt: string;
-    } = {
+    await this.hostelRepository.createOrUpdateRating({
+      hostelId,
+      userId: userId || null,
       rating,
-      comment: comment ? comment.trim() : undefined,
-      userId: userId || undefined,
-      createdAt: new Date().toISOString(),
-    };
-    existing.ratings.unshift(ratingEntry);
-    existing.total += 1;
-    existing.sum += rating;
+      comment: comment ? comment.trim() : null,
+    });
 
-    const averageRating = Number((existing.sum / existing.total).toFixed(1));
+    const stats = await this.hostelRepository.getRatingStatsByHostelId(hostelId);
 
-    await cacheService.set(ratingsKey, existing, { l1TtlSeconds: 3600, l2TtlSeconds: 86400 * 30 });
+    const ratingsKey = cacheService.generateKey('hostel:ratings:v1', hostelId);
+    await cacheService.invalidate(ratingsKey);
 
     return {
       data: {
         hostelId,
         rating,
-        averageRating,
-        totalReviews: existing.total,
+        averageRating: stats.averageRating,
+        totalReviews: stats.total,
         message: 'Rating recorded successfully',
       },
     };
@@ -311,27 +286,25 @@ export class HostelService {
 
   public async getRatings(hostelId: string) {
     const ratingsKey = cacheService.generateKey('hostel:ratings:v1', hostelId);
-    const cached = await cacheService.get<{
-      ratings: Array<any>;
-      total: number;
-      sum: number;
-    }>(ratingsKey);
 
-    const existing = cached?.data ?? {
-      ratings: [],
-      total: 28,
-      sum: 28 * 4.8,
-    };
+    const { data } = await cacheService.wrap(
+      ratingsKey,
+      async () => {
+        const [stats, recentRatings] = await Promise.all([
+          this.hostelRepository.getRatingStatsByHostelId(hostelId),
+          this.hostelRepository.findRatingsByHostelId(hostelId, 10),
+        ]);
 
-    const averageRating = Number((existing.sum / existing.total).toFixed(1));
-
-    return {
-      data: {
-        hostelId,
-        averageRating,
-        totalReviews: existing.total,
-        recentRatings: existing.ratings.slice(0, 10),
+        return {
+          hostelId,
+          averageRating: stats.averageRating,
+          totalReviews: stats.total,
+          recentRatings,
+        };
       },
-    };
+      { l1TtlSeconds: 60, l2TtlSeconds: 300 },
+    );
+
+    return { data };
   }
 }
