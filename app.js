@@ -8,4 +8,3 @@ try {
 }
 
 require('./dist/index.js');
-

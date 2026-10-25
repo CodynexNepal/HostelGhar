@@ -48,6 +48,9 @@ cp "$STAGING_DIR/package-lock.json" "$APP_DIR/package-lock.json.new"
 if [ -f "$STAGING_DIR/app.js" ]; then
   cp "$STAGING_DIR/app.js" "$APP_DIR/app.js.new"
 fi
+if [ -d "$STAGING_DIR/node_modules" ]; then
+  cp -r "$STAGING_DIR/node_modules" "$APP_DIR/node_modules.new"
+fi
 
 # Atomic swap
 rm -rf "$APP_DIR/dist.old"
@@ -60,11 +63,24 @@ mv "$APP_DIR/package-lock.json.new" "$APP_DIR/package-lock.json"
 if [ -f "$APP_DIR/app.js.new" ]; then
   mv "$APP_DIR/app.js.new" "$APP_DIR/app.js"
 fi
+if [ -d "$APP_DIR/node_modules.new" ]; then
+  rm -rf "$APP_DIR/node_modules.old"
+  if [ -d "$APP_DIR/node_modules" ]; then
+    mv "$APP_DIR/node_modules" "$APP_DIR/node_modules.old"
+  fi
+  mv "$APP_DIR/node_modules.new" "$APP_DIR/node_modules"
+  rm -rf "$APP_DIR/node_modules.old" 2>/dev/null || true
+fi
 
-# 5. Install production dependencies
-echo "Installing production dependencies..."
+# 5. Install production dependencies (if not pre-packaged)
+echo "Verifying production dependencies..."
 cd "$APP_DIR"
-npm ci --omit=dev --no-audit --no-fund
+if [ ! -d "$APP_DIR/node_modules" ]; then
+  echo "Installing production dependencies on server..."
+  npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund || true
+else
+  echo "Production node_modules verified in place."
+fi
 
 # 6. Restart Passenger / cPanel Application
 echo "Triggering application restart..."

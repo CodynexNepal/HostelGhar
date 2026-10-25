@@ -21,7 +21,12 @@ hostelRouter.get('/:id', requireParam('id'), apiReadLimiter, hostelController.ge
 
 // Ratings endpoints
 hostelRouter.get('/:id/ratings', requireParam('id'), apiReadLimiter, hostelController.getRatings);
-hostelRouter.post('/:id/ratings', optionalAuthenticate, requireParam('id'), hostelController.addRating);
+hostelRouter.post(
+  '/:id/ratings',
+  optionalAuthenticate,
+  requireParam('id'),
+  hostelController.addRating,
+);
 
 // Protected routes (require authentication)
 hostelRouter.get(

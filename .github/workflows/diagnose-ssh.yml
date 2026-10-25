@@ -69,19 +69,21 @@ jobs:
           ssh-keyscan -p "$CPANEL_PORT" "$CPANEL_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           chmod 644 ~/.ssh/known_hosts
 
-          echo "=== Executing Verbose SSH Test ==="
-          ssh -vvv -T \
+          echo "=== 3a. Testing Remote Command with Forced PTY (-tt) ==="
+          ssh -vvv -tt \
             -p "$CPANEL_PORT" \
             -i "$SSH_KEY_PATH" \
             -o BatchMode=yes \
             -o ConnectTimeout=20 \
             -o StrictHostKeyChecking=accept-new \
             "$CPANEL_USER@$CPANEL_HOST" \
-            'echo SSH_OK; id; pwd'
-          SSH_EXIT=$?
+            'echo SSH_OK; id; pwd' || true
 
-          echo "=== SSH Process Exit Code: $SSH_EXIT ==="
-          exit $SSH_EXIT
+          echo "=== 3b. Testing SFTP Subsystem Reachability ==="
+          sftp -P "$CPANEL_PORT" -i "$SSH_KEY_PATH" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=accept-new \
+            "$CPANEL_USER@$CPANEL_HOST" <<< "pwd"
 
       - name: Cleanup SSH credentials
         if: always()
