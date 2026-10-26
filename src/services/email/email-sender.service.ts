@@ -15,6 +15,9 @@ export class EmailSenderService {
         port: smtpConfig.port,
         secure: smtpConfig.secure,
         auth: smtpConfig.auth,
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       })
     : null;
 

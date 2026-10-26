@@ -5,6 +5,8 @@ import { getRequiredParam } from '../../decorators/http.decorator';
 import { normalizePagination } from '../../utils/pagination.util';
 import { FeeStatus } from '../../enum/fee.enum';
 import { UpdateFeeStatusDto } from '../../dto/fee/update-fee-status.dto';
+import { systemEventQueue } from '../../queue/queue.factory';
+import { TRIGGER_MONTHLY_FEES_JOB } from '../../jobs/fee-scheduler.job';
 import {
   isFirstDayOfNepaliMonth,
   toNepaliDate,
@@ -15,13 +17,78 @@ export class FeeController {
   constructor(private readonly feeService: FeeService) {}
 
   public generateMonthlyFees = async (
-    _req: Request,
+    req: Request,
     res: Response,
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const result = await this.feeService.generateMonthlyFeesForAllHostels();
+      const isAsync = req.query.async === 'true' || req.body?.async === true;
+      if (isAsync) {
+        const job = await systemEventQueue.add(
+          TRIGGER_MONTHLY_FEES_JOB,
+          {
+            requestedBy: req.user?.userId,
+            billingMonth: req.body?.billingMonth,
+            billingYear: req.body?.billingYear,
+            baseFee: req.body?.baseFee,
+          },
+          {
+            removeOnComplete: 100,
+            removeOnFail: 500,
+          },
+        );
+
+        res.status(STATUS_CODE.ACCEPTED).json({
+          success: true,
+          statusCode: STATUS_CODE.ACCEPTED,
+          message: 'Monthly fee generation job accepted for background processing',
+          jobId: job.id,
+          statusUrl: `/api/v1/hostel-ghar/fees/jobs/${job.id}`,
+        });
+        return;
+      }
+
+      const result = await this.feeService.generateMonthlyFeesForAllHostels(
+        req.body?.billingMonth,
+        req.body?.billingYear,
+        req.body?.baseFee,
+      );
       res.status(STATUS_CODE.OK).json({ success: true, result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /fees/jobs/:jobId — Check progress/completion of an asynchronous fee generation job
+   */
+  public getJobStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const jobId = getRequiredParam(req, 'jobId');
+      const job = await systemEventQueue.getJob(jobId);
+      if (!job) {
+        res.status(STATUS_CODE.NOT_FOUND).json({ success: false, message: 'Job not found' });
+        return;
+      }
+
+      const state = await job.getState();
+      const isCompleted = state === 'completed';
+      const isFailed = state === 'failed';
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        data: {
+          jobId: job.id,
+          state,
+          progress: job.progress,
+          result: isCompleted ? job.returnvalue : null,
+          failedReason: isFailed ? job.failedReason : null,
+        },
+      });
     } catch (error) {
       next(error);
     }

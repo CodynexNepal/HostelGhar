@@ -27,6 +27,7 @@ import {
   renderWelcomeEmail,
 } from '../../templates/email.template';
 import crypto from 'crypto';
+import { logger } from '../../observability/logger';
 
 const toSafeUserResponse = (user: {
   id: string;
@@ -119,7 +120,20 @@ export class AuthService {
   public async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
     const user = await this.userRepository.findByEmail(normalizeEmail(dto.email));
     if (!user) {
+      // Preserve account-enumeration protections: do not reveal whether account exists
       return;
+    }
+
+    // Idempotency guard: prevent duplicate emails and token churn if requested within 2m cooldown
+    if (user.passwordResetExpiresAt) {
+      const timeRemainingMs = user.passwordResetExpiresAt.getTime() - Date.now();
+      if (timeRemainingMs > 13 * 60 * 1000) {
+        logger.info('Password reset request throttled within active cooldown window', {
+          userId: user.id,
+          timeRemainingMs,
+        });
+        return;
+      }
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -128,11 +142,26 @@ export class AuthService {
     await this.userRepository.setPasswordResetToken(user.id, tokenHash, expiresAt);
 
     const template = renderPasswordResetEmail(user.firstName, resetToken);
-    await eventDispatcher.queueEmail(JobType.SEND_PASSWORD_RESET, {
-      to: user.email,
-      subject: template.subject,
-      body: template.body,
-    });
+    try {
+      await eventDispatcher.queueEmail(
+        JobType.SEND_PASSWORD_RESET,
+        {
+          to: user.email,
+          subject: template.subject,
+          body: template.body,
+        },
+        { timeoutMs: 3500 },
+      );
+    } catch (queueErr: any) {
+      logger.error('Failed to enqueue password reset email', {
+        userId: user.id,
+        error: queueErr?.message || String(queueErr),
+      });
+      throw createHttpError(
+        'Service temporarily unavailable. Unable to dispatch reset email. Please try again later.',
+        STATUS_CODE.SERVICE_UNAVAILABLE,
+      );
+    }
   }
 
   public async resetPassword(dto: ResetPasswordDto): Promise<void> {

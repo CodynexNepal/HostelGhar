@@ -41,6 +41,63 @@ export class FeeRepository {
     });
   }
 
+  /**
+   * Batch lookup of existing monthly fees for a list of residents in one query.
+   * Eliminates N individual queries during monthly fee automation.
+   */
+  public async findExistingMonthlyFees(
+    residentIds: string[],
+    billingMonth: number,
+    billingYear: number,
+  ): Promise<Fee[]> {
+    if (residentIds.length === 0) return [];
+    return this.feeRepo.find({
+      where: {
+        residentId: In(residentIds),
+        billingMonth,
+        billingYear,
+        feeType: FeeType.MONTHLY_HOSTEL_FEE,
+      },
+      select: ['id', 'residentId', 'billingMonth', 'billingYear', 'totalPayable'],
+    });
+  }
+
+  /**
+   * Batch aggregate query to calculate outstanding pending/unpaid balances for all residents in ONE query.
+   * Eliminates N individual pending fee queries during monthly fee generation.
+   */
+  public async findPendingBalancesByResidents(
+    residentIds: string[],
+  ): Promise<Map<string, number>> {
+    const balances = new Map<string, number>();
+    if (residentIds.length === 0) return balances;
+
+    const rawTotals = await this.feeRepo
+      .createQueryBuilder('fee')
+      .select('fee.residentId', 'residentId')
+      .addSelect('SUM(fee.totalPayable - fee.paidAmount)', 'outstandingDue')
+      .where('fee.residentId IN (:...residentIds)', { residentIds })
+      .andWhere('fee.status IN (:...statuses)', {
+        statuses: [FeeStatus.PENDING, FeeStatus.PARTIALLY_PAID, FeeStatus.OVERDUE],
+      })
+      .groupBy('fee.residentId')
+      .getRawMany<{ residentId: string; outstandingDue: string | number }>();
+
+    for (const row of rawTotals) {
+      balances.set(row.residentId, Math.max(0, Number(row.outstandingDue) || 0));
+    }
+    return balances;
+  }
+
+  /**
+   * Bulk persists fee records in a single transactional chunk.
+   */
+  public async createFeesBulk(feesData: Partial<Fee>[]): Promise<Fee[]> {
+    if (feesData.length === 0) return [];
+    const entities = this.feeRepo.create(feesData);
+    return this.feeRepo.save(entities, { chunk: 100 });
+  }
+
   public async createFee(data: Partial<Fee>): Promise<Fee> {
     const fee = this.feeRepo.create(data);
     return this.feeRepo.save(fee);

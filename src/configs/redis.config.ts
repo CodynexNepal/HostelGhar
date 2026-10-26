@@ -17,7 +17,7 @@ export const redisOptions: RedisOptions = {
   enableOfflineQueue: !isTest,
   lazyConnect: isTest,
   keepAlive: 10000,
-  connectTimeout: isTest ? 1000 : 10000,
+  connectTimeout: isTest ? 1000 : 3500,
   retryStrategy: (times: number) => {
     if (isTest) {
       return null;

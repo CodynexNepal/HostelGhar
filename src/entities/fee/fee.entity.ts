@@ -21,6 +21,7 @@ import { FeeStatus, FeeType } from '../../enum/fee.enum';
 @Index('idx_fees_resident_status', ['residentId', 'status'])
 @Index('idx_fees_hostel_month_year', ['hostelId', 'billingMonth', 'billingYear'])
 @Index('idx_fees_due_date_status', ['dueDate', 'status'])
+@Index('idx_fees_resident_month_year_type', ['residentId', 'billingMonth', 'billingYear', 'feeType'], { unique: true })
 export class Fee {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

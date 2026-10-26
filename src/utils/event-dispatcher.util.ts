@@ -51,7 +51,7 @@ class AppEventDispatcher extends EventEmitter {
   }
 
   /**
-   * Helper to dispatch email job to BullMQ queue
+   * Helper to dispatch email job to BullMQ queue with bounded timeout
    */
   public async queueEmail(
     jobType: JobType,
@@ -62,8 +62,47 @@ class AppEventDispatcher extends EventEmitter {
       html?: string;
       context?: Record<string, any>;
     },
+    options?: { timeoutMs?: number },
   ) {
-    return await emailQueue.add(jobType, data);
+    const timeoutMs = options?.timeoutMs ?? 3500;
+    return await Promise.race([
+      emailQueue.add(jobType, data),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`Queue job confirmation timed out after ${timeoutMs}ms`)),
+          timeoutMs,
+        ).unref(),
+      ),
+    ]);
+  }
+
+  /**
+   * Helper to dispatch bulk email jobs to BullMQ queue in a single operation
+   */
+  public async queueEmailsBulk(
+    jobs: Array<{
+      name: JobType;
+      data: {
+        to: string;
+        subject: string;
+        body?: string;
+        html?: string;
+        context?: Record<string, any>;
+      };
+    }>,
+    options?: { timeoutMs?: number },
+  ) {
+    if (jobs.length === 0) return [];
+    const timeoutMs = options?.timeoutMs ?? 5000;
+    return await Promise.race([
+      emailQueue.addBulk(jobs),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`Bulk queue jobs confirmation timed out after ${timeoutMs}ms`)),
+          timeoutMs,
+        ).unref(),
+      ),
+    ]);
   }
 
   /**

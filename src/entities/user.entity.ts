@@ -9,11 +9,13 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
 import { IROLES } from '../constant/enum.constant';
 
 @Entity('users')
+@Index('idx_users_password_reset_token', ['passwordResetToken'])
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

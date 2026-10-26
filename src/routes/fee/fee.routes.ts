@@ -36,6 +36,12 @@ feeRouter.post(
   feeController.generateMonthlyFees,
 );
 feeRouter.get(
+  '/jobs/:jobId',
+  ...ownerOrAdmin,
+  requireParam('jobId'),
+  feeController.getJobStatus,
+);
+feeRouter.get(
   '/hostels/:hostelId',
   ...ownerOrAdmin,
   requireParam('hostelId'),

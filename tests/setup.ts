@@ -25,7 +25,18 @@ vi.mock('../src/configs/redis.config', () => ({
 }));
 
 // Stub BullMQ queues so route imports never spin up background workers
-const queueStub = { on: () => undefined, add: async () => ({ id: 'stub' }) };
+const queueStub = {
+  on: () => undefined,
+  add: async () => ({ id: 'stub' }),
+  addBulk: async (jobs: any[]) => jobs.map((_, i) => ({ id: `stub-${i}` })),
+  getJob: async (id: string) => ({
+    id,
+    getState: async () => 'completed',
+    progress: 100,
+    returnvalue: { generatedCount: 1, errors: 0 },
+    failedReason: null,
+  }),
+};
 vi.mock('../src/queue/queue.factory', () => ({
   getQueue: () => queueStub,
   emailQueue: queueStub,

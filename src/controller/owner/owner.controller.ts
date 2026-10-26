@@ -16,6 +16,8 @@ import { normalizePagination, createPaginatedResponse } from '../../utils/pagina
 import { eventDispatcher } from '../../utils/event-dispatcher.util';
 import { JobType, SocketEvent } from '../../constant/queue.constants';
 import { feeService } from '../../services/fee/fee.service';
+import { systemEventQueue } from '../../queue/queue.factory';
+import { TRIGGER_MONTHLY_FEES_JOB } from '../../jobs/fee-scheduler.job';
 import { optimizedHostelQueryService } from '../../services/hostel/hostel-query.service';
 import { OwnerRepository } from '../../repository/owner/owner.repository';
 import { getRequiredParam } from '../../decorators/http.decorator';
@@ -950,7 +952,7 @@ export class OwnerController {
   };
 
   /**
-   * Trigger monthly fee batch generation manually
+   * Trigger monthly fee batch generation manually (synchronously or asynchronously)
    */
   public triggerMonthlyFees = async (
     req: Request,
@@ -958,7 +960,37 @@ export class OwnerController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      const result = await feeService.generateMonthlyFeesForAllHostels();
+      const isAsync = req.query.async === 'true' || req.body?.async === true;
+      if (isAsync) {
+        const job = await systemEventQueue.add(
+          TRIGGER_MONTHLY_FEES_JOB,
+          {
+            requestedBy: req.user?.userId,
+            billingMonth: req.body?.billingMonth,
+            billingYear: req.body?.billingYear,
+            baseFee: req.body?.baseFee,
+          },
+          {
+            removeOnComplete: 100,
+            removeOnFail: 500,
+          },
+        );
+
+        res.status(STATUS_CODE.ACCEPTED).json({
+          success: true,
+          statusCode: STATUS_CODE.ACCEPTED,
+          message: 'Monthly fee generation job accepted for background processing',
+          jobId: job.id,
+          statusUrl: `/api/v1/hostel-ghar/fees/jobs/${job.id}`,
+        });
+        return;
+      }
+
+      const result = await feeService.generateMonthlyFeesForAllHostels(
+        req.body?.billingMonth,
+        req.body?.billingYear,
+        req.body?.baseFee,
+      );
       res.status(STATUS_CODE.OK).json({
         success: true,
         message: 'Monthly fees generated and dispatched to residents',

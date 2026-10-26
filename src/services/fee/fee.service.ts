@@ -8,6 +8,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { FeeStatus, FeeType } from '../../enum/fee.enum';
+import { Fee } from '../../entities/fee/fee.entity';
 import { eventDispatcher } from '../../utils/event-dispatcher.util';
 import { JobType, SocketEvent } from '../../constant/queue.constants';
 import { FeeRepository } from '../../repository/fee/fee.repository';
@@ -90,102 +91,150 @@ export class FeeService {
       `🏦 [FeeService] Starting Nepali monthly fee automation for ${period.nepaliMonthLabel} (AD ${resolvedMonth}/${resolvedYear})...`,
     );
 
-    // Stream/batch active residents with user details and hostel owner details
+    // Stream/batch active residents with user details and hostel owner details in a single query
     const activeResidents = await this.feeRepository.findActiveResidents();
+    if (activeResidents.length === 0) {
+      return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel };
+    }
+
+    const residentIds = activeResidents.map((r) => r.id);
+
+    // 1. Single batch query for already-generated monthly fees in this period (prevents N lookups)
+    const existingFees = await this.feeRepository.findExistingMonthlyFees(
+      residentIds,
+      resolvedMonth,
+      resolvedYear,
+    );
+    const alreadyBilledSet = new Set(existingFees.map((f) => f.residentId));
+
+    // 2. Filter out residents who have already been billed for this cycle
+    const unbilledResidents = activeResidents.filter((r) => !alreadyBilledSet.has(r.id));
+    if (unbilledResidents.length === 0) {
+      console.log(`🏦 [FeeService] All active residents already billed for ${period.nepaliMonthLabel}.`);
+      return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel };
+    }
+
+    // 3. Single aggregate query for all pending/unpaid balances (eliminates N balance queries)
+    const unbilledResidentIds = unbilledResidents.map((r) => r.id);
+    const balances = await this.feeRepository.findPendingBalancesByResidents(unbilledResidentIds);
+
+    const feesToCreate: Partial<Fee>[] = [];
+    const emailJobs: Array<{
+      name: JobType;
+      data: {
+        to: string;
+        subject: string;
+        body?: string;
+        html?: string;
+      };
+    }> = [];
+    const socketNotifications: Array<{
+      userId: string;
+      totalPayable: number;
+    }> = [];
+
+    for (const resident of unbilledResidents) {
+      const outstandingDue = balances.get(resident.id) || 0.0;
+      const totalPayable = Number(baseFee) + Number(outstandingDue);
+
+      feesToCreate.push({
+        residentId: resident.id,
+        hostelId: resident.hostelId,
+        feeType: FeeType.MONTHLY_HOSTEL_FEE,
+        amount: baseFee,
+        dueAmount: outstandingDue,
+        totalPayable,
+        paidAmount: 0.0,
+        billingMonth: resolvedMonth,
+        billingYear: resolvedYear,
+        dueDate,
+        status: FeeStatus.PENDING,
+      });
+
+      const ownerName =
+        `${resident.hostel?.owner?.firstName || ''} ${resident.hostel?.owner?.lastName || ''}`.trim() ||
+        'Hostel Owner';
+      const studentName =
+        `${resident.user?.firstName || ''} ${resident.user?.lastName || ''}`.trim() || 'Student';
+
+      const bill = renderMonthlyFeeBillEmail({
+        studentName,
+        studentEmail: resident.user?.email,
+        hostelName: resident.hostel?.name || 'Hostel',
+        ownerName,
+        hostelAddress: resident.hostel?.address || '',
+        hostelPhone: resident.hostel?.phone || '',
+        hostelEmail: resident.hostel?.email || '',
+        roomNumber: resident.roomNumber,
+        nepaliMonthLabel: period.nepaliMonthLabel,
+        nepaliDateLabel: period.nepaliDateLabel,
+        baseFee: Number(baseFee),
+        outstandingDue: Number(outstandingDue),
+        totalPayable: Number(totalPayable),
+        dueDateAd: dueDate,
+        dueDateBs: period.dueDateBs,
+        billNo: `FEE-${resolvedYear}${String(resolvedMonth).padStart(2, '0')}`,
+      });
+
+      if (resident.user?.email) {
+        emailJobs.push({
+          name: JobType.SEND_INVOICE_EMAIL,
+          data: {
+            to: resident.user.email,
+            subject: bill.subject,
+            body: bill.body,
+            html: bill.html,
+          },
+        });
+      }
+
+      if (resident.userId) {
+        socketNotifications.push({
+          userId: resident.userId,
+          totalPayable,
+        });
+      }
+    }
 
     let generatedCount = 0;
     let errors = 0;
 
-    for (const resident of activeResidents) {
+    // 4. Chunked bulk insert inside a single database roundtrip
+    try {
+      const savedFees = await this.feeRepository.createFeesBulk(feesToCreate);
+      generatedCount = savedFees.length;
+    } catch (bulkErr: any) {
+      console.error('❌ [FeeService] Error in bulk fee creation:', bulkErr.message);
+      errors++;
+      throw bulkErr;
+    }
+
+    // 5. Invalidate fee caches once in parallel across all tiers (NOT in the loop)
+    await Promise.allSettled([
+      cacheService.invalidatePattern('resident:fees'),
+      cacheService.invalidatePattern('hostel:fees'),
+      cacheService.invalidatePattern('hostel:residents'),
+      cacheService.invalidatePattern('owner:dashboard'),
+      cacheService.invalidatePattern('owner:residents'),
+    ]);
+
+    // 6. Bulk dispatch email jobs in a single Redis transaction
+    if (emailJobs.length > 0) {
+      eventDispatcher.queueEmailsBulk(emailJobs, { timeoutMs: 3500 }).catch((err) => {
+        console.warn('⚠️ [FeeService] Bulk email dispatch warning:', err.message);
+      });
+    }
+
+    // 7. Dispatch real-time push notifications
+    for (const notif of socketNotifications) {
       try {
-        // 1. Calculate any outstanding unpaid / overdue balance from previous billing cycles
-        const previousUnpaidFees = await this.feeRepository.findPendingFeesByResident(resident.id);
-
-        const outstandingDue = previousUnpaidFees.reduce(
-          (sum, f) => sum + (Number(f.totalPayable) - Number(f.paidAmount)),
-          0,
-        );
-
-        const totalPayable = Number(baseFee) + Number(outstandingDue);
-
-        // 2. Check if monthly bill already exists
-        let feeRecord = await this.feeRepository.findMonthlyFee(
-          resident.id,
-          resolvedMonth,
-          resolvedYear,
-        );
-
-        if (!feeRecord) {
-          feeRecord = await this.feeRepository.createFee({
-            residentId: resident.id,
-            hostelId: resident.hostelId,
-            feeType: FeeType.MONTHLY_HOSTEL_FEE,
-            amount: baseFee,
-            dueAmount: outstandingDue,
-            totalPayable: totalPayable,
-            paidAmount: 0.0,
-            billingMonth: resolvedMonth,
-            billingYear: resolvedYear,
-            dueDate,
-            status: FeeStatus.PENDING,
-          });
-          generatedCount++;
-        }
-
-        // Invalidate fee caches across all tiers.
-        // NOTE: keys are `cache:<prefix>:<json>` so a suffixed pattern like
-        // `hostel:fees:<hostelId>` never matches — invalidate by prefix.
-        await cacheService.invalidatePattern(`resident:fees`);
-        await cacheService.invalidatePattern(`hostel:fees`);
-        await cacheService.invalidatePattern(`hostel:residents`);
-        await cacheService.invalidatePattern(`owner:dashboard`);
-        await cacheService.invalidatePattern(`owner:residents`);
-
-        // 3. Beautiful Nepali-month fee bill email (hostel + owner identity)
-        const ownerName =
-          `${resident.hostel.owner?.firstName || ''} ${resident.hostel.owner?.lastName || ''}`.trim() ||
-          'Hostel Owner';
-        const studentName =
-          `${resident.user.firstName || ''} ${resident.user.lastName || ''}`.trim() || 'Student';
-        const bill = renderMonthlyFeeBillEmail({
-          studentName,
-          studentEmail: resident.user.email,
-          hostelName: resident.hostel.name,
-          ownerName,
-          hostelAddress: resident.hostel.address,
-          hostelPhone: resident.hostel.phone,
-          hostelEmail: resident.hostel.email,
-          roomNumber: resident.roomNumber,
-          nepaliMonthLabel: period.nepaliMonthLabel,
-          nepaliDateLabel: period.nepaliDateLabel,
-          baseFee: Number(baseFee),
-          outstandingDue: Number(outstandingDue),
-          totalPayable: Number(totalPayable),
-          dueDateAd: dueDate,
-          dueDateBs: period.dueDateBs,
-          billNo: feeRecord.id.slice(0, 8).toUpperCase(),
-        });
-
-        await eventDispatcher.queueEmail(JobType.SEND_INVOICE_EMAIL, {
-          to: resident.user.email,
-          subject: bill.subject,
-          body: bill.body,
-          html: bill.html,
-        });
-
-        // 4. Live Push Notification via Socket.io to the resident
-        socketServer.toUser(resident.userId, SocketEvent.PAYMENT_PROCESSED, {
+        socketServer.toUser(notif.userId, SocketEvent.PAYMENT_PROCESSED, {
           title: 'Monthly Fee Generated',
-          message: `Your ${period.nepaliMonthLabel} hostel fee of NPR ${baseFee} (Total due: NPR ${totalPayable}) is due by ${dueDate}.`,
-          feeId: feeRecord.id,
-          totalPayable,
+          message: `Your ${period.nepaliMonthLabel} hostel fee of NPR ${baseFee} (Total due: NPR ${notif.totalPayable}) is due by ${dueDate}.`,
+          totalPayable: notif.totalPayable,
         });
-      } catch (err: any) {
-        console.error(
-          `❌ [FeeService] Error generating fee for resident ${resident.id}:`,
-          err.message,
-        );
-        errors++;
+      } catch {
+        // Non-blocking
       }
     }
 

@@ -2,6 +2,7 @@ export const STATUS_CODE = {
   SUCCESS: 200,
   OK: 200,
   CREATED: 201,
+  ACCEPTED: 202,
   UPDATED: 200,
   DELETED: 200,
   BAD_REQUEST: 400,
@@ -12,6 +13,7 @@ export const STATUS_CODE = {
   TOO_MANY_REQUESTS: 429,
   VALIDATION_ERROR: 422,
   INTERNAL_SERVER_ERROR: 500,
+  SERVICE_UNAVAILABLE: 503,
 } as const;
 
 export type IStatusCode = typeof STATUS_CODE;

@@ -16,6 +16,7 @@ import {
 
 export const SCHEDULED_MONTHLY_FEE_JOB = 'SCHEDULED_MONTHLY_FEE_JOB';
 export const SCHEDULED_NEPALI_FEE_CHECK_JOB = 'SCHEDULED_NEPALI_FEE_CHECK_JOB';
+export const TRIGGER_MONTHLY_FEES_JOB = 'TRIGGER_MONTHLY_FEES_JOB';
 
 /**
  * Daily 00:05 check. The worker skips unless today is Nepali 1st (gatey).
@@ -46,6 +47,16 @@ export class FeeAutomationWorker extends BaseWorker {
   }
 
   async process(job: Job): Promise<any> {
+    if (job.name === TRIGGER_MONTHLY_FEES_JOB) {
+      const result = await feeService.generateMonthlyFeesForAllHostels(
+        job.data?.billingMonth,
+        job.data?.billingYear,
+        job.data?.baseFee,
+        { enforceNepaliFirstDay: false },
+      );
+      return result;
+    }
+
     if (job.name === SCHEDULED_NEPALI_FEE_CHECK_JOB || job.name === SCHEDULED_MONTHLY_FEE_JOB) {
       const now = new Date();
       const bs = toNepaliDate(now);
