@@ -62,11 +62,7 @@ export class FeeController {
   /**
    * GET /fees/jobs/:jobId — Check progress/completion of an asynchronous fee generation job
    */
-  public getJobStatus = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public getJobStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const jobId = getRequiredParam(req, 'jobId');
       const job = await systemEventQueue.getJob(jobId);

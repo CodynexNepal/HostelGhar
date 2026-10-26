@@ -42,7 +42,9 @@ describe('AuthService.forgotPassword Optimization & Reliability', () => {
       passwordResetExpiresAt: null,
     };
     (mockUserRepo.findByEmail as any).mockResolvedValue(existingUser);
-    const queueSpy = vi.spyOn(eventDispatcher, 'queueEmail').mockResolvedValue({ id: 'job-1' } as any);
+    const queueSpy = vi
+      .spyOn(eventDispatcher, 'queueEmail')
+      .mockResolvedValue({ id: 'job-1' } as any);
 
     await authService.forgotPassword({ email: 'student@hostelghar.com' });
 
@@ -95,7 +97,9 @@ describe('AuthService.forgotPassword Optimization & Reliability', () => {
       new Error('Queue job confirmation timed out after 3500ms'),
     );
 
-    await expect(authService.forgotPassword({ email: 'student3@hostelghar.com' })).rejects.toMatchObject({
+    await expect(
+      authService.forgotPassword({ email: 'student3@hostelghar.com' }),
+    ).rejects.toMatchObject({
       statusCode: STATUS_CODE.SERVICE_UNAVAILABLE,
       message: expect.stringContaining('Service temporarily unavailable'),
     });

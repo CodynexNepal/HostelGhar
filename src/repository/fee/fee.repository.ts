@@ -66,9 +66,7 @@ export class FeeRepository {
    * Batch aggregate query to calculate outstanding pending/unpaid balances for all residents in ONE query.
    * Eliminates N individual pending fee queries during monthly fee generation.
    */
-  public async findPendingBalancesByResidents(
-    residentIds: string[],
-  ): Promise<Map<string, number>> {
+  public async findPendingBalancesByResidents(residentIds: string[]): Promise<Map<string, number>> {
     const balances = new Map<string, number>();
     if (residentIds.length === 0) return balances;
 

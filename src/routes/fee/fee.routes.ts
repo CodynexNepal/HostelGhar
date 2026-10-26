@@ -35,12 +35,7 @@ feeRouter.post(
   sensitiveActionLimiter,
   feeController.generateMonthlyFees,
 );
-feeRouter.get(
-  '/jobs/:jobId',
-  ...ownerOrAdmin,
-  requireParam('jobId'),
-  feeController.getJobStatus,
-);
+feeRouter.get('/jobs/:jobId', ...ownerOrAdmin, requireParam('jobId'), feeController.getJobStatus);
 feeRouter.get(
   '/hostels/:hostelId',
   ...ownerOrAdmin,

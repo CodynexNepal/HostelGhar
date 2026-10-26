@@ -15,12 +15,7 @@ module.exports = {
 
       // Preload dotenv configuration and OpenTelemetry instrumentation
       // in exact alignment with the production runtime requirement.
-      node_args: [
-        '-r',
-        'dotenv/config',
-        '-r',
-        './dist/observability/tracing/instrumentation.js',
-      ],
+      node_args: ['-r', 'dotenv/config', '-r', './dist/observability/tracing/instrumentation.js'],
 
       // Standalone single-instance fork mode for resource-constrained hosting.
       // Avoids multi-instance cluster overhead and port/worker conflicts on CloudLinux LVE.

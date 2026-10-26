@@ -35,7 +35,13 @@ describe('FeeService and FeeController Optimization & Scalability', () => {
         userId: 'user-1',
         roomNumber: '101',
         user: { email: 'res1@hostel.com', firstName: 'Res', lastName: 'One' },
-        hostel: { name: 'Hostel A', address: 'Kathmandu', phone: '9800000000', email: 'a@hostel.com', owner: { firstName: 'Owner', lastName: 'A' } },
+        hostel: {
+          name: 'Hostel A',
+          address: 'Kathmandu',
+          phone: '9800000000',
+          email: 'a@hostel.com',
+          owner: { firstName: 'Owner', lastName: 'A' },
+        },
       },
       {
         id: 'res-2',
@@ -43,7 +49,13 @@ describe('FeeService and FeeController Optimization & Scalability', () => {
         userId: 'user-2',
         roomNumber: '102',
         user: { email: 'res2@hostel.com', firstName: 'Res', lastName: 'Two' },
-        hostel: { name: 'Hostel A', address: 'Kathmandu', phone: '9800000000', email: 'a@hostel.com', owner: { firstName: 'Owner', lastName: 'A' } },
+        hostel: {
+          name: 'Hostel A',
+          address: 'Kathmandu',
+          phone: '9800000000',
+          email: 'a@hostel.com',
+          owner: { firstName: 'Owner', lastName: 'A' },
+        },
       },
     ];
 
@@ -51,7 +63,10 @@ describe('FeeService and FeeController Optimization & Scalability', () => {
     // Neither has been billed yet
     (mockFeeRepo.findExistingMonthlyFees as any).mockResolvedValue([]);
     // Balances
-    const balances = new Map<string, number>([['res-1', 500], ['res-2', 0]]);
+    const balances = new Map<string, number>([
+      ['res-1', 500],
+      ['res-2', 0],
+    ]);
     (mockFeeRepo.findPendingBalancesByResidents as any).mockResolvedValue(balances);
     (mockFeeRepo.createFeesBulk as any).mockResolvedValue([
       { id: 'fee-1', residentId: 'res-1' },
@@ -128,7 +143,9 @@ describe('FeeService and FeeController Optimization & Scalability', () => {
       },
     } as unknown as Response;
 
-    const queueAddSpy = vi.spyOn(systemEventQueue, 'add').mockResolvedValue({ id: 'job-monthly-99' } as any);
+    const queueAddSpy = vi
+      .spyOn(systemEventQueue, 'add')
+      .mockResolvedValue({ id: 'job-monthly-99' } as any);
 
     await feeController.generateMonthlyFees(req, res, () => {});
 

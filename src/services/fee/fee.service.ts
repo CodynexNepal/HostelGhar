@@ -110,7 +110,9 @@ export class FeeService {
     // 2. Filter out residents who have already been billed for this cycle
     const unbilledResidents = activeResidents.filter((r) => !alreadyBilledSet.has(r.id));
     if (unbilledResidents.length === 0) {
-      console.log(`🏦 [FeeService] All active residents already billed for ${period.nepaliMonthLabel}.`);
+      console.log(
+        `🏦 [FeeService] All active residents already billed for ${period.nepaliMonthLabel}.`,
+      );
       return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel };
     }
 
