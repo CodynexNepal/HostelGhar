@@ -6,6 +6,7 @@
 
 import { EventEmitter } from 'events';
 import { emailQueue, notificationQueue, auditLogQueue } from '../queue/queue.factory';
+import { redisClient } from '../configs/redis.config';
 import { JobType } from '../constant/queue.constants';
 import { socketServer } from '../socket/socket.server';
 
@@ -65,6 +66,18 @@ class AppEventDispatcher extends EventEmitter {
     },
     options?: { timeoutMs?: number; fallbackToDirectSmtp?: boolean },
   ) {
+    // If Redis is not connected, immediately deliver via direct SMTP to avoid blocking the request
+    if (redisClient.status !== 'ready' && options?.fallbackToDirectSmtp !== false) {
+      const { emailSenderService } = await import('../services/email/email-sender.service');
+      await emailSenderService.send({
+        to: data.to,
+        subject: data.subject,
+        body: data.body || '',
+        ...(data.html ? { html: data.html } : {}),
+      });
+      return { id: 'direct-smtp-fallback', name: jobType, data } as any;
+    }
+
     const timeoutMs = options?.timeoutMs ?? 2500;
     try {
       return await Promise.race([
