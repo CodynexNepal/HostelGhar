@@ -91,7 +91,7 @@ export function cleanEnvConfig(): CleanEnvConfig {
       process.env.CORS_ORIGIN ||
       process.env.FRONTEND_ORIGIN ||
       process.env.FRONTEND_URL ||
-      (nodeEnv === 'production' ? '' : '*'),
+      'https://dashboard.hostelghar.com',
     SOCKET_CORS_ORIGIN:
       process.env.SOCKET_CORS_ORIGIN ||
       process.env.CORS_ORIGIN ||

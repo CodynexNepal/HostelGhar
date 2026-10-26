@@ -5,6 +5,8 @@
 // ──────────────────────────────────────────────────────────────────────────────
 import { vi } from 'vitest';
 
+process.env.CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://dashboard.hostelghar.com';
+
 // Stub Redis client so test suites never dial a live Redis instance
 vi.mock('../src/configs/redis.config', () => ({
   redisClient: {

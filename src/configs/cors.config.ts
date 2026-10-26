@@ -16,8 +16,10 @@ const parseOrigins = (value: string): string[] => {
   return value.split(',').map(normalizeOrigin).filter(Boolean);
 };
 
-const allowedOrigins = parseOrigins(dotEnvConfig.CORS_ORIGIN);
-const isDev = dotEnvConfig.NODE_ENV !== 'production';
+const defaultOrigins = ['https://dashboard.hostelghar.com'];
+const parsedOrigins = parseOrigins(dotEnvConfig.CORS_ORIGIN);
+const allowedOrigins = parsedOrigins.length > 0 ? parsedOrigins : defaultOrigins;
+const isDev = dotEnvConfig.NODE_ENV === 'development';
 
 if (!isDev && allowedOrigins.length === 0) {
   throw new Error('CORS_ORIGIN must contain an explicit production origin allowlist.');
