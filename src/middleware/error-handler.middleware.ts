@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { STATUS_CODE } from '../constant/statusCode.interface';
 import { dotEnvConfig } from '../configs/envConfig';
+import { applyCorsHeaders } from '../configs/cors.config';
 
 interface HttpError extends Error {
   statusCode?: number;
@@ -9,10 +10,11 @@ interface HttpError extends Error {
 
 export const errorHandler = (
   err: HttpError,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): void => {
+  applyCorsHeaders(req, res);
   const statusCode = err.statusCode || STATUS_CODE.INTERNAL_SERVER_ERROR;
   const message = err.message || 'Internal Server Error';
 

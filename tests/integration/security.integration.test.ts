@@ -36,13 +36,42 @@ describe('integration: production pipeline', () => {
     const res = await fetch(`${baseUrl}/api/v1/hostel-ghar/auth/me`, {
       method: 'OPTIONS',
       headers: {
-        Origin: 'http://localhost:3000',
+        Origin: 'https://dashboard.hostelghar.com',
         'Access-Control-Request-Method': 'GET',
+        'Access-Control-Request-Headers': 'Authorization',
       },
     });
     expect(res.status).toBe(204);
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://dashboard.hostelghar.com');
+    expect(res.headers.get('access-control-allow-credentials')).toBe('true');
     expect(res.headers.get('content-encoding')).toBeNull();
     await res.text();
+  });
+
+  it('preserves CORS headers on error responses (401)', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/hostel-ghar/auth/me`, {
+      headers: {
+        Origin: 'https://dashboard.hostelghar.com',
+      },
+    });
+    expect(res.status).toBe(401);
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://dashboard.hostelghar.com');
+    expect(res.headers.get('access-control-allow-credentials')).toBe('true');
+    const json = await res.json();
+    expect(json).toMatchObject({ success: false });
+  });
+
+  it('preserves CORS headers on not found error responses (404)', async () => {
+    const res = await fetch(`${baseUrl}/health/non-existent-route`, {
+      headers: {
+        Origin: 'https://dashboard.hostelghar.com',
+      },
+    });
+    expect(res.status).toBe(404);
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://dashboard.hostelghar.com');
+    expect(res.headers.get('access-control-allow-credentials')).toBe('true');
+    const json = await res.json();
+    expect(json).toMatchObject({ success: false });
   });
 
   it('requires authentication on a protected route (401 JSON)', async () => {

@@ -27,6 +27,7 @@ import rateLimit, { Options, RateLimitRequestHandler, ipKeyGenerator } from 'exp
 import { STATUS_CODE } from '../constant/statusCode.interface';
 import { MESSAGES } from '../constant/message.interface';
 import { dotEnvConfig } from './envConfig';
+import { applyCorsHeaders } from './cors.config';
 
 // ─── IP Normalization & Client Identification ─────────────────────────────────
 
@@ -61,6 +62,7 @@ export const getClientIp = (req: Request): string => {
  */
 const createRateLimitHandler = (customMessage: string) => {
   return (req: Request, res: Response, _next: unknown, options: Options): void => {
+    applyCorsHeaders(req, res);
     const clientIp = getClientIp(req);
     const retryAfter = Math.ceil(options.windowMs / 1000);
 

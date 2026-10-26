@@ -34,7 +34,7 @@ routes.use('/fees', feeRouter);
 routes.use('/rooms', roomRouter);
 routes.use('/beds', bedRouter);
 routes.use('/payment-qrs', paymentQrRouter);
-routes.use('/', platformQrPublicRouter);
+routes.use('/platform-qrs', platformQrPublicRouter);
 routes.use('/expenses', expenseRouter);
 routes.use('/subscriptions', subscriptionRouter);
 routes.use('/staff', staffRouter);

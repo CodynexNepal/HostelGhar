@@ -52,7 +52,22 @@ const { PORT } = dotEnvConfig;
     socketServer.init(httpServer);
 
     // ── Step 5: Bootstrap BullMQ Background Workers ─────────────────────
-    bootstrapWorkers();
+    // On cPanel with Phusion Passenger, background workers must NOT be spawned
+    // in every HTTP request worker process, otherwise multiple Passenger workers
+    // create connection storms to Redis and exhaust CloudLinux LVE resources.
+    const isPassenger =
+      typeof (global as any).PhusionPassenger !== 'undefined' ||
+      process.env.PASSENGER_MODE === 'true';
+
+    if (!isPassenger && process.env.ENABLE_WORKERS !== 'false') {
+      try {
+        bootstrapWorkers();
+      } catch (workerErr: any) {
+        logger.error('Failed to bootstrap BullMQ workers', {
+          error: workerErr?.message || String(workerErr),
+        });
+      }
+    }
 
     // ── Step 6: Start the HTTP Server ───────────────────────────────────
     httpServer.on('error', (error) => {
@@ -64,12 +79,20 @@ const { PORT } = dotEnvConfig;
       process.exitCode = 1;
     });
 
-    httpServer.listen(PORT, () => {
-      logger.info('HTTP server started', {
-        port: PORT,
-        cors_origin: dotEnvConfig.CORS_ORIGIN,
+    if (isPassenger) {
+      httpServer.listen('passenger', () => {
+        logger.info('HTTP server started with Phusion Passenger', {
+          cors_origin: dotEnvConfig.CORS_ORIGIN,
+        });
       });
-    });
+    } else {
+      httpServer.listen(PORT, () => {
+        logger.info('HTTP server started', {
+          port: PORT,
+          cors_origin: dotEnvConfig.CORS_ORIGIN,
+        });
+      });
+    }
 
     // ── Graceful Shutdown Handling ─────────────────────────────────────
     let shuttingDown = false;

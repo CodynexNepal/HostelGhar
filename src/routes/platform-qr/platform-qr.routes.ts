@@ -54,7 +54,7 @@ const publicController = PlatformQrFactory.create();
 // authenticated (not fully public) so the platform's accounts aren't exposed
 // to anonymous scraping; residents are excluded since only owners pay.
 platformQrPublicRouter.get(
-  '/platform-qrs',
+  ['/', '/platform-qrs'],
   authenticate,
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
   publicController.listActive,

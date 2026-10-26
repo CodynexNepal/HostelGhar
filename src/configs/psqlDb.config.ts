@@ -43,11 +43,11 @@ export const psqlDbConfig: DataSourceOptions = {
   // ─── Connection Pooling Configuration (pg driver options) ─────────────────
   extra: {
     // Maximum number of connections in the pool
-    max: parseInt(process.env.DB_POOL_MAX || '20', 10),
+    max: parseInt(process.env.DB_POOL_MAX || '10', 10),
     // Minimum number of idle connections to maintain in pool
-    min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+    min: parseInt(process.env.DB_POOL_MIN || '0', 10),
     // Milliseconds a client must wait before connection allocation times out
-    connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '5000', 10),
+    connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '10000', 10),
     // Milliseconds a client can remain idle before being closed
     idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000', 10),
     // KeepAlive configuration to prevent idle connection termination by cloud firewalls

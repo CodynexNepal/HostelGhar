@@ -12,6 +12,7 @@ import {
   isRevokedByLogoutAll,
   getTokenIssuedAtMs,
 } from '../utils/token-blocklist.util';
+import { applyCorsHeaders } from '../configs/cors.config';
 
 // Extend Express Request
 declare global {
@@ -31,6 +32,13 @@ export const authenticate = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
+  // If already authenticated earlier in the middleware pipeline for this request,
+  // skip duplicate token verification, hashing, and Redis queries.
+  if (req.user) {
+    next();
+    return;
+  }
+
   const authHeader = req.headers.authorization;
   let token: string | undefined;
 
@@ -41,6 +49,7 @@ export const authenticate = async (
   }
 
   if (!token) {
+    applyCorsHeaders(req, res);
     res.status(STATUS_CODE.UNAUTHORIZED).json({
       success: false,
       message: 'Authentication required. Please provide a valid token.',
@@ -50,6 +59,7 @@ export const authenticate = async (
 
   const payload = JwtTokenService.verifyAccessToken(token);
   if (!payload) {
+    applyCorsHeaders(req, res);
     res.status(STATUS_CODE.UNAUTHORIZED).json({
       success: false,
       message: 'Invalid or expired authentication token.',
@@ -60,6 +70,7 @@ export const authenticate = async (
   const user = payload as unknown as ITokenPayload;
   try {
     if (await isTokenBlocklisted(token)) {
+      applyCorsHeaders(req, res);
       res.status(STATUS_CODE.UNAUTHORIZED).json({
         success: false,
         message: 'Session revoked. Please sign in again.',
@@ -67,6 +78,7 @@ export const authenticate = async (
       return;
     }
     if (user?.userId && (await isRevokedByLogoutAll(user.userId, getTokenIssuedAtMs(token)))) {
+      applyCorsHeaders(req, res);
       res.status(STATUS_CODE.UNAUTHORIZED).json({
         success: false,
         message: 'Session revoked. Please sign in again.',
@@ -86,6 +98,11 @@ export const optionalAuthenticate = async (
   _res: Response,
   next: NextFunction,
 ): Promise<void> => {
+  if (req.user) {
+    next();
+    return;
+  }
+
   const authHeader = req.headers.authorization;
   const token =
     authHeader && authHeader.startsWith('Bearer ')
@@ -104,6 +121,7 @@ export const optionalAuthenticate = async (
 export const requireRoles = (...allowedRoles: (IROLES | string)[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
+      applyCorsHeaders(req, res);
       res.status(STATUS_CODE.UNAUTHORIZED).json({
         success: false,
         message: 'Authentication required.',
@@ -115,6 +133,7 @@ export const requireRoles = (...allowedRoles: (IROLES | string)[]) => {
     const hasRole = allowedRoles.some((r) => r.toLowerCase() === userRole);
 
     if (!hasRole) {
+      applyCorsHeaders(req, res);
       res.status(STATUS_CODE.FORBIDDEN).json({
         success: false,
         message: `Forbidden. This action requires one of the following roles: [${allowedRoles.join(', ')}] (your role: ${req.user.role ?? 'unknown'})`,

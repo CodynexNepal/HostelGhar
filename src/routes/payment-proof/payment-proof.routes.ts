@@ -29,12 +29,14 @@ paymentProofRouter.post(
 
 paymentProofRouter.get(
   '/payment-proofs/mine',
+  authenticate,
   requireRoles(IROLES.RESIDENT, IROLES.ADMIN),
   paymentProofController.listMyProofs,
 );
 
 paymentProofRouter.get(
   '/payment-proofs/hostels/:hostelId',
+  authenticate,
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
   requireParam('hostelId'),
   paymentProofController.listHostelProofs,
@@ -46,6 +48,7 @@ paymentProofRouter.get(
 // reaches feeRouter's GET /hostels/:hostelId.
 paymentProofRouter.get(
   '/fees/hostels/:hostelId/payment-proofs',
+  authenticate,
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
   requireParam('hostelId'),
   paymentProofController.listHostelProofs,
@@ -53,6 +56,7 @@ paymentProofRouter.get(
 
 paymentProofRouter.get(
   '/fees/:feeId/payment-proofs',
+  authenticate,
   requireRoles(IROLES.RESIDENT, IROLES.OWNER, IROLES.ADMIN),
   requireParam('feeId'),
   paymentProofController.listFeeProofs,
@@ -60,6 +64,7 @@ paymentProofRouter.get(
 
 paymentProofRouter.patch(
   '/payment-proofs/:id/review',
+  authenticate,
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
   requireParam('id'),
   validateDto(ReviewPaymentProofDto),

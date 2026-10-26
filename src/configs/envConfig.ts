@@ -17,12 +17,19 @@ import { cleanEnvConfig, CleanEnvConfig } from '../functions/env-cleaner.functio
 // Preserves test environment (NODE_ENV=test or VITEST) so local .env production values don't clobber test suites.
 const isTestEnv = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
 const previousNodeEnv = process.env.NODE_ENV;
+const isPassengerEnv =
+  typeof (global as any).PhusionPassenger !== 'undefined' || process.env.PASSENGER_MODE === 'true';
+const previousPort = process.env.PORT;
 
 config({ path: '.env', override: true });
 config({ path: '.env.local', override: true });
 
 if (isTestEnv && previousNodeEnv) {
   process.env.NODE_ENV = previousNodeEnv;
+}
+
+if (isPassengerEnv && previousPort) {
+  process.env.PORT = previousPort;
 }
 
 // Clean, validate, and freeze the configuration object

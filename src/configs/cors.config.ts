@@ -1,4 +1,5 @@
 import { CorsOptions } from 'cors';
+import { Request, Response } from 'express';
 import { dotEnvConfig } from './envConfig';
 
 /**
@@ -21,6 +22,21 @@ const isDev = dotEnvConfig.NODE_ENV !== 'production';
 if (!isDev && allowedOrigins.length === 0) {
   throw new Error('CORS_ORIGIN must contain an explicit production origin allowlist.');
 }
+
+/**
+ * Helper to ensure CORS headers are explicitly applied to application error responses,
+ * timeouts, and rate-limit responses when an authorized origin makes the request.
+ */
+export const applyCorsHeaders = (req: Request, res: Response): void => {
+  const origin = req.headers.origin;
+  if (!origin) return;
+  const normalized = normalizeOrigin(origin);
+  if (allowedOrigins.includes(normalized) || (isDev && allowedOrigins.length === 0)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  }
+};
 
 export const corsConfig: CorsOptions = {
   // Function form: exact-match normalized origins; permissive in dev so a

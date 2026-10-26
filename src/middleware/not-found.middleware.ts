@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { STATUS_CODE } from '../constant/statusCode.interface';
+import { applyCorsHeaders } from '../configs/cors.config';
 
 /**
  * 404 JSON fallthrough. Express 5 does NOT auto-respond on unmatched paths —
@@ -7,6 +8,7 @@ import { STATUS_CODE } from '../constant/statusCode.interface';
  * Must be registered AFTER all routes but BEFORE the error handler.
  */
 export const notFoundHandler = (req: Request, res: Response): void => {
+  applyCorsHeaders(req, res);
   res.status(STATUS_CODE.NOT_FOUND).json({
     success: false,
     message: `Route not found: ${req.method} ${req.originalUrl}`,
