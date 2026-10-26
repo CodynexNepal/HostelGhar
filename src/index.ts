@@ -123,13 +123,24 @@ const { PORT } = dotEnvConfig;
           error: err instanceof Error ? err.message : String(err),
         });
       }
+      try {
+        const { AppDataSource } = await import('./database/database-source');
+        if (AppDataSource.isInitialized) {
+          await AppDataSource.destroy();
+          logger.info('Database connection closed');
+        }
+      } catch (err) {
+        logger.error('Error closing database connection', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       httpServer.close(() => {
         void shutdownTelemetry();
         logger.info('HTTP and WebSocket server closed');
         process.exit(0);
       });
-      // Failsafe: force-exit if something hangs (stale Redis sockets, etc.)
-      setTimeout(() => process.exit(0), 10000).unref();
+      // Failsafe: force-exit before PM2 kill_timeout (8000ms) if something hangs
+      setTimeout(() => process.exit(0), 7000).unref();
     };
 
     process.on('SIGTERM', () => void handleShutdown('SIGTERM'));

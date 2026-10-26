@@ -149,11 +149,12 @@ export class AuthService {
           to: user.email,
           subject: template.subject,
           body: template.body,
+          ...(template.html ? { html: template.html } : {}),
         },
-        { timeoutMs: 3500 },
+        { timeoutMs: 2500, fallbackToDirectSmtp: true },
       );
     } catch (queueErr: any) {
-      logger.error('Failed to enqueue password reset email', {
+      logger.error('Failed to deliver password reset email', {
         userId: user.id,
         error: queueErr?.message || String(queueErr),
       });

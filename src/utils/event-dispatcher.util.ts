@@ -51,7 +51,8 @@ class AppEventDispatcher extends EventEmitter {
   }
 
   /**
-   * Helper to dispatch email job to BullMQ queue with bounded timeout
+   * Helper to dispatch email job to BullMQ queue with bounded timeout,
+   * with automatic reliable direct SMTP fallback when Redis queue is unreachable.
    */
   public async queueEmail(
     jobType: JobType,
@@ -62,18 +63,34 @@ class AppEventDispatcher extends EventEmitter {
       html?: string;
       context?: Record<string, any>;
     },
-    options?: { timeoutMs?: number },
+    options?: { timeoutMs?: number; fallbackToDirectSmtp?: boolean },
   ) {
-    const timeoutMs = options?.timeoutMs ?? 3500;
-    return await Promise.race([
-      emailQueue.add(jobType, data),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error(`Queue job confirmation timed out after ${timeoutMs}ms`)),
-          timeoutMs,
-        ).unref(),
-      ),
-    ]);
+    const timeoutMs = options?.timeoutMs ?? 2500;
+    try {
+      return await Promise.race([
+        emailQueue.add(jobType, data),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`Queue job confirmation timed out after ${timeoutMs}ms`)),
+            timeoutMs,
+          ).unref(),
+        ),
+      ]);
+    } catch (err: any) {
+      if (options?.fallbackToDirectSmtp !== false) {
+        // Direct SMTP delivery fallback ensures critical user emails from info@hostelghar.com
+        // are reliably delivered immediately even when Redis port is blocked or queue times out
+        const { emailSenderService } = await import('../services/email/email-sender.service');
+        await emailSenderService.send({
+          to: data.to,
+          subject: data.subject,
+          body: data.body || '',
+          ...(data.html ? { html: data.html } : {}),
+        });
+        return { id: 'direct-smtp-fallback', name: jobType, data } as any;
+      }
+      throw err;
+    }
   }
 
   /**

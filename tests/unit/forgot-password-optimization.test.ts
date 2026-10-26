@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AuthService } from '../../src/services/auth/auth.services';
 import { UserRepository } from '../../src/repository/auth/user.repository';
 import { eventDispatcher } from '../../src/utils/event-dispatcher.util';
-import { MESSAGES } from '../../src/constant/message.interface';
 import { STATUS_CODE } from '../../src/constant/statusCode.interface';
 import { JobType } from '../../src/constant/queue.constants';
 
@@ -60,7 +59,7 @@ describe('AuthService.forgotPassword Optimization & Reliability', () => {
         to: 'student@hostelghar.com',
         subject: expect.stringContaining('Reset your HostelGhar password'),
       }),
-      expect.objectContaining({ timeoutMs: 3500 }),
+      expect.objectContaining({ timeoutMs: 2500, fallbackToDirectSmtp: true }),
     );
   });
 

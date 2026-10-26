@@ -1,6 +1,7 @@
 export type EmailTemplate = {
   subject: string;
   body: string;
+  html?: string;
 };
 
 export const renderWelcomeEmail = (firstName: string): EmailTemplate => ({

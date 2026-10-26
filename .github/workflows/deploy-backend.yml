@@ -74,6 +74,9 @@ jobs:
           if [ -f "app.js" ]; then
             cp app.js deploy-staging/
           fi
+          if [ -f "ecosystem.config.cjs" ]; then
+            cp ecosystem.config.cjs deploy-staging/
+          fi
 
           # Pre-install production dependencies on Linux runner for hermetic, fast deployment
           cd deploy-staging

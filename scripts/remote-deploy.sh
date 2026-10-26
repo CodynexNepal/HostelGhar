@@ -48,6 +48,9 @@ cp "$STAGING_DIR/package-lock.json" "$APP_DIR/package-lock.json.new"
 if [ -f "$STAGING_DIR/app.js" ]; then
   cp "$STAGING_DIR/app.js" "$APP_DIR/app.js.new"
 fi
+if [ -f "$STAGING_DIR/ecosystem.config.cjs" ]; then
+  cp "$STAGING_DIR/ecosystem.config.cjs" "$APP_DIR/ecosystem.config.cjs.new"
+fi
 if [ -d "$STAGING_DIR/node_modules" ]; then
   cp -r "$STAGING_DIR/node_modules" "$APP_DIR/node_modules.new"
 fi
@@ -62,6 +65,9 @@ mv "$APP_DIR/package.json.new" "$APP_DIR/package.json"
 mv "$APP_DIR/package-lock.json.new" "$APP_DIR/package-lock.json"
 if [ -f "$APP_DIR/app.js.new" ]; then
   mv "$APP_DIR/app.js.new" "$APP_DIR/app.js"
+fi
+if [ -f "$APP_DIR/ecosystem.config.cjs.new" ]; then
+  mv "$APP_DIR/ecosystem.config.cjs.new" "$APP_DIR/ecosystem.config.cjs"
 fi
 if [ -d "$APP_DIR/node_modules.new" ]; then
   rm -rf "$APP_DIR/node_modules.old"
@@ -82,10 +88,31 @@ else
   echo "Production node_modules verified in place."
 fi
 
-# 6. Restart Passenger / cPanel Application
+# 6. Restart PM2 Process & Passenger / cPanel Application
 echo "Triggering application restart..."
-mkdir -p "$APP_DIR/tmp"
+mkdir -p "$APP_DIR/logs" "$APP_DIR/tmp"
 touch "$APP_DIR/tmp/restart.txt"
+
+# If PM2 is available (global or in local node_modules), manage process with PM2
+PM2_CMD=""
+if command -v pm2 >/dev/null 2>&1; then
+  PM2_CMD="pm2"
+elif [ -x "$APP_DIR/node_modules/.bin/pm2" ]; then
+  PM2_CMD="$APP_DIR/node_modules/.bin/pm2"
+fi
+
+if [ -n "$PM2_CMD" ] && [ -f "$APP_DIR/ecosystem.config.cjs" ]; then
+  echo "Found PM2 ($PM2_CMD); reloading/starting hostelghar-api..."
+  cd "$APP_DIR"
+  if "$PM2_CMD" describe hostelghar-api >/dev/null 2>&1; then
+    echo "Reloading existing hostelghar-api process under PM2..."
+    "$PM2_CMD" reload ecosystem.config.cjs --env production --update-env || "$PM2_CMD" restart ecosystem.config.cjs --env production || true
+  else
+    echo "Starting hostelghar-api under PM2..."
+    "$PM2_CMD" start ecosystem.config.cjs --env production || true
+  fi
+  "$PM2_CMD" save 2>/dev/null || true
+fi
 
 # CloudLinux selectorctl fallback if present on server
 if command -v cloudlinux-selector >/dev/null 2>&1; then
