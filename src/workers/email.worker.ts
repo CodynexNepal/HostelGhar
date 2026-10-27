@@ -14,13 +14,19 @@ export interface EmailJobPayload {
   context?: Record<string, any>;
 }
 
-const externalEmailService = async (payload: EmailJobPayload): Promise<boolean> => {
-  return emailSenderService.send({
-    to: payload.to,
-    subject: payload.subject,
-    body: payload.body || '',
-    ...(payload.html ? { html: payload.html } : {}),
-  });
+const externalEmailService = async (
+  payload: EmailJobPayload,
+  options?: { correlationId?: string | undefined; jobId?: string | undefined },
+): Promise<boolean> => {
+  return emailSenderService.send(
+    {
+      to: payload.to,
+      subject: payload.subject,
+      body: payload.body || '',
+      ...(payload.html ? { html: payload.html } : {}),
+    },
+    options,
+  );
 };
 
 const emailCircuitBreaker = createCircuitBreaker(externalEmailService, {
@@ -28,9 +34,14 @@ const emailCircuitBreaker = createCircuitBreaker(externalEmailService, {
   timeout: 8000,
   errorThresholdPercentage: 50,
   resetTimeout: 15000,
-  fallback: async (payload: EmailJobPayload) => {
+  fallback: async (
+    payload: EmailJobPayload,
+    options?: { correlationId?: string | undefined; jobId?: string | undefined },
+  ) => {
     logger.warn('Email circuit breaker fallback executed', {
       breaker: 'EmailServiceBreaker',
+      correlationId: options?.correlationId,
+      jobId: options?.jobId,
       recipient_domain: payload.to.split('@')[1] || 'unknown',
     });
     throw new Error('Email delivery failed after the circuit breaker fallback');
@@ -43,19 +54,33 @@ export class EmailWorker extends BaseWorker<EmailJobPayload> {
   }
 
   async process(job: Job<EmailJobPayload>): Promise<any> {
-    const { name, data } = job;
-    console.log(`Processing email job ${name} for ${data.to}`);
+    const { id: jobId, name: jobType, data } = job;
+    const correlationId = data.context?.correlationId;
+    const recipientDomain = data.to.split('@')[1] || 'unknown';
 
-    switch (name) {
+    logger.info('BullMQ email worker received job', {
+      correlationId,
+      jobId,
+      queue: this.queueName,
+      jobType,
+      attemptsMade: job.attemptsMade,
+      recipientDomain,
+    });
+
+    switch (jobType) {
       case JobType.SEND_WELCOME_EMAIL:
       case JobType.SEND_OTP:
       case JobType.SEND_PASSWORD_RESET:
       case JobType.SEND_INVOICE_EMAIL:
-        return await emailCircuitBreaker.fire(data);
+        return await emailCircuitBreaker.fire(data, { correlationId, jobId });
 
       default:
-        console.warn(`Unknown email job type: ${name}`);
-        return await emailCircuitBreaker.fire(data);
+        logger.warn('Unknown email job type encountered', {
+          correlationId,
+          jobId,
+          jobType,
+        });
+        return await emailCircuitBreaker.fire(data, { correlationId, jobId });
     }
   }
 }

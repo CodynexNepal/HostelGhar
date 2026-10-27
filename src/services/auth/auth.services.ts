@@ -117,10 +117,13 @@ export class AuthService {
     return this.issueTokensForUser(newUser);
   }
 
-  public async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
+  public async forgotPassword(dto: ForgotPasswordDto, correlationId?: string): Promise<void> {
     const user = await this.userRepository.findByEmail(normalizeEmail(dto.email));
     if (!user) {
       // Preserve account-enumeration protections: do not reveal whether account exists
+      logger.info('Password reset requested for non-existent or unverified account', {
+        correlationId,
+      });
       return;
     }
 
@@ -129,6 +132,7 @@ export class AuthService {
       const timeRemainingMs = user.passwordResetExpiresAt.getTime() - Date.now();
       if (timeRemainingMs > 13 * 60 * 1000) {
         logger.info('Password reset request throttled within active cooldown window', {
+          correlationId,
           userId: user.id,
           timeRemainingMs,
         });
@@ -141,6 +145,12 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await this.userRepository.setPasswordResetToken(user.id, tokenHash, expiresAt);
 
+    logger.info('Password reset token generated and stored safely', {
+      correlationId,
+      userId: user.id,
+      expiresAt: expiresAt.toISOString(),
+    });
+
     const template = renderPasswordResetEmail(user.firstName, resetToken);
     try {
       await eventDispatcher.queueEmail(
@@ -150,11 +160,16 @@ export class AuthService {
           subject: template.subject,
           body: template.body,
           ...(template.html ? { html: template.html } : {}),
+          context: {
+            correlationId,
+            userId: user.id,
+          },
         },
         { timeoutMs: 2500, fallbackToDirectSmtp: true },
       );
     } catch (queueErr: any) {
       logger.error('Failed to deliver password reset email', {
+        correlationId,
         userId: user.id,
         error: queueErr?.message || String(queueErr),
       });

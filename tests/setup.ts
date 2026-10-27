@@ -18,7 +18,12 @@ vi.mock('../src/configs/redis.config', () => ({
     scan: async () => ['0', []],
     on: () => undefined,
   },
-  createRedisClient: () => ({ status: 'end', on: () => undefined }),
+  createRedisClient: () => ({
+    status: 'end',
+    on: () => undefined,
+    disconnect: () => undefined,
+    quit: async () => undefined,
+  }),
   getSharedQueueConnection: () => ({ status: 'end', on: () => undefined }),
   closeAllRedisConnections: async () => undefined,
   redisOptions: {},
@@ -36,6 +41,7 @@ const queueStub = {
     returnvalue: { generatedCount: 1, errors: 0 },
     failedReason: null,
   }),
+  getWorkers: async () => [{ id: 'worker-stub' }],
 };
 vi.mock('../src/queue/queue.factory', () => ({
   getQueue: () => queueStub,

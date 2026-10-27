@@ -7,6 +7,7 @@
 import { Worker, Job, WorkerOptions } from 'bullmq';
 import { createRedisClient } from '../configs/redis.config';
 import { QueueName } from '../constant/queue.constants';
+import { logger } from '../observability/logger';
 
 export abstract class BaseWorker<TData = any, TResult = any> {
   protected worker: Worker;
@@ -43,42 +44,58 @@ export abstract class BaseWorker<TData = any, TResult = any> {
 
   private setupListeners(): void {
     this.worker.on('completed', (job: Job) => {
-      console.log(
-        `✅ [Worker:${this.queueName}] Job #${job.id} (${job.name}) completed successfully.`,
-      );
+      logger.info('BullMQ worker job completed successfully', {
+        jobId: job.id,
+        queue: this.queueName,
+        jobName: job.name,
+        attemptsMade: job.attemptsMade,
+      });
     });
 
     this.worker.on('failed', (job: Job | undefined, err: Error) => {
       if (job) {
-        console.error(
-          `❌ [Worker:${this.queueName}] Job #${job.id} (${job.name}) failed (Attempt ${job.attemptsMade}/${job.opts.attempts}):`,
-          err.message,
-        );
+        logger.error('BullMQ worker job failed', {
+          jobId: job.id,
+          queue: this.queueName,
+          jobName: job.name,
+          attemptsMade: job.attemptsMade,
+          maxAttempts: job.opts.attempts,
+          error: err.message,
+          errorCode: (err as any).code,
+        });
 
         if (job.attemptsMade >= (job.opts.attempts || 1)) {
           this.onDeadLetter(job, err);
         }
       } else {
-        console.error(
-          `❌ [Worker:${this.queueName}] Worker failed without active job:`,
-          err.message,
-        );
+        logger.error('BullMQ worker failed without active job', {
+          queue: this.queueName,
+          error: err.message,
+        });
       }
     });
 
     this.worker.on('error', (err: Error) => {
-      console.error(`🚨 [Worker:${this.queueName}] Critical error:`, err.message);
+      logger.error('BullMQ worker critical error', {
+        queue: this.queueName,
+        error: err.message,
+      });
     });
   }
 
   /**
-   * Hook when a job exhausts all retries (Dead Letter Queue handling)
+   * Hook when a job exhausts all retries (Dead Letter Queue handling).
+   * Note: We NEVER log raw payload data here to protect tokens and passwords.
    */
   protected onDeadLetter(job: Job, err: Error): void {
-    console.error(
-      `💀 [DLQ:${this.queueName}] Job #${job.id} exhausted all retries and moved to Dead Letter state. Reason: ${err.message}`,
-      JSON.stringify(job.data),
-    );
+    logger.error('BullMQ job moved to Dead Letter state', {
+      jobId: job.id,
+      queue: this.queueName,
+      jobName: job.name,
+      attemptsMade: job.attemptsMade,
+      error: err.message,
+      errorCode: (err as any).code,
+    });
   }
 
   public async close(): Promise<void> {
@@ -86,13 +103,16 @@ export abstract class BaseWorker<TData = any, TResult = any> {
       await this.worker.close();
     } finally {
       try {
-        if (this.connection.status === 'ready' || this.connection.status === 'connect') {
-          await this.connection.quit().catch(() => this.connection.disconnect());
+        if (
+          this.connection &&
+          (this.connection.status === 'ready' || this.connection.status === 'connect')
+        ) {
+          await this.connection.quit().catch(() => this.connection?.disconnect?.());
         } else {
-          this.connection.disconnect();
+          this.connection?.disconnect?.();
         }
       } catch {
-        this.connection.disconnect();
+        this.connection?.disconnect?.();
       }
     }
   }

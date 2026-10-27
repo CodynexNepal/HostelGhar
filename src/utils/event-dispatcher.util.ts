@@ -5,10 +5,12 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { EventEmitter } from 'events';
+import crypto from 'crypto';
 import { emailQueue, notificationQueue, auditLogQueue } from '../queue/queue.factory';
 import { redisClient } from '../configs/redis.config';
-import { JobType } from '../constant/queue.constants';
+import { JobType, QueueName } from '../constant/queue.constants';
 import { socketServer } from '../socket/socket.server';
+import { logger } from '../observability/logger';
 
 export interface AppDomainEvent<T = any> {
   type: string;
@@ -53,7 +55,8 @@ class AppEventDispatcher extends EventEmitter {
 
   /**
    * Helper to dispatch email job to BullMQ queue with bounded timeout,
-   * with automatic reliable direct SMTP fallback when Redis queue is unreachable.
+   * with automatic reliable direct SMTP fallback when Redis queue is unreachable
+   * or when no active workers are available to process the queue.
    */
   public async queueEmail(
     jobType: JobType,
@@ -66,21 +69,81 @@ class AppEventDispatcher extends EventEmitter {
     },
     options?: { timeoutMs?: number; fallbackToDirectSmtp?: boolean },
   ) {
-    // If Redis is not connected, immediately deliver via direct SMTP to avoid blocking the request
+    const correlationId = data.context?.correlationId || crypto.randomUUID();
+    const recipientDomain = data.to.split('@')[1] || 'unknown';
+
+    // 1. If Redis is not connected, immediately deliver via direct SMTP to avoid blocking the request
     if (redisClient.status !== 'ready' && options?.fallbackToDirectSmtp !== false) {
+      logger.warn(
+        'Redis queue connection unavailable; dispatching email via direct SMTP fallback',
+        {
+          correlationId,
+          redisStatus: redisClient.status,
+          queue: QueueName.EMAIL,
+          jobType,
+          recipientDomain,
+        },
+      );
       const { emailSenderService } = await import('../services/email/email-sender.service');
-      await emailSenderService.send({
-        to: data.to,
-        subject: data.subject,
-        body: data.body || '',
-        ...(data.html ? { html: data.html } : {}),
-      });
+      await emailSenderService.send(
+        {
+          to: data.to,
+          subject: data.subject,
+          body: data.body || '',
+          ...(data.html ? { html: data.html } : {}),
+        },
+        { correlationId },
+      );
       return { id: 'direct-smtp-fallback', name: jobType, data } as any;
     }
 
+    // 2. Check if active BullMQ workers are currently subscribed to the email queue.
+    // If no workers exist (e.g. on cPanel Passenger where background workers are not spawned),
+    // enqueuing to Redis would strand the job indefinitely. Dispatch via direct SMTP immediately.
+    let hasActiveWorkers = false;
+    if (typeof (emailQueue as any).getWorkers === 'function') {
+      try {
+        const workers = await Promise.race([
+          emailQueue.getWorkers(),
+          new Promise<any[]>((_, reject) =>
+            setTimeout(() => reject(new Error('Worker check timed out')), 1000).unref(),
+          ),
+        ]);
+        hasActiveWorkers = Array.isArray(workers) && workers.length > 0;
+      } catch {
+        hasActiveWorkers = false;
+      }
+    } else {
+      hasActiveWorkers = true;
+    }
+
+    if (!hasActiveWorkers && options?.fallbackToDirectSmtp !== false) {
+      logger.warn(
+        'No active BullMQ workers listening on email queue; dispatching via direct SMTP fallback',
+        {
+          correlationId,
+          queue: QueueName.EMAIL,
+          jobType,
+          recipientDomain,
+        },
+      );
+      const { emailSenderService } = await import('../services/email/email-sender.service');
+      await emailSenderService.send(
+        {
+          to: data.to,
+          subject: data.subject,
+          body: data.body || '',
+          ...(data.html ? { html: data.html } : {}),
+        },
+        { correlationId },
+      );
+      return { id: 'direct-smtp-fallback', name: jobType, data } as any;
+    }
+
+    // 3. Dispatch to BullMQ queue with bounded confirmation timeout
     const timeoutMs = options?.timeoutMs ?? 2500;
     try {
-      return await Promise.race([
+      const job = await Promise.race([
         emailQueue.add(jobType, data),
         new Promise<never>((_, reject) =>
           setTimeout(
@@ -89,17 +152,38 @@ class AppEventDispatcher extends EventEmitter {
           ).unref(),
         ),
       ]);
+
+      logger.info('BullMQ email job enqueued successfully', {
+        correlationId,
+        jobId: job.id,
+        queue: QueueName.EMAIL,
+        jobType,
+        queueState: 'waiting',
+        recipientDomain,
+      });
+
+      return job;
     } catch (err: any) {
       if (options?.fallbackToDirectSmtp !== false) {
         // Direct SMTP delivery fallback ensures critical user emails from info@hostelghar.com
         // are reliably delivered immediately even when Redis port is blocked or queue times out
-        const { emailSenderService } = await import('../services/email/email-sender.service');
-        await emailSenderService.send({
-          to: data.to,
-          subject: data.subject,
-          body: data.body || '',
-          ...(data.html ? { html: data.html } : {}),
+        logger.warn('BullMQ enqueue failed or timed out; attempting direct SMTP fallback', {
+          correlationId,
+          queue: QueueName.EMAIL,
+          jobType,
+          error: err?.message || String(err),
+          recipientDomain,
         });
+        const { emailSenderService } = await import('../services/email/email-sender.service');
+        await emailSenderService.send(
+          {
+            to: data.to,
+            subject: data.subject,
+            body: data.body || '',
+            ...(data.html ? { html: data.html } : {}),
+          },
+          { correlationId },
+        );
         return { id: 'direct-smtp-fallback', name: jobType, data } as any;
       }
       throw err;

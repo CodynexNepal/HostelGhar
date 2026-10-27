@@ -59,7 +59,13 @@ const { PORT } = dotEnvConfig;
       typeof (global as any).PhusionPassenger !== 'undefined' ||
       process.env.PASSENGER_MODE === 'true';
 
-    if (!isPassenger && process.env.ENABLE_WORKERS !== 'false') {
+    // In Passenger mode on shared hosting, background workers should only run if explicitly
+    // enabled (ENABLE_WORKERS=true) to avoid connection storms across multi-process pools.
+    const shouldBootstrapWorkers =
+      process.env.ENABLE_WORKERS === 'true' ||
+      (!isPassenger && process.env.ENABLE_WORKERS !== 'false');
+
+    if (shouldBootstrapWorkers) {
       try {
         bootstrapWorkers();
       } catch (workerErr: any) {

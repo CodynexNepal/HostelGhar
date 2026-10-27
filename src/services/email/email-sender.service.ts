@@ -9,6 +9,11 @@ export interface SendEmailPayload {
   html?: string;
 }
 
+export interface SendEmailOptions {
+  correlationId?: string | undefined;
+  jobId?: string | undefined;
+}
+
 export class EmailSenderService {
   private createTransporter(host: string, port: number, secure: boolean): Transporter {
     return nodemailer.createTransport({
@@ -25,7 +30,7 @@ export class EmailSenderService {
     });
   }
 
-  public async send(payload: SendEmailPayload): Promise<boolean> {
+  public async send(payload: SendEmailPayload, options?: SendEmailOptions): Promise<boolean> {
     if (!smtpConfig.enabled) {
       throw new Error('SMTP is not configured; owner credentials cannot be delivered.');
     }
@@ -45,14 +50,36 @@ export class EmailSenderService {
     // 1. Try primary configured SMTP host
     try {
       const primaryTransporter = this.createTransporter(host, port, secure);
-      await primaryTransporter.sendMail(mailOptions);
-      logger.info('Email sent successfully via primary SMTP', { to: payload.to, host, port });
+      const info = await primaryTransporter.sendMail(mailOptions);
+      const responseCode =
+        typeof info?.response === 'string'
+          ? parseInt(info.response.split(' ')[0] ?? '', 10) || undefined
+          : undefined;
+
+      logger.info('Email sent successfully via primary SMTP', {
+        correlationId: options?.correlationId,
+        jobId: options?.jobId,
+        host,
+        port,
+        messageId: info.messageId,
+        smtpResponse: info.response,
+        smtpResponseCode: responseCode,
+        recipientDomain: payload.to.split('@')[1] || 'unknown',
+      });
       return true;
     } catch (primaryErr: any) {
+      const errorCode = primaryErr?.code;
+      const responseCode = primaryErr?.responseCode;
+
       logger.warn('Primary SMTP delivery failed, attempting local cPanel fallback', {
-        to: payload.to,
+        correlationId: options?.correlationId,
+        jobId: options?.jobId,
         primaryHost: host,
+        primaryPort: port,
+        errorCode,
+        smtpResponseCode: responseCode,
         error: primaryErr?.message || String(primaryErr),
+        recipientDomain: payload.to.split('@')[1] || 'unknown',
       });
 
       // 2. On cPanel servers, CSF firewall or NAT loopback may block non-local connections.
@@ -70,18 +97,33 @@ export class EmailSenderService {
             candidate.port,
             candidate.secure,
           );
-          await fallbackTransporter.sendMail(mailOptions);
+          const fallbackInfo = await fallbackTransporter.sendMail(mailOptions);
+          const fallbackResponseCode =
+            typeof fallbackInfo?.response === 'string'
+              ? parseInt(fallbackInfo.response.split(' ')[0] ?? '', 10) || undefined
+              : undefined;
+
           logger.info('Email sent successfully via local fallback SMTP', {
-            to: payload.to,
+            correlationId: options?.correlationId,
+            jobId: options?.jobId,
             host: candidate.host,
             port: candidate.port,
+            messageId: fallbackInfo.messageId,
+            smtpResponse: fallbackInfo.response,
+            smtpResponseCode: fallbackResponseCode,
+            recipientDomain: payload.to.split('@')[1] || 'unknown',
           });
           return true;
         } catch (fallbackErr: any) {
           logger.warn('SMTP fallback candidate failed', {
+            correlationId: options?.correlationId,
+            jobId: options?.jobId,
             candidateHost: candidate.host,
             candidatePort: candidate.port,
+            errorCode: fallbackErr?.code,
+            smtpResponseCode: fallbackErr?.responseCode,
             error: fallbackErr?.message || String(fallbackErr),
+            recipientDomain: payload.to.split('@')[1] || 'unknown',
           });
         }
       }
@@ -91,16 +133,35 @@ export class EmailSenderService {
     }
   }
 
-  public async verifyConnection(): Promise<{ ok: boolean; host: string; port: number; error?: string }> {
+  public async verifyConnection(): Promise<{
+    ok: boolean;
+    host: string;
+    port: number;
+    error?: string;
+  }> {
     if (!smtpConfig.enabled) {
-      return { ok: false, host: smtpConfig.host || 'unset', port: smtpConfig.port, error: 'SMTP disabled' };
+      return {
+        ok: false,
+        host: smtpConfig.host || 'unset',
+        port: smtpConfig.port,
+        error: 'SMTP disabled',
+      };
     }
     try {
-      const transporter = this.createTransporter(smtpConfig.host, smtpConfig.port, smtpConfig.secure);
+      const transporter = this.createTransporter(
+        smtpConfig.host,
+        smtpConfig.port,
+        smtpConfig.secure,
+      );
       await transporter.verify();
       return { ok: true, host: smtpConfig.host, port: smtpConfig.port };
     } catch (err: any) {
-      return { ok: false, host: smtpConfig.host, port: smtpConfig.port, error: err?.message || String(err) };
+      return {
+        ok: false,
+        host: smtpConfig.host,
+        port: smtpConfig.port,
+        error: err?.message || String(err),
+      };
     }
   }
 }

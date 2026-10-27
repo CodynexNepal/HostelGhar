@@ -47,7 +47,9 @@ export const readinessHandler = async (_req: Request, res: Response): Promise<vo
     dependencies: {
       postgres: postgres ? 'up' : 'down',
       redis: redis.ok ? 'up' : 'down',
-      smtp: smtp.ok ? 'up' : { status: 'down', host: smtp.host, port: smtp.port, error: smtp.error },
+      smtp: smtp.ok
+        ? 'up'
+        : { status: 'down', host: smtp.host, port: smtp.port, error: smtp.error },
     },
   });
 };

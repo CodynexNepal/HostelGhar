@@ -1,9 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import { AuthService } from '../../services/auth/auth.services';
 import { logoutService } from '../../services/auth/logout.service';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { CookieManager } from '../../utils/cookie-manager.util';
 import { MESSAGES } from '../../constant/message.interface';
+import { logger } from '../../observability/logger';
 
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -50,7 +52,20 @@ export class AuthController {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      await this.authService.forgotPassword(req.body);
+      const correlationId =
+        (req.headers['x-request-id'] as string) ||
+        (res.getHeader('x-request-id') as string) ||
+        randomUUID();
+
+      const recipientDomain =
+        typeof req.body?.email === 'string' ? req.body.email.split('@')[1] || 'unknown' : 'unknown';
+
+      logger.info('Password reset request received', {
+        correlationId,
+        recipientDomain,
+      });
+
+      await this.authService.forgotPassword(req.body, correlationId);
       res.status(STATUS_CODE.OK).json({ message: MESSAGES.RESET_EMAIL_SENT });
     } catch (error) {
       next(error);

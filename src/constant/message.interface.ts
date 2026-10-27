@@ -30,7 +30,8 @@ export const MESSAGES = {
   INVALID_EMAIL_OR_PASSWORD: 'Invalid email or password',
 
   // ===== Password Reset =====
-  RESET_EMAIL_SENT: 'Reset email sent',
+  RESET_EMAIL_SENT:
+    'If an account with that email exists, password reset instructions have been sent.',
   RESET_TOKEN_INVALID: 'Reset token invalid',
   PASSWORD_RESET_SUCCESS: 'Password reset successful',
 
