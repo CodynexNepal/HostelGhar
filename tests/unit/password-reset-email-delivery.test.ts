@@ -21,10 +21,14 @@ import { JobType } from '../../src/constant/queue.constants';
 import { AuthController } from '../../src/controller/auth/auth.controller';
 import { STATUS_CODE } from '../../src/constant/statusCode.interface';
 import { emailSenderService } from '../../src/services/email/email-sender.service';
+import { smtpConfig } from '../../src/configs/smtp.config';
 
 describe('Password Reset Email Delivery Pipeline & Failure Recovery', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    smtpConfig.enabled = true;
+    smtpConfig.host = smtpConfig.host || 'mail.hostelghar.test';
+    smtpConfig.port = smtpConfig.port || 587;
   });
 
   describe('1. Successful Queue & Nodemailer Processing', () => {

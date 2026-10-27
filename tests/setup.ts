@@ -6,6 +6,10 @@
 import { vi } from 'vitest';
 
 process.env.CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://dashboard.hostelghar.com';
+process.env.SMTP_HOST = process.env.SMTP_HOST || 'mail.hostelghar.test';
+process.env.SMTP_PORT = process.env.SMTP_PORT || '587';
+process.env.SMTP_USER = process.env.SMTP_USER || 'notifications@hostelghar.test';
+process.env.SMTP_PASS = process.env.SMTP_PASS || 'test-smtp-password';
 
 // Stub Redis client so test suites never dial a live Redis instance
 vi.mock('../src/configs/redis.config', () => ({

@@ -98,14 +98,14 @@ export function cleanEnvConfig(): CleanEnvConfig {
       process.env.FRONTEND_ORIGIN ||
       process.env.FRONTEND_URL ||
       '*',
-    SMTP_HOST: process.env.SMTP_HOST || '',
+    SMTP_HOST: process.env.SMTP_HOST || (nodeEnv === 'test' ? 'mail.hostelghar.test' : ''),
     SMTP_PORT: Number.isNaN(smtpPort) ? 587 : smtpPort,
     SMTP_SECURE: process.env.SMTP_SECURE === 'true' || smtpPort === 465,
-    SMTP_USER: process.env.SMTP_USER || '',
-    SMTP_PASS: process.env.SMTP_PASS || '',
+    SMTP_USER: process.env.SMTP_USER || (nodeEnv === 'test' ? 'notifications@hostelghar.test' : ''),
+    SMTP_PASS: process.env.SMTP_PASS || (nodeEnv === 'test' ? 'test-smtp-password' : ''),
     SMTP_FROM:
       process.env.SMTP_FROM ||
-      `HostelGhar <${process.env.SMTP_USER || 'no-reply@hostelghar.local'}>`,
+      `HostelGhar <${process.env.SMTP_USER || (nodeEnv === 'test' ? 'notifications@hostelghar.test' : 'no-reply@hostelghar.local')}>`,
     RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY || '',
   };
 
