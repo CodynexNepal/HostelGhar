@@ -57,10 +57,11 @@ export class AuthController {
         (res.getHeader('x-request-id') as string) ||
         randomUUID();
 
-      const recipientDomain =
-        typeof req.body?.email === 'string' ? req.body.email.split('@')[1] || 'unknown' : 'unknown';
+      const emailStr = typeof req.body?.email === 'string' ? req.body.email : '';
+      const recipientDomain = emailStr.split('@')[1] || 'unknown';
 
       logger.info('Password reset request received', {
+        status: 'REQUEST_RECEIVED',
         correlationId,
         recipientDomain,
       });

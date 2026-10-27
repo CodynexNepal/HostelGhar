@@ -4,6 +4,7 @@ import { QueueName, JobType } from '../constant/queue.constants';
 import { createCircuitBreaker } from '../utils/circuit-breaker.util';
 import { emailSenderService } from '../services/email/email-sender.service';
 import { logger } from '../observability/logger';
+import { maskEmail } from '../utils/normalize.util';
 
 export interface EmailJobPayload {
   to: string;
@@ -42,6 +43,7 @@ const emailCircuitBreaker = createCircuitBreaker(externalEmailService, {
       breaker: 'EmailServiceBreaker',
       correlationId: options?.correlationId,
       jobId: options?.jobId,
+      recipient: maskEmail(payload.to),
       recipient_domain: payload.to.split('@')[1] || 'unknown',
     });
     throw new Error('Email delivery failed after the circuit breaker fallback');
@@ -57,13 +59,16 @@ export class EmailWorker extends BaseWorker<EmailJobPayload> {
     const { id: jobId, name: jobType, data } = job;
     const correlationId = data.context?.correlationId;
     const recipientDomain = data.to.split('@')[1] || 'unknown';
+    const recipient = maskEmail(data.to);
 
-    logger.info('BullMQ email worker received job', {
+    logger.info('BullMQ email worker received job and started execution', {
+      status: 'WORKER_STARTED',
       correlationId,
       jobId,
       queue: this.queueName,
       jobType,
       attemptsMade: job.attemptsMade,
+      recipient,
       recipientDomain,
     });
 

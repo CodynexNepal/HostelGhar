@@ -54,17 +54,21 @@ export abstract class BaseWorker<TData = any, TResult = any> {
 
     this.worker.on('failed', (job: Job | undefined, err: Error) => {
       if (job) {
-        logger.error('BullMQ worker job failed', {
-          jobId: job.id,
-          queue: this.queueName,
-          jobName: job.name,
-          attemptsMade: job.attemptsMade,
-          maxAttempts: job.opts.attempts,
-          error: err.message,
-          errorCode: (err as any).code,
-        });
+        const attemptsMade = job.attemptsMade;
+        const maxAttempts = job.opts.attempts || 1;
 
-        if (job.attemptsMade >= (job.opts.attempts || 1)) {
+        if (attemptsMade < maxAttempts) {
+          logger.warn('BullMQ worker job failed; retry scheduled', {
+            status: 'RETRY_SCHEDULED',
+            jobId: job.id,
+            queue: this.queueName,
+            jobName: job.name,
+            attemptsMade,
+            maxAttempts,
+            error: err.message,
+            errorCode: (err as any).code,
+          });
+        } else {
           this.onDeadLetter(job, err);
         }
       } else {
@@ -89,6 +93,7 @@ export abstract class BaseWorker<TData = any, TResult = any> {
    */
   protected onDeadLetter(job: Job, err: Error): void {
     logger.error('BullMQ job moved to Dead Letter state', {
+      status: 'DELIVERY_FAILED',
       jobId: job.id,
       queue: this.queueName,
       jobName: job.name,
@@ -99,21 +104,7 @@ export abstract class BaseWorker<TData = any, TResult = any> {
   }
 
   public async close(): Promise<void> {
-    try {
-      await this.worker.close();
-    } finally {
-      try {
-        if (
-          this.connection &&
-          (this.connection.status === 'ready' || this.connection.status === 'connect')
-        ) {
-          await this.connection.quit().catch(() => this.connection?.disconnect?.());
-        } else {
-          this.connection?.disconnect?.();
-        }
-      } catch {
-        this.connection?.disconnect?.();
-      }
-    }
+    await this.worker.close();
+    await this.connection.quit().catch(() => this.connection.disconnect());
   }
 }

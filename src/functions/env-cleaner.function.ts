@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE: env-cleaner.function.ts
 // PURPOSE: Validates, cleans, and sanitizes environment variables at boot time.
-//          - Ensures required .env values are present (fails fast if missing).
+//          - Ensures required values are present (fails fast if missing).
 //          - Parses and assigns strongly typed values with strict defaults.
 //          - Masks/redacts sensitive values (passwords, JWT secrets, salt rounds)
 //            to prevent accidental exposure in logs, monitoring, or error reports.
@@ -48,45 +48,43 @@ function getRequiredEnv(key: string, customValue?: string): string {
  * Cleans, sanitizes, and returns the strongly typed configuration object.
  */
 export function cleanEnvConfig(): CleanEnvConfig {
-  // Validate and parse required values
   const port = parseInt(process.env.PORT || '3000', 10);
   const saltRounds = parseInt(process.env.SALT_ROUND || process.env.SALT_ROUNDS || '10', 10);
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
   const nodeEnv = (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development';
+
   const useDirectSmtp =
-    process.env.USE_DIRECT_SMTP === 'true' ||
-    process.env.ENABLE_REDIS === 'false' ||
-    process.env.PASSENGER_MODE === 'true' ||
-    (nodeEnv === 'production' && process.env.ENABLE_REDIS !== 'true');
-  const enableRedis =
-    !useDirectSmtp &&
-    process.env.ENABLE_REDIS !== 'false' &&
-    (nodeEnv !== 'production' || process.env.ENABLE_REDIS === 'true');
+    process.env.USE_DIRECT_SMTP === 'true' || process.env.ENABLE_REDIS === 'false';
+
+  const enableRedis = !useDirectSmtp && process.env.ENABLE_REDIS !== 'false';
+
   const defaultDatabaseUrl =
     nodeEnv === 'production'
       ? undefined
       : 'postgresql://hostelghar:hostelghar_dev_pass@127.0.0.1:5432/hostelghar_dev';
-  const defaultRedisUrl =
-    !enableRedis || nodeEnv !== 'production'
-      ? 'redis://127.0.0.1:6379'
-      : process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+
+  const defaultRedisUrl = 'redis://127.0.0.1:6379';
+
   const defaultAccessSecret =
     nodeEnv === 'production'
       ? undefined
       : 'dev-or-test-access-token-secret-must-be-at-least-32-chars-long';
+
   const defaultRefreshSecret =
     nodeEnv === 'production'
       ? undefined
       : 'dev-or-test-refresh-token-secret-must-be-at-least-32-chars-long';
 
+  const rawRedisUrl = (process.env.REDIS_URL || defaultRedisUrl)
+    .replace(/^REDIS_URL=/, '')
+    .replace(/^"|"$/g, '')
+    .trim();
+
   const config: CleanEnvConfig = {
     PORT: Number.isNaN(port) ? 3000 : port,
     NODE_ENV: nodeEnv,
     DATABASE_URL: getRequiredEnv('DATABASE_URL', process.env.DATABASE_URL || defaultDatabaseUrl),
-    REDIS_URL: (process.env.REDIS_URL || defaultRedisUrl)
-      .replace(/^REDIS_URL=/, '')
-      .replace(/^"|"$/g, '')
-      .trim(),
+    REDIS_URL: rawRedisUrl || defaultRedisUrl,
     USE_DIRECT_SMTP: useDirectSmtp,
     ENABLE_REDIS: enableRedis,
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
@@ -121,7 +119,7 @@ export function cleanEnvConfig(): CleanEnvConfig {
     SMTP_PASS: process.env.SMTP_PASS || (nodeEnv === 'test' ? 'test-smtp-password' : ''),
     SMTP_FROM:
       process.env.SMTP_FROM ||
-      `HostelGhar <${process.env.SMTP_USER || (nodeEnv === 'test' ? 'notifications@hostelghar.test' : 'no-reply@hostelghar.local')}>`,
+      `HostelGhar <${process.env.SMTP_USER || (nodeEnv === 'test' ? 'notifications@hostelghar.test' : 'info@hostelghar.com')}>`,
     RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY || '',
   };
 
@@ -132,7 +130,9 @@ export function cleanEnvConfig(): CleanEnvConfig {
  * Returns a masked/redacted version of the config object safe for logging or debugging.
  * Hides passwords, hashes, keys, salt rounds, and token secrets.
  */
-export function getSanitizedEnvSummary(config: CleanEnvConfig): Record<string, string | number> {
+export function getSanitizedEnvSummary(
+  config: CleanEnvConfig,
+): Record<string, string | number | boolean> {
   const maskString = (val?: string) => {
     if (!val) return '[NOT_SET]';
     if (val.length <= 8) return '********';
@@ -144,6 +144,8 @@ export function getSanitizedEnvSummary(config: CleanEnvConfig): Record<string, s
     NODE_ENV: config.NODE_ENV,
     DATABASE_URL: maskString(config.DATABASE_URL),
     REDIS_URL: maskString(config.REDIS_URL),
+    USE_DIRECT_SMTP: config.USE_DIRECT_SMTP,
+    ENABLE_REDIS: config.ENABLE_REDIS,
     CLOUDINARY_CLOUD_NAME: config.CLOUDINARY_CLOUD_NAME ? '[CONFIGURED]' : '[NOT_SET]',
     CLOUDINARY_API_KEY: maskString(config.CLOUDINARY_API_KEY),
     CLOUDINARY_API_SECRET: '[REDACTED_SECRET]',
@@ -154,10 +156,10 @@ export function getSanitizedEnvSummary(config: CleanEnvConfig): Record<string, s
     SALT_ROUNDS: '[REDACTED_NUMBER]',
     CORS_ORIGIN: config.CORS_ORIGIN,
     SOCKET_CORS_ORIGIN: config.SOCKET_CORS_ORIGIN,
-    SMTP_HOST: config.SMTP_HOST ? '[CONFIGURED]' : '[NOT_SET]',
+    SMTP_HOST: config.SMTP_HOST || '[NOT_SET]',
     SMTP_PORT: config.SMTP_PORT,
-    SMTP_SECURE: String(config.SMTP_SECURE),
-    SMTP_USER: maskString(config.SMTP_USER),
+    SMTP_SECURE: config.SMTP_SECURE,
+    SMTP_USER: config.SMTP_USER ? maskString(config.SMTP_USER) : '[NOT_SET]',
     SMTP_PASS: '[REDACTED_SECRET]',
     SMTP_FROM: config.SMTP_FROM,
     RECAPTCHA_SECRET_KEY: config.RECAPTCHA_SECRET_KEY ? '[CONFIGURED]' : '[NOT_SET]',
