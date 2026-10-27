@@ -46,3 +46,680 @@
 2026-10-27 10:35:27 +05:45: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
 2026-10-27 10:35:27 +05:45: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
 2026-10-27 10:35:27 +05:45: IMPORTANT! Eviction policy is volatile-lru. It should be "noeviction"
+2026-10-27 11:32:43 +05:45: [Redis:main] Connection Error: read ECONNRESET
+2026-10-27 11:32:43 +05:45: [Redis] Connection lost. Reconnect #1 in 303ms...
+2026-10-27 11:32:43 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:43 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:43 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:44 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:44 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:44 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:44 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:45 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:45 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis:worker:notification-queue] Connection Error: read ECONNRESET
+2026-10-27 11:32:46 +05:45: {"timestamp":"2026-10-27T05:47:46.034Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"read ECONNRESET"}
+2026-10-27 11:32:46 +05:45: [Redis:worker:email-queue] Connection Error: read ECONNRESET
+2026-10-27 11:32:46 +05:45: {"timestamp":"2026-10-27T05:47:46.034Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"read ECONNRESET"}
+2026-10-27 11:32:46 +05:45: [Redis:worker:audit-log-queue] Connection Error: read ECONNRESET
+2026-10-27 11:32:46 +05:45: {"timestamp":"2026-10-27T05:47:46.034Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"read ECONNRESET"}
+2026-10-27 11:32:46 +05:45: [Redis] Connection lost. Reconnect #1 in 247ms...
+2026-10-27 11:32:46 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis] Connection lost. Reconnect #1 in 250ms...
+2026-10-27 11:32:46 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis] Connection lost. Reconnect #1 in 373ms...
+2026-10-27 11:32:46 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis:worker:resident-import-queue] Connection Error: read ECONNRESET
+2026-10-27 11:32:46 +05:45: {"timestamp":"2026-10-27T05:47:46.088Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"read ECONNRESET"}
+2026-10-27 11:32:46 +05:45: [Redis] Connection lost. Reconnect #1 in 437ms...
+2026-10-27 11:32:46 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:46 +05:45: {"timestamp":"2026-10-27T05:47:46.334Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:46 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:46 +05:45: {"timestamp":"2026-10-27T05:47:46.335Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:46 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:46 +05:45: {"timestamp":"2026-10-27T05:47:46.426Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:46 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:46 +05:45: {"timestamp":"2026-10-27T05:47:46.545Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:46 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:46 +05:45: {"timestamp":"2026-10-27T05:47:46.913Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:46 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:46 +05:45: [Redis] Connection lost. Reconnect #6 in 1498ms...
+2026-10-27 11:32:46 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:46 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:46 +05:45: {"timestamp":"2026-10-27T05:47:46.997Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:46 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:47 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:47 +05:45: {"timestamp":"2026-10-27T05:47:47.028Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:47 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:47 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:47 +05:45: {"timestamp":"2026-10-27T05:47:47.095Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:47 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:47 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:47 +05:45: {"timestamp":"2026-10-27T05:47:47.701Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:47 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:47 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:47 +05:45: {"timestamp":"2026-10-27T05:47:47.728Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:47 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:47 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:47 +05:45: {"timestamp":"2026-10-27T05:47:47.745Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:47 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:47 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:47 +05:45: {"timestamp":"2026-10-27T05:47:47.754Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:47 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:48 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:48 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:48 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:48 +05:45: {"timestamp":"2026-10-27T05:47:48.572Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:48 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:48 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:48 +05:45: {"timestamp":"2026-10-27T05:47:48.712Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:48 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:48 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:48 +05:45: {"timestamp":"2026-10-27T05:47:48.808Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:48 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:48 +05:45: {"timestamp":"2026-10-27T05:47:48.808Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:48 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:48 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:48 +05:45: [Redis:queues-shared] Connection Error: read ECONNRESET
+2026-10-27 11:32:48 +05:45: [Queue:email-queue] Queue error: read ECONNRESET
+2026-10-27 11:32:48 +05:45: [Queue:notification-queue] Queue error: read ECONNRESET
+2026-10-27 11:32:48 +05:45: [Queue:audit-log-queue] Queue error: read ECONNRESET
+2026-10-27 11:32:48 +05:45: [Queue:system-event-queue] Queue error: read ECONNRESET
+2026-10-27 11:32:48 +05:45: [Queue:system-event-queue] Queue error: read ECONNRESET
+2026-10-27 11:32:48 +05:45: [Queue:resident-import-queue] Queue error: read ECONNRESET
+2026-10-27 11:32:48 +05:45: [Redis] Connection lost. Reconnect #1 in 484ms...
+2026-10-27 11:32:48 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:32:49 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:32:49 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: {"timestamp":"2026-10-27T05:47:49.801Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:49 +05:45: [Redis] Connection lost. Reconnect #6 in 1358ms...
+2026-10-27 11:32:49 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:49 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: {"timestamp":"2026-10-27T05:47:49.860Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:49 +05:45: [Redis] Connection lost. Reconnect #6 in 1399ms...
+2026-10-27 11:32:49 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:49 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:49 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:49 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:32:50 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: {"timestamp":"2026-10-27T05:47:50.010Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:50 +05:45: [Redis] Connection lost. Reconnect #6 in 1342ms...
+2026-10-27 11:32:50 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:50 +05:45: [Redis:socket-pub] Connection Error: read ECONNRESET
+2026-10-27 11:32:50 +05:45: [Redis] Connection lost. Reconnect #1 in 420ms...
+2026-10-27 11:32:50 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:32:50 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: {"timestamp":"2026-10-27T05:47:50.060Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:50 +05:45: [Redis] Connection lost. Reconnect #6 in 1459ms...
+2026-10-27 11:32:50 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:50 +05:45: [Redis:socket-sub] Connection Error: read ECONNRESET
+2026-10-27 11:32:50 +05:45: [Redis] Connection lost. Reconnect #1 in 278ms...
+2026-10-27 11:32:50 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:32:50 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:32:50 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:32:50 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:32:50 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:50 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:32:51 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.200Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:51 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:51 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.276Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:51 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:51 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.377Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:51 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:32:51 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.485Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"read ECONNRESET"}
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.486Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"read ECONNRESET"}
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.486Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"read ECONNRESET"}
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.486Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"read ECONNRESET"}
+2026-10-27 11:32:51 +05:45: [Redis] Connection lost. Reconnect #1 in 387ms...
+2026-10-27 11:32:51 +05:45: [Redis] Connection lost. Reconnect #1 in 351ms...
+2026-10-27 11:32:51 +05:45: [Redis] Connection lost. Reconnect #1 in 355ms...
+2026-10-27 11:32:51 +05:45: [Redis] Connection lost. Reconnect #1 in 298ms...
+2026-10-27 11:32:51 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.542Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:51 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:51 +05:45: [Redis:worker:system-event-queue] Connection Error: read ECONNRESET
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.568Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"read ECONNRESET"}
+2026-10-27 11:32:51 +05:45: [Redis] Connection lost. Reconnect #1 in 221ms...
+2026-10-27 11:32:51 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:32:51 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.793Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:51 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:32:51 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.801Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:51 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.858Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.860Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:51 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:51 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:32:51 +05:45: {"timestamp":"2026-10-27T05:47:51.890Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:52 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:32:52 +05:45: {"timestamp":"2026-10-27T05:47:52.221Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:52 +05:45: {"timestamp":"2026-10-27T05:47:52.307Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:52 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: {"timestamp":"2026-10-27T05:47:52.437Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:52 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:32:52 +05:45: {"timestamp":"2026-10-27T05:47:52.453Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:52 +05:45: {"timestamp":"2026-10-27T05:47:52.502Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:52 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: {"timestamp":"2026-10-27T05:47:52.771Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:52 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:52 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:32:52 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: [Redis] Connection lost. Reconnect #6 in 1244ms...
+2026-10-27 11:32:52 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:32:52 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: {"timestamp":"2026-10-27T05:47:52.956Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:52 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:52 +05:45: {"timestamp":"2026-10-27T05:47:52.956Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:52 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:52 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:53 +05:45: {"timestamp":"2026-10-27T05:47:53.085Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:53 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:53 +05:45: {"timestamp":"2026-10-27T05:47:53.099Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:53 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:53 +05:45: {"timestamp":"2026-10-27T05:47:53.123Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:53 +05:45: {"timestamp":"2026-10-27T05:47:53.206Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:53 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:53 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:32:53 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:53 +05:45: {"timestamp":"2026-10-27T05:47:53.307Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:53 +05:45: {"timestamp":"2026-10-27T05:47:53.308Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:53 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:32:53 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:53 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:54 +05:45: {"timestamp":"2026-10-27T05:47:54.007Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:54 +05:45: {"timestamp":"2026-10-27T05:47:54.069Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:54 +05:45: {"timestamp":"2026-10-27T05:47:54.140Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:54 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: [Redis] Connection lost. Reconnect #6 in 1453ms...
+2026-10-27 11:32:54 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:32:54 +05:45: {"timestamp":"2026-10-27T05:47:54.162Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:54 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:32:54 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: {"timestamp":"2026-10-27T05:47:54.319Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:54 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:32:54 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: [Redis] Connection lost. Reconnect #6 in 1345ms...
+2026-10-27 11:32:54 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:32:54 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: {"timestamp":"2026-10-27T05:47:54.500Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:54 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:54 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: {"timestamp":"2026-10-27T05:47:54.623Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:54 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:54 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: {"timestamp":"2026-10-27T05:47:54.897Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:54 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:54 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:54 +05:45: {"timestamp":"2026-10-27T05:47:54.905Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:54 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:55 +05:45: {"timestamp":"2026-10-27T05:47:55.044Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:55 +05:45: [Redis] Connection lost. Reconnect #6 in 1253ms...
+2026-10-27 11:32:55 +05:45: {"timestamp":"2026-10-27T05:47:55.154Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:55 +05:45: [Redis] Connection lost. Reconnect #6 in 1355ms...
+2026-10-27 11:32:55 +05:45: {"timestamp":"2026-10-27T05:47:55.288Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:55 +05:45: [Redis] Connection lost. Reconnect #6 in 1388ms...
+2026-10-27 11:32:55 +05:45: {"timestamp":"2026-10-27T05:47:55.445Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:55 +05:45: [Redis] Connection lost. Reconnect #6 in 1344ms...
+2026-10-27 11:32:55 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: [Redis] Connection lost. Reconnect #11 in 2260ms...
+2026-10-27 11:32:55 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:55 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: {"timestamp":"2026-10-27T05:47:55.596Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:55 +05:45: [Redis] Connection lost. Reconnect #6 in 1367ms...
+2026-10-27 11:32:55 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:32:55 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:32:55 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:32:55 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:55 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:32:56 +05:45: {"timestamp":"2026-10-27T05:47:56.316Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:56 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:56 +05:45: {"timestamp":"2026-10-27T05:47:56.372Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:56 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:56 +05:45: {"timestamp":"2026-10-27T05:47:56.521Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:56 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:56 +05:45: {"timestamp":"2026-10-27T05:47:56.696Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:56 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:56 +05:45: {"timestamp":"2026-10-27T05:47:56.697Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:56 +05:45: {"timestamp":"2026-10-27T05:47:56.807Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:56 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:56 +05:45: {"timestamp":"2026-10-27T05:47:56.869Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:56 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:56 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:56 +05:45: {"timestamp":"2026-10-27T05:47:56.938Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:56 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:56 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:56 +05:45: {"timestamp":"2026-10-27T05:47:56.971Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:56 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:32:57 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:57 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:32:57 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:57 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:32:57 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:57 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:57 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:57 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:57 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:57 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:57 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:57 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:32:57 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:57 +05:45: [Redis:main] Connection closed
+2026-10-27 11:32:57 +05:45: {"timestamp":"2026-10-27T05:47:57.919Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:58 +05:45: {"timestamp":"2026-10-27T05:47:58.115Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:58 +05:45: {"timestamp":"2026-10-27T05:47:58.149Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:58 +05:45: {"timestamp":"2026-10-27T05:47:58.306Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:58 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:58 +05:45: {"timestamp":"2026-10-27T05:47:58.458Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:58 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:32:58 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:58 +05:45: {"timestamp":"2026-10-27T05:47:58.458Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:58 +05:45: [Redis] Connection lost. Reconnect #11 in 2341ms...
+2026-10-27 11:32:58 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:32:58 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:58 +05:45: {"timestamp":"2026-10-27T05:47:58.809Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:58 +05:45: [Redis] Connection lost. Reconnect #11 in 2257ms...
+2026-10-27 11:32:58 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:32:58 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:58 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:32:58 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:58 +05:45: {"timestamp":"2026-10-27T05:47:58.988Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:58 +05:45: [Redis] Connection lost. Reconnect #11 in 2333ms...
+2026-10-27 11:32:58 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:32:59 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:59 +05:45: {"timestamp":"2026-10-27T05:47:59.023Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:59 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:59 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:32:59 +05:45: [Redis] Connection lost. Reconnect #11 in 2205ms...
+2026-10-27 11:32:59 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:32:59 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:59 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:59 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:59 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:59 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:59 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:59 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:32:59 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:32:59 +05:45: {"timestamp":"2026-10-27T05:47:59.679Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:59 +05:45: {"timestamp":"2026-10-27T05:47:59.891Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:59 +05:45: {"timestamp":"2026-10-27T05:47:59.932Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:32:59 +05:45: {"timestamp":"2026-10-27T05:47:59.964Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:00 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:00 +05:45: {"timestamp":"2026-10-27T05:48:00.338Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:00 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:33:00 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:00 +05:45: [Redis:main] Connection closed
+2026-10-27 11:33:00 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:00 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:33:00 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:00 +05:45: {"timestamp":"2026-10-27T05:48:00.822Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:00 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:33:00 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:00 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:33:01 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:01 +05:45: {"timestamp":"2026-10-27T05:48:01.084Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:01 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:33:01 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:01 +05:45: {"timestamp":"2026-10-27T05:48:01.275Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:01 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:33:01 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:01 +05:45: {"timestamp":"2026-10-27T05:48:01.334Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:01 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:33:01 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:01 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:01 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:01 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:01 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:01 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:01 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:01 +05:45: [Redis] Connection lost. Reconnect #11 in 2229ms...
+2026-10-27 11:33:01 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:33:01 +05:45: {"timestamp":"2026-10-27T05:48:01.731Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:01 +05:45: {"timestamp":"2026-10-27T05:48:01.781Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:01 +05:45: {"timestamp":"2026-10-27T05:48:01.812Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:02 +05:45: {"timestamp":"2026-10-27T05:48:02.085Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:02 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:02 +05:45: {"timestamp":"2026-10-27T05:48:02.448Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:02 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:33:02 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:02 +05:45: [Redis] Connection lost. Reconnect #11 in 2290ms...
+2026-10-27 11:33:02 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:33:03 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: [Redis] Connection lost. Reconnect #11 in 2471ms...
+2026-10-27 11:33:03 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:33:03 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: {"timestamp":"2026-10-27T05:48:03.367Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:03 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:33:03 +05:45: [Redis:main] Connection closed
+2026-10-27 11:33:03 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: {"timestamp":"2026-10-27T05:48:03.552Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:03 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:33:03 +05:45: {"timestamp":"2026-10-27T05:48:03.851Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:03 +05:45: [Redis] Connection lost. Reconnect #11 in 2288ms...
+2026-10-27 11:33:03 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: {"timestamp":"2026-10-27T05:48:03.901Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:03 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:33:03 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:33:03 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:03 +05:45: {"timestamp":"2026-10-27T05:48:03.976Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:03 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:33:04 +05:45: {"timestamp":"2026-10-27T05:48:04.049Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:04 +05:45: [Redis] Connection lost. Reconnect #11 in 2275ms...
+2026-10-27 11:33:04 +05:45: {"timestamp":"2026-10-27T05:48:04.096Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:04 +05:45: [Redis] Connection lost. Reconnect #11 in 2385ms...
+2026-10-27 11:33:04 +05:45: {"timestamp":"2026-10-27T05:48:04.333Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:04 +05:45: [Redis] Connection lost. Reconnect #11 in 2431ms...
+2026-10-27 11:33:04 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:04 +05:45: {"timestamp":"2026-10-27T05:48:04.675Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:04 +05:45: [Redis] Connection lost. Reconnect #11 in 2204ms...
+2026-10-27 11:33:04 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:33:05 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:05 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:33:05 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:05 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:33:06 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: {"timestamp":"2026-10-27T05:48:06.147Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:06 +05:45: {"timestamp":"2026-10-27T05:48:06.147Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:06 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:33:06 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: [Redis:main] Connection closed
+2026-10-27 11:33:06 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: {"timestamp":"2026-10-27T05:48:06.306Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:06 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:33:06 +05:45: {"timestamp":"2026-10-27T05:48:06.346Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:06 +05:45: {"timestamp":"2026-10-27T05:48:06.511Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:06 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:33:06 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: {"timestamp":"2026-10-27T05:48:06.629Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:06 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:33:06 +05:45: {"timestamp":"2026-10-27T05:48:06.784Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:06 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: {"timestamp":"2026-10-27T05:48:06.816Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:06 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:33:06 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:06 +05:45: {"timestamp":"2026-10-27T05:48:06.897Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:06 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:33:07 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:07 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:33:08 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:08 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:33:08 +05:45: {"timestamp":"2026-10-27T05:48:08.814Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:08 +05:45: {"timestamp":"2026-10-27T05:48:08.946Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:09 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: {"timestamp":"2026-10-27T05:48:09.035Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:09 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:33:09 +05:45: {"timestamp":"2026-10-27T05:48:09.061Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:09 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: {"timestamp":"2026-10-27T05:48:09.172Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:09 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:33:09 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:33:09 +05:45: {"timestamp":"2026-10-27T05:48:09.323Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:09 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: [Redis] Connection lost. Reconnect #16 in 3420ms...
+2026-10-27 11:33:09 +05:45: [Redis:main] Connection closed
+2026-10-27 11:33:09 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: {"timestamp":"2026-10-27T05:48:09.526Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:09 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:33:09 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: {"timestamp":"2026-10-27T05:48:09.657Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:09 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:33:09 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:09 +05:45: {"timestamp":"2026-10-27T05:48:09.695Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:09 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:33:10 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:10 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:33:10 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:10 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:33:11 +05:45: {"timestamp":"2026-10-27T05:48:11.490Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:11 +05:45: {"timestamp":"2026-10-27T05:48:11.643Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:11 +05:45: {"timestamp":"2026-10-27T05:48:11.831Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:12 +05:45: {"timestamp":"2026-10-27T05:48:12.042Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:12 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: {"timestamp":"2026-10-27T05:48:12.158Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:12 +05:45: [Redis] Connection lost. Reconnect #16 in 3297ms...
+2026-10-27 11:33:12 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:33:12 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: {"timestamp":"2026-10-27T05:48:12.328Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:12 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:33:12 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:33:12 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: {"timestamp":"2026-10-27T05:48:12.350Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:12 +05:45: [Redis] Connection lost. Reconnect #16 in 3341ms...
+2026-10-27 11:33:12 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:33:12 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: {"timestamp":"2026-10-27T05:48:12.951Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:12 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: [Redis:main] Connection closed
+2026-10-27 11:33:12 +05:45: [Redis] Connection lost. Reconnect #16 in 3254ms...
+2026-10-27 11:33:12 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:33:12 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:12 +05:45: {"timestamp":"2026-10-27T05:48:12.956Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:12 +05:45: [Redis] Connection lost. Reconnect #16 in 3352ms...
+2026-10-27 11:33:12 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:33:13 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:13 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:13 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:33:13 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:33:14 +05:45: {"timestamp":"2026-10-27T05:48:14.610Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:14 +05:45: {"timestamp":"2026-10-27T05:48:14.704Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:14 +05:45: {"timestamp":"2026-10-27T05:48:14.825Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:14 +05:45: {"timestamp":"2026-10-27T05:48:14.924Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:15 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:15 +05:45: {"timestamp":"2026-10-27T05:48:15.396Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:15 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:33:15 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:15 +05:45: {"timestamp":"2026-10-27T05:48:15.478Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:15 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:33:15 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:15 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:15 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:15 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:15 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:15 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:15 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:15 +05:45: [Redis] Connection lost. Reconnect #16 in 3234ms...
+2026-10-27 11:33:15 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:33:15 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:15 +05:45: {"timestamp":"2026-10-27T05:48:15.709Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:15 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:33:16 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:16 +05:45: {"timestamp":"2026-10-27T05:48:16.224Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:16 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:33:16 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:16 +05:45: {"timestamp":"2026-10-27T05:48:16.320Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:16 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:33:16 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:16 +05:45: [Redis:main] Connection closed
+2026-10-27 11:33:16 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:16 +05:45: [Redis] Connection lost. Reconnect #16 in 3330ms...
+2026-10-27 11:33:16 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:33:16 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:16 +05:45: [Redis] Connection lost. Reconnect #16 in 3301ms...
+2026-10-27 11:33:16 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:33:17 +05:45: {"timestamp":"2026-10-27T05:48:17.713Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:17 +05:45: [Redis] Connection lost. Reconnect #16 in 3306ms...
+2026-10-27 11:33:17 +05:45: {"timestamp":"2026-10-27T05:48:17.912Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:17 +05:45: [Redis] Connection lost. Reconnect #16 in 3224ms...
+2026-10-27 11:33:17 +05:45: {"timestamp":"2026-10-27T05:48:17.912Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:17 +05:45: [Redis] Connection lost. Reconnect #16 in 3402ms...
+2026-10-27 11:33:17 +05:45: {"timestamp":"2026-10-27T05:48:17.970Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:17 +05:45: [Redis] Connection lost. Reconnect #16 in 3204ms...
+2026-10-27 11:33:18 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:18 +05:45: {"timestamp":"2026-10-27T05:48:18.502Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:18 +05:45: [Redis] Connection lost. Reconnect #16 in 3407ms...
+2026-10-27 11:33:18 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:33:18 +05:45: [Redis:queues-shared] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:18 +05:45: [Queue:email-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:18 +05:45: [Queue:notification-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:18 +05:45: [Queue:audit-log-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:18 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:18 +05:45: [Queue:system-event-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:18 +05:45: [Queue:resident-import-queue] Queue error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:18 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:33:18 +05:45: [Redis:worker:resident-import-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:18 +05:45: {"timestamp":"2026-10-27T05:48:18.968Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:18 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:33:19 +05:45: [Redis:worker:notification-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:19 +05:45: {"timestamp":"2026-10-27T05:48:19.174Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:19 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:33:19 +05:45: [Redis:worker:audit-log-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:19 +05:45: {"timestamp":"2026-10-27T05:48:19.793Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:19 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:33:19 +05:45: [Redis:worker:email-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:19 +05:45: {"timestamp":"2026-10-27T05:48:19.919Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:19 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:33:20 +05:45: [Redis:main] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:20 +05:45: [Redis:main] Connection closed
+2026-10-27 11:33:20 +05:45: [Redis:socket-pub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:20 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:33:20 +05:45: [Redis:socket-sub] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:20 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:33:21 +05:45: {"timestamp":"2026-10-27T05:48:21.038Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:21 +05:45: {"timestamp":"2026-10-27T05:48:21.152Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:21 +05:45: {"timestamp":"2026-10-27T05:48:21.192Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:21 +05:45: {"timestamp":"2026-10-27T05:48:21.334Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:21 +05:45: [Redis:worker:system-event-queue] Connection Error: getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io
+2026-10-27 11:33:21 +05:45: {"timestamp":"2026-10-27T05:48:21.942Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"getaddrinfo ENOTFOUND toy-slipless-ivoryish-34347.db.redis.io"}
+2026-10-27 11:33:21 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:49:38 +05:45: {"timestamp":"2026-10-27T06:04:37.979Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"read ECONNRESET"}
+2026-10-27 11:49:38 +05:45: {"timestamp":"2026-10-27T06:04:37.982Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"read ECONNRESET"}
+2026-10-27 11:49:38 +05:45: {"timestamp":"2026-10-27T06:04:37.983Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"read ECONNRESET"}
+2026-10-27 11:49:38 +05:45: {"timestamp":"2026-10-27T06:04:38.000Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"read ECONNRESET"}
+2026-10-27 11:49:38 +05:45: {"timestamp":"2026-10-27T06:04:38.001Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"read ECONNRESET"}
+2026-10-27 11:49:38 +05:45: [Redis:socket-pub] Connection Error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: [Redis:worker:notification-queue] Connection Error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: {"timestamp":"2026-10-27T06:04:38.005Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"notification-queue","error":"read ECONNRESET"}
+2026-10-27 11:49:38 +05:45: [Redis:queues-shared] Connection Error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: [Queue:email-queue] Queue error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: [Queue:notification-queue] Queue error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: [Queue:audit-log-queue] Queue error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: [Queue:system-event-queue] Queue error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: [Queue:system-event-queue] Queue error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: [Queue:resident-import-queue] Queue error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: [Redis:worker:email-queue] Connection Error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: {"timestamp":"2026-10-27T06:04:38.087Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"email-queue","error":"read ECONNRESET"}
+2026-10-27 11:49:38 +05:45: [Redis:worker:system-event-queue] Connection Error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: {"timestamp":"2026-10-27T06:04:38.090Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"system-event-queue","error":"read ECONNRESET"}
+2026-10-27 11:49:38 +05:45: [Redis:worker:audit-log-queue] Connection Error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: {"timestamp":"2026-10-27T06:04:38.091Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"audit-log-queue","error":"read ECONNRESET"}
+2026-10-27 11:49:38 +05:45: [Redis:worker:resident-import-queue] Connection Error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: {"timestamp":"2026-10-27T06:04:38.092Z","level":"error","service":"hostelghar-api","environment":"production","message":"BullMQ worker critical error","queue":"resident-import-queue","error":"read ECONNRESET"}
+2026-10-27 11:49:38 +05:45: [Redis:socket-sub] Connection Error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: [Redis:main] Connection Error: read ECONNRESET
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 336ms...
+2026-10-27 11:49:38 +05:45: [Redis:main] Connection closed
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 484ms...
+2026-10-27 11:49:38 +05:45: [Redis:socket-sub] Connection closed
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 263ms...
+2026-10-27 11:49:38 +05:45: [Redis:worker:resident-import-queue] Connection closed
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 253ms...
+2026-10-27 11:49:38 +05:45: [Redis:worker:audit-log-queue] Connection closed
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 323ms...
+2026-10-27 11:49:38 +05:45: [Redis:worker:system-event-queue] Connection closed
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 282ms...
+2026-10-27 11:49:38 +05:45: [Redis:worker:email-queue] Connection closed
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 479ms...
+2026-10-27 11:49:38 +05:45: [Redis:queues-shared] Connection closed
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 430ms...
+2026-10-27 11:49:38 +05:45: [Redis:worker:notification-queue] Connection closed
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 417ms...
+2026-10-27 11:49:38 +05:45: [Redis:socket-pub] Connection closed
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 497ms...
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 249ms...
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 204ms...
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 220ms...
+2026-10-27 11:49:38 +05:45: [Redis] Connection lost. Reconnect #1 in 499ms...

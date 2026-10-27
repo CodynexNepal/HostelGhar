@@ -102,7 +102,7 @@ class AppEventDispatcher extends EventEmitter {
         },
       );
       const { emailSenderService } = await import('../services/email/email-sender.service');
-      const sendPromise = emailSenderService.send(
+      await emailSenderService.send(
         {
           to: data.to,
           subject: data.subject,
@@ -111,13 +111,6 @@ class AppEventDispatcher extends EventEmitter {
         },
         { correlationId },
       );
-
-      // In production, prevent slow external SMTP from hanging and exceeding the frontend 10000ms Axios timeout
-      if (!isTest) {
-        await Promise.race([sendPromise, new Promise((resolve) => setTimeout(resolve, 3500))]);
-      } else {
-        await sendPromise;
-      }
       return { id: 'direct-smtp-fallback', name: jobType, data } as any;
     }
 
@@ -162,7 +155,7 @@ class AppEventDispatcher extends EventEmitter {
         },
       );
       const { emailSenderService } = await import('../services/email/email-sender.service');
-      const sendPromise = emailSenderService.send(
+      await emailSenderService.send(
         {
           to: data.to,
           subject: data.subject,
@@ -171,13 +164,6 @@ class AppEventDispatcher extends EventEmitter {
         },
         { correlationId },
       );
-
-      // In production, prevent slow external SMTP from hanging and exceeding the frontend 10000ms Axios timeout
-      if (!isTest) {
-        await Promise.race([sendPromise, new Promise((resolve) => setTimeout(resolve, 3500))]);
-      } else {
-        await sendPromise;
-      }
       return { id: 'direct-smtp-fallback', name: jobType, data } as any;
     }
 

@@ -57,3 +57,39 @@
 2026-10-27 10:35:48 +05:45: {"timestamp":"2026-10-27T04:50:48.429Z","level":"info","service":"hostelghar-api","environment":"production","message":"BullMQ email worker received job","correlationId":"68cda49b-c3b2-4bbe-86ce-d9292b283dfd","jobId":"18","queue":"email-queue","jobType":"SEND_PASSWORD_RESET","attemptsMade":0,"recipientDomain":"gmail.com"}
 2026-10-27 10:35:50 +05:45: {"timestamp":"2026-10-27T04:50:50.186Z","level":"info","service":"hostelghar-api","environment":"production","message":"Email sent successfully via primary SMTP","correlationId":"68cda49b-c3b2-4bbe-86ce-d9292b283dfd","jobId":"18","host":"server2.bisuphost.com","port":465,"messageId":"<cad283ae-b6aa-f328-042d-0075a64d8fb7@hostelghar.com>","smtpResponse":"250 OK id=1xLZ8R-0000000GtjR-0OWW","smtpResponseCode":250,"recipientDomain":"gmail.com"}
 2026-10-27 10:35:50 +05:45: {"timestamp":"2026-10-27T04:50:50.776Z","level":"info","service":"hostelghar-api","environment":"production","message":"BullMQ worker job completed successfully","jobId":"18","queue":"email-queue","jobName":"SEND_PASSWORD_RESET","attemptsMade":1}
+2026-10-27 11:33:24 +05:45: [Redis:worker:audit-log-queue] Connected successfully
+2026-10-27 11:33:24 +05:45: [Redis:socket-pub] Connected successfully
+2026-10-27 11:33:24 +05:45: [Redis:worker:email-queue] Connected successfully
+2026-10-27 11:33:24 +05:45: [Redis:queues-shared] Connected successfully
+2026-10-27 11:33:24 +05:45: [Redis:worker:resident-import-queue] Connected successfully
+2026-10-27 11:33:24 +05:45: [Redis:worker:notification-queue] Connected successfully
+2026-10-27 11:33:24 +05:45: [Redis:socket-sub] Connected successfully
+2026-10-27 11:33:24 +05:45: [Redis:main] Connected successfully
+2026-10-27 11:33:24 +05:45: [Redis:worker:audit-log-queue] Ready
+2026-10-27 11:33:24 +05:45: [Redis:socket-pub] Ready
+2026-10-27 11:33:24 +05:45: [Redis:worker:email-queue] Ready
+2026-10-27 11:33:24 +05:45: [Redis:queues-shared] Ready
+2026-10-27 11:33:24 +05:45: [Redis:worker:resident-import-queue] Ready
+2026-10-27 11:33:24 +05:45: [Redis:worker:notification-queue] Ready
+2026-10-27 11:33:24 +05:45: [Redis:socket-sub] Ready
+2026-10-27 11:33:24 +05:45: [Redis:main] Ready
+2026-10-27 11:33:25 +05:45: [Redis:worker:system-event-queue] Connected successfully
+2026-10-27 11:33:26 +05:45: [Redis:worker:system-event-queue] Ready
+2026-10-27 11:49:39 +05:45: [Redis:worker:resident-import-queue] Connected successfully
+2026-10-27 11:49:39 +05:45: [Redis:worker:audit-log-queue] Connected successfully
+2026-10-27 11:49:39 +05:45: [Redis:main] Connected successfully
+2026-10-27 11:49:39 +05:45: [Redis:worker:system-event-queue] Connected successfully
+2026-10-27 11:49:39 +05:45: [Redis:queues-shared] Connected successfully
+2026-10-27 11:49:39 +05:45: [Redis:socket-pub] Connected successfully
+2026-10-27 11:49:39 +05:45: [Redis:worker:email-queue] Connected successfully
+2026-10-27 11:49:39 +05:45: [Redis:worker:notification-queue] Connected successfully
+2026-10-27 11:49:39 +05:45: [Redis:socket-sub] Connected successfully
+2026-10-27 11:49:39 +05:45: [Redis:worker:resident-import-queue] Ready
+2026-10-27 11:49:39 +05:45: [Redis:worker:audit-log-queue] Ready
+2026-10-27 11:49:39 +05:45: [Redis:main] Ready
+2026-10-27 11:49:39 +05:45: [Redis:worker:system-event-queue] Ready
+2026-10-27 11:49:39 +05:45: [Redis:queues-shared] Ready
+2026-10-27 11:49:39 +05:45: [Redis:socket-pub] Ready
+2026-10-27 11:49:39 +05:45: [Redis:worker:email-queue] Ready
+2026-10-27 11:49:39 +05:45: [Redis:worker:notification-queue] Ready
+2026-10-27 11:49:39 +05:45: [Redis:socket-sub] Ready

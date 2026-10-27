@@ -56,13 +56,18 @@ export function cleanEnvConfig(): CleanEnvConfig {
   const useDirectSmtp =
     process.env.USE_DIRECT_SMTP === 'true' ||
     process.env.ENABLE_REDIS === 'false' ||
-    process.env.PASSENGER_MODE === 'true';
+    process.env.PASSENGER_MODE === 'true' ||
+    (nodeEnv === 'production' && process.env.ENABLE_REDIS !== 'true');
+  const enableRedis =
+    !useDirectSmtp &&
+    process.env.ENABLE_REDIS !== 'false' &&
+    (nodeEnv !== 'production' || process.env.ENABLE_REDIS === 'true');
   const defaultDatabaseUrl =
     nodeEnv === 'production'
       ? undefined
       : 'postgresql://hostelghar:hostelghar_dev_pass@127.0.0.1:5432/hostelghar_dev';
   const defaultRedisUrl =
-    useDirectSmtp || nodeEnv !== 'production'
+    !enableRedis || nodeEnv !== 'production'
       ? 'redis://127.0.0.1:6379'
       : process.env.REDIS_URL || 'redis://127.0.0.1:6379';
   const defaultAccessSecret =
@@ -83,7 +88,7 @@ export function cleanEnvConfig(): CleanEnvConfig {
       .replace(/^"|"$/g, '')
       .trim(),
     USE_DIRECT_SMTP: useDirectSmtp,
-    ENABLE_REDIS: !useDirectSmtp && process.env.ENABLE_REDIS !== 'false',
+    ENABLE_REDIS: enableRedis,
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
