@@ -19,7 +19,6 @@ export class EmailSenderService {
 
   private createTransporter(host: string, port: number, secure: boolean): Transporter {
     return nodemailer.createTransport({
-      name: 'hostelghar.com', // Explicit FQDN EHLO/HELO domain avoids reverse DNS/HELO mismatch in Exim & Gmail
       host,
       port,
       secure,
@@ -47,20 +46,11 @@ export class EmailSenderService {
 
     const mailOptions: SendMailOptions = {
       from: fromAddress,
-      sender: senderEmail,
       replyTo: senderEmail,
       to: payload.to,
       subject: payload.subject,
       text: payload.body,
       ...(payload.html ? { html: payload.html } : {}),
-      envelope: {
-        from: senderEmail,
-        to: payload.to,
-      },
-      headers: {
-        'X-Mailer': 'HostelGhar-Mailer',
-        'X-Entity-Ref-ID': options?.correlationId || options?.jobId || payload.to,
-      },
     };
 
     // 1. Try primary configured SMTP host

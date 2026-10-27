@@ -20,8 +20,8 @@ const isRedisDisabled =
 export const redisOptions: RedisOptions = {
   maxRetriesPerRequest: isTest ? 1 : null,
   enableReadyCheck: false,
-  enableOfflineQueue: !isTest && !isRedisDisabled,
-  lazyConnect: isTest || isRedisDisabled,
+  enableOfflineQueue: false, // Prevents queuing commands indefinitely in memory when Redis is offline
+  lazyConnect: true,
   keepAlive: 10000,
   connectTimeout: isTest ? 1000 : 3500,
   retryStrategy: (times: number) => {
