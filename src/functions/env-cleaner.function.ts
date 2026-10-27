@@ -45,6 +45,28 @@ function getRequiredEnv(key: string, customValue?: string): string {
 }
 
 /**
+ * Sanitizes and validates JWT token expiration strings (e.g. "15m", "7d", "3600").
+ * Strips accidental surrounding quotes and whitespace, and validates the format
+ * to prevent jsonwebtoken sign runtime errors.
+ */
+export function cleanTokenExpiry(val?: string, fallback: string = '15m'): string {
+  if (!val || typeof val !== 'string') return fallback;
+  const cleaned = val.replace(/^["']|["']$/g, '').trim();
+  if (!cleaned || cleaned.toLowerCase() === 'undefined' || cleaned.toLowerCase() === 'null') {
+    return fallback;
+  }
+  const isNumeric = /^\d+$/.test(cleaned);
+  const isTimespan =
+    /^(\d+)\s*(s|m|h|d|w|y|sec|secs|second|seconds|min|mins|minute|minutes|hr|hrs|hour|hours|day|days)$/i.test(
+      cleaned,
+    );
+  if (isNumeric || isTimespan) {
+    return cleaned;
+  }
+  return fallback;
+}
+
+/**
  * Cleans, sanitizes, and returns the strongly typed configuration object.
  */
 export function cleanEnvConfig(): CleanEnvConfig {
@@ -62,7 +84,8 @@ export function cleanEnvConfig(): CleanEnvConfig {
     (isProd && process.env.ENABLE_REDIS !== 'true');
 
   const enableRedis =
-    !useDirectSmtp && (isProd ? process.env.ENABLE_REDIS === 'true' : process.env.ENABLE_REDIS !== 'false');
+    !useDirectSmtp &&
+    (isProd ? process.env.ENABLE_REDIS === 'true' : process.env.ENABLE_REDIS !== 'false');
 
   const defaultDatabaseUrl =
     nodeEnv === 'production'
@@ -104,8 +127,8 @@ export function cleanEnvConfig(): CleanEnvConfig {
       'REFRESH_TOKEN_SECRET',
       process.env.REFRESH_TOKEN_SECRET || defaultRefreshSecret,
     ),
-    ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY || '15m',
-    REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || '7d',
+    ACCESS_TOKEN_EXPIRY: cleanTokenExpiry(process.env.ACCESS_TOKEN_EXPIRY, '15m'),
+    REFRESH_TOKEN_EXPIRY: cleanTokenExpiry(process.env.REFRESH_TOKEN_EXPIRY, '7d'),
     SALT_ROUNDS: Number.isNaN(saltRounds) ? 10 : saltRounds,
     CORS_ORIGIN:
       process.env.CORS_ORIGIN ||

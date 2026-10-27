@@ -108,11 +108,23 @@ export class AuthService {
     });
 
     const welcomeTemplate = renderWelcomeEmail(newUser.firstName);
-    await eventDispatcher.queueEmail(JobType.SEND_WELCOME_EMAIL, {
-      to: newUser.email,
-      subject: welcomeTemplate.subject,
-      body: welcomeTemplate.body,
-    });
+    // Asynchronously queue welcome email in the background without blocking registration response or timing out
+    eventDispatcher
+      .queueEmail(
+        JobType.SEND_WELCOME_EMAIL,
+        {
+          to: newUser.email,
+          subject: welcomeTemplate.subject,
+          body: welcomeTemplate.body,
+        },
+        { timeoutMs: 2500, fallbackToDirectSmtp: true },
+      )
+      .catch((err) => {
+        logger.warn('Failed to dispatch welcome email during user registration', {
+          userId: newUser.id,
+          error: err?.message || String(err),
+        });
+      });
 
     return this.issueTokensForUser(newUser);
   }
@@ -201,11 +213,22 @@ export class AuthService {
     await this.userRepository.updatePassword(user.id, hashedPassword);
 
     const template = renderPasswordChangedEmail(user.firstName);
-    await eventDispatcher.queueEmail(JobType.SEND_PASSWORD_RESET, {
-      to: user.email,
-      subject: template.subject,
-      body: template.body,
-    });
+    eventDispatcher
+      .queueEmail(
+        JobType.SEND_PASSWORD_RESET,
+        {
+          to: user.email,
+          subject: template.subject,
+          body: template.body,
+        },
+        { timeoutMs: 2500, fallbackToDirectSmtp: true },
+      )
+      .catch((err) => {
+        logger.warn('Failed to dispatch password changed confirmation email', {
+          userId: user.id,
+          error: err?.message || String(err),
+        });
+      });
   }
 
   public async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
@@ -227,11 +250,22 @@ export class AuthService {
     );
 
     const template = renderPasswordChangedEmail(user.firstName);
-    await eventDispatcher.queueEmail(JobType.SEND_PASSWORD_RESET, {
-      to: user.email,
-      subject: template.subject,
-      body: template.body,
-    });
+    eventDispatcher
+      .queueEmail(
+        JobType.SEND_PASSWORD_RESET,
+        {
+          to: user.email,
+          subject: template.subject,
+          body: template.body,
+        },
+        { timeoutMs: 2500, fallbackToDirectSmtp: true },
+      )
+      .catch((err) => {
+        logger.warn('Failed to dispatch password changed confirmation email', {
+          userId: user.id,
+          error: err?.message || String(err),
+        });
+      });
   }
 
   /**

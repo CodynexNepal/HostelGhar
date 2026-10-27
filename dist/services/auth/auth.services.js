@@ -71,10 +71,18 @@ class AuthService {
             password: hashedPassword,
         });
         const welcomeTemplate = (0, email_template_1.renderWelcomeEmail)(newUser.firstName);
-        await event_dispatcher_util_1.eventDispatcher.queueEmail(queue_constants_1.JobType.SEND_WELCOME_EMAIL, {
+        // Asynchronously queue welcome email in the background without blocking registration response or timing out
+        event_dispatcher_util_1.eventDispatcher
+            .queueEmail(queue_constants_1.JobType.SEND_WELCOME_EMAIL, {
             to: newUser.email,
             subject: welcomeTemplate.subject,
             body: welcomeTemplate.body,
+        }, { timeoutMs: 2500, fallbackToDirectSmtp: true })
+            .catch((err) => {
+            logger_1.logger.warn('Failed to dispatch welcome email during user registration', {
+                userId: newUser.id,
+                error: err?.message || String(err),
+            });
         });
         return this.issueTokensForUser(newUser);
     }
@@ -145,10 +153,17 @@ class AuthService {
         const hashedPassword = await password_hasher_util_1.PasswordHasher.hash(dto.newPassword);
         await this.userRepository.updatePassword(user.id, hashedPassword);
         const template = (0, email_template_1.renderPasswordChangedEmail)(user.firstName);
-        await event_dispatcher_util_1.eventDispatcher.queueEmail(queue_constants_1.JobType.SEND_PASSWORD_RESET, {
+        event_dispatcher_util_1.eventDispatcher
+            .queueEmail(queue_constants_1.JobType.SEND_PASSWORD_RESET, {
             to: user.email,
             subject: template.subject,
             body: template.body,
+        }, { timeoutMs: 2500, fallbackToDirectSmtp: true })
+            .catch((err) => {
+            logger_1.logger.warn('Failed to dispatch password changed confirmation email', {
+                userId: user.id,
+                error: err?.message || String(err),
+            });
         });
     }
     async changePassword(userId, dto) {
@@ -164,10 +179,17 @@ class AuthService {
         await this.userRepository.updatePassword(user.id, hashedPassword);
         await (0, token_blocklist_util_1.markUserLoggedOutAll)(user.id, (0, token_blocklist_util_1.parseExpiryToSeconds)(envConfig_1.dotEnvConfig.REFRESH_TOKEN_EXPIRY, 604800));
         const template = (0, email_template_1.renderPasswordChangedEmail)(user.firstName);
-        await event_dispatcher_util_1.eventDispatcher.queueEmail(queue_constants_1.JobType.SEND_PASSWORD_RESET, {
+        event_dispatcher_util_1.eventDispatcher
+            .queueEmail(queue_constants_1.JobType.SEND_PASSWORD_RESET, {
             to: user.email,
             subject: template.subject,
             body: template.body,
+        }, { timeoutMs: 2500, fallbackToDirectSmtp: true })
+            .catch((err) => {
+            logger_1.logger.warn('Failed to dispatch password changed confirmation email', {
+                userId: user.id,
+                error: err?.message || String(err),
+            });
         });
     }
     /**

@@ -28,8 +28,29 @@ exports.JwtTokenService = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 // Import centralized env config to read JWT secrets and expiry values.
 const envConfig_1 = require("../configs/envConfig");
-const accessTokenExpiresIn = envConfig_1.dotEnvConfig.ACCESS_TOKEN_EXPIRY;
-const refreshTokenExpiresIn = envConfig_1.dotEnvConfig.REFRESH_TOKEN_EXPIRY;
+function resolveExpiresIn(value, fallback) {
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        return value;
+    }
+    if (!value || typeof value !== 'string') {
+        return fallback;
+    }
+    const cleaned = value.replace(/^["']|["']$/g, '').trim();
+    if (!cleaned || cleaned.toLowerCase() === 'undefined' || cleaned.toLowerCase() === 'null') {
+        return fallback;
+    }
+    if (/^\d+$/.test(cleaned)) {
+        const num = parseInt(cleaned, 10);
+        return Number.isFinite(num) && num > 0
+            ? num
+            : fallback;
+    }
+    const timespanRegex = /^(\d+)\s*(s|m|h|d|w|y|sec|secs|second|seconds|min|mins|minute|minutes|hr|hrs|hour|hours|day|days)$/i;
+    if (timespanRegex.test(cleaned)) {
+        return cleaned;
+    }
+    return fallback;
+}
 // ─── JwtTokenService Class ──────────────────────────────────────────────────
 class JwtTokenService {
     // ─── Private Constructor ──────────────────────────────────────────────
@@ -44,20 +65,9 @@ class JwtTokenService {
     // the user to perform actions. Its short lifespan means that even if
     // it's stolen, the attacker has a very narrow window to exploit it.
     static generateAccessToken(payload) {
-        // `jwt.sign()` creates a token string with three parts:
-        //   header.payload.signature (Base64URL encoded, dot-separated).
-        //
-        // The `ACCESS_TOKEN_SECRET` is used as the HMAC key — anyone who
-        // knows this secret can forge tokens, so it must be kept secure.
-        //
-        // `expiresIn` sets the `exp` claim in the token payload. After this
-        // time, `jwt.verify()` will reject the token automatically.
-        //
-        // The `!` (non-null assertion) is acceptable here because the app
-        // will crash at startup if these env vars are missing — we should
-        // validate this in a production startup check.
+        const expiresIn = resolveExpiresIn(envConfig_1.dotEnvConfig?.ACCESS_TOKEN_EXPIRY, '15m');
         return jsonwebtoken_1.default.sign(payload, envConfig_1.dotEnvConfig.ACCESS_TOKEN_SECRET, {
-            expiresIn: accessTokenExpiresIn,
+            expiresIn,
         });
     }
     // ─── generateRefreshToken() ───────────────────────────────────────────
@@ -70,8 +80,9 @@ class JwtTokenService {
     // secret is compromised, the attacker still cannot forge refresh tokens
     // (and vice versa). This is defense-in-depth.
     static generateRefreshToken(payload) {
+        const expiresIn = resolveExpiresIn(envConfig_1.dotEnvConfig?.REFRESH_TOKEN_EXPIRY, '7d');
         return jsonwebtoken_1.default.sign(payload, envConfig_1.dotEnvConfig.REFRESH_TOKEN_SECRET, {
-            expiresIn: refreshTokenExpiresIn,
+            expiresIn,
         });
     }
     // ─── verifyAccessToken() ──────────────────────────────────────────────

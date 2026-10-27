@@ -11,7 +11,7 @@ class EmailSenderService {
     constructor() {
         this.primaryTransporterInstance = null;
     }
-    createTransporter(host, port, secure) {
+    createTransporter(host, port, secure, timeouts) {
         return nodemailer_1.default.createTransport({
             host,
             port,
@@ -20,9 +20,9 @@ class EmailSenderService {
             tls: {
                 rejectUnauthorized: false, // Ensures compatibility with cPanel/shared SSL certificates
             },
-            connectionTimeout: 4000,
-            greetingTimeout: 4000,
-            socketTimeout: 8000,
+            connectionTimeout: timeouts?.connectionTimeout ?? 4000,
+            greetingTimeout: timeouts?.greetingTimeout ?? 4000,
+            socketTimeout: timeouts?.socketTimeout ?? 8000,
         });
     }
     async send(payload, options) {
@@ -83,7 +83,7 @@ class EmailSenderService {
             ].filter((cand) => cand.host !== host || cand.port !== port);
             for (const candidate of fallbackCandidates) {
                 try {
-                    const fallbackTransporter = this.createTransporter(candidate.host, candidate.port, candidate.secure);
+                    const fallbackTransporter = this.createTransporter(candidate.host, candidate.port, candidate.secure, { connectionTimeout: 1500, greetingTimeout: 1500, socketTimeout: 3000 });
                     const fallbackInfo = await fallbackTransporter.sendMail(mailOptions);
                     const fallbackResponseCode = typeof fallbackInfo?.response === 'string'
                         ? parseInt(fallbackInfo.response.split(' ')[0] ?? '', 10) || undefined

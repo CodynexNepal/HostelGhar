@@ -46,8 +46,8 @@ export const psqlDbConfig: DataSourceOptions = {
     max: parseInt(process.env.DB_POOL_MAX || '10', 10),
     // Minimum number of idle connections to maintain in pool
     min: parseInt(process.env.DB_POOL_MIN || '0', 10),
-    // Milliseconds a client must wait before connection allocation times out
-    connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '10000', 10),
+    // Milliseconds a client must wait before connection allocation times out (15s resilient for Neon serverless wakeups)
+    connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '15000', 10),
     // Milliseconds a client can remain idle before being closed
     idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000', 10),
     // KeepAlive configuration to prevent idle connection termination by cloud firewalls

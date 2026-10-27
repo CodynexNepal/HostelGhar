@@ -70,13 +70,23 @@ class AppEventDispatcher extends events_1.EventEmitter {
         // 2. Broadcast via Socket.io to target recipients
         this.broadcastRealtime(timestampedEvent);
         // 3. Queue asynchronous audit logging
-        await queue_factory_1.auditLogQueue.add(queue_constants_1.JobType.LOG_USER_ACTIVITY, {
-            userId: event.userId,
-            action: event.type,
-            resource: event.hostelId ? `hostel:${event.hostelId}` : 'system',
-            metadata: event.metadata,
-            timestamp: timestampedEvent.timestamp.toISOString(),
-        });
+        if (envConfig_1.dotEnvConfig.ENABLE_REDIS && redis_config_1.redisClient.status === 'ready') {
+            try {
+                await Promise.race([
+                    queue_factory_1.auditLogQueue.add(queue_constants_1.JobType.LOG_USER_ACTIVITY, {
+                        userId: event.userId,
+                        action: event.type,
+                        resource: event.hostelId ? `hostel:${event.hostelId}` : 'system',
+                        metadata: event.metadata,
+                        timestamp: timestampedEvent.timestamp.toISOString(),
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Audit log queue timed out')), 2000).unref()),
+                ]);
+            }
+            catch (err) {
+                logger_1.logger.warn('Failed to enqueue audit log activity', { error: err?.message || String(err) });
+            }
+        }
     }
     /**
      * Helper to dispatch email job to BullMQ queue with bounded timeout,

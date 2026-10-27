@@ -24,8 +24,7 @@ const initialNodeEnv = process.env.NODE_ENV;
 const isProduction = initialNodeEnv === 'production';
 const isTestEnv = initialNodeEnv === 'test' || Boolean(process.env.VITEST);
 const isPassengerEnv =
-  typeof (global as any).PhusionPassenger !== 'undefined' ||
-  process.env.PASSENGER_MODE === 'true';
+  typeof (global as any).PhusionPassenger !== 'undefined' || process.env.PASSENGER_MODE === 'true';
 const previousPort = process.env.PORT;
 
 if (isProduction) {

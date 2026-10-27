@@ -17,7 +17,12 @@ export interface SendEmailOptions {
 export class EmailSenderService {
   private primaryTransporterInstance: Transporter | null = null;
 
-  private createTransporter(host: string, port: number, secure: boolean): Transporter {
+  private createTransporter(
+    host: string,
+    port: number,
+    secure: boolean,
+    timeouts?: { connectionTimeout?: number; greetingTimeout?: number; socketTimeout?: number },
+  ): Transporter {
     return nodemailer.createTransport({
       host,
       port,
@@ -26,9 +31,9 @@ export class EmailSenderService {
       tls: {
         rejectUnauthorized: false, // Ensures compatibility with cPanel/shared SSL certificates
       },
-      connectionTimeout: 4000,
-      greetingTimeout: 4000,
-      socketTimeout: 8000,
+      connectionTimeout: timeouts?.connectionTimeout ?? 4000,
+      greetingTimeout: timeouts?.greetingTimeout ?? 4000,
+      socketTimeout: timeouts?.socketTimeout ?? 8000,
     });
   }
 
@@ -102,6 +107,7 @@ export class EmailSenderService {
             candidate.host,
             candidate.port,
             candidate.secure,
+            { connectionTimeout: 1500, greetingTimeout: 1500, socketTimeout: 3000 },
           );
           const fallbackInfo = await fallbackTransporter.sendMail(mailOptions);
           const fallbackResponseCode =

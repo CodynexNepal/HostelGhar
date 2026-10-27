@@ -43,12 +43,33 @@ export interface ITokenPayload {
   role: string;
 }
 
-const accessTokenExpiresIn = dotEnvConfig.ACCESS_TOKEN_EXPIRY as NonNullable<
-  SignOptions['expiresIn']
->;
-const refreshTokenExpiresIn = dotEnvConfig.REFRESH_TOKEN_EXPIRY as NonNullable<
-  SignOptions['expiresIn']
->;
+function resolveExpiresIn(
+  value: string | number | undefined | null,
+  fallback: string | number,
+): NonNullable<SignOptions['expiresIn']> {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return value as NonNullable<SignOptions['expiresIn']>;
+  }
+  if (!value || typeof value !== 'string') {
+    return fallback as NonNullable<SignOptions['expiresIn']>;
+  }
+  const cleaned = value.replace(/^["']|["']$/g, '').trim();
+  if (!cleaned || cleaned.toLowerCase() === 'undefined' || cleaned.toLowerCase() === 'null') {
+    return fallback as NonNullable<SignOptions['expiresIn']>;
+  }
+  if (/^\d+$/.test(cleaned)) {
+    const num = parseInt(cleaned, 10);
+    return Number.isFinite(num) && num > 0
+      ? (num as NonNullable<SignOptions['expiresIn']>)
+      : (fallback as NonNullable<SignOptions['expiresIn']>);
+  }
+  const timespanRegex =
+    /^(\d+)\s*(s|m|h|d|w|y|sec|secs|second|seconds|min|mins|minute|minutes|hr|hrs|hour|hours|day|days)$/i;
+  if (timespanRegex.test(cleaned)) {
+    return cleaned as NonNullable<SignOptions['expiresIn']>;
+  }
+  return fallback as NonNullable<SignOptions['expiresIn']>;
+}
 
 // ─── JwtTokenService Class ──────────────────────────────────────────────────
 
@@ -68,20 +89,9 @@ export class JwtTokenService {
   // the user to perform actions. Its short lifespan means that even if
   // it's stolen, the attacker has a very narrow window to exploit it.
   public static generateAccessToken(payload: ITokenPayload): string {
-    // `jwt.sign()` creates a token string with three parts:
-    //   header.payload.signature (Base64URL encoded, dot-separated).
-    //
-    // The `ACCESS_TOKEN_SECRET` is used as the HMAC key — anyone who
-    // knows this secret can forge tokens, so it must be kept secure.
-    //
-    // `expiresIn` sets the `exp` claim in the token payload. After this
-    // time, `jwt.verify()` will reject the token automatically.
-    //
-    // The `!` (non-null assertion) is acceptable here because the app
-    // will crash at startup if these env vars are missing — we should
-    // validate this in a production startup check.
+    const expiresIn = resolveExpiresIn(dotEnvConfig?.ACCESS_TOKEN_EXPIRY, '15m');
     return jwt.sign(payload, dotEnvConfig.ACCESS_TOKEN_SECRET!, {
-      expiresIn: accessTokenExpiresIn,
+      expiresIn,
     });
   }
 
@@ -96,8 +106,9 @@ export class JwtTokenService {
   // secret is compromised, the attacker still cannot forge refresh tokens
   // (and vice versa). This is defense-in-depth.
   public static generateRefreshToken(payload: ITokenPayload): string {
+    const expiresIn = resolveExpiresIn(dotEnvConfig?.REFRESH_TOKEN_EXPIRY, '7d');
     return jwt.sign(payload, dotEnvConfig.REFRESH_TOKEN_SECRET!, {
-      expiresIn: refreshTokenExpiresIn,
+      expiresIn,
     });
   }
 

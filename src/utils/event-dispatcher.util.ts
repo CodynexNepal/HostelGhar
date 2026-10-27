@@ -48,13 +48,24 @@ class AppEventDispatcher extends EventEmitter {
     this.broadcastRealtime(timestampedEvent);
 
     // 3. Queue asynchronous audit logging
-    await auditLogQueue.add(JobType.LOG_USER_ACTIVITY, {
-      userId: event.userId,
-      action: event.type,
-      resource: event.hostelId ? `hostel:${event.hostelId}` : 'system',
-      metadata: event.metadata,
-      timestamp: timestampedEvent.timestamp.toISOString(),
-    });
+    if (dotEnvConfig.ENABLE_REDIS && redisClient.status === 'ready') {
+      try {
+        await Promise.race([
+          auditLogQueue.add(JobType.LOG_USER_ACTIVITY, {
+            userId: event.userId,
+            action: event.type,
+            resource: event.hostelId ? `hostel:${event.hostelId}` : 'system',
+            metadata: event.metadata,
+            timestamp: timestampedEvent.timestamp.toISOString(),
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Audit log queue timed out')), 2000).unref(),
+          ),
+        ]);
+      } catch (err: any) {
+        logger.warn('Failed to enqueue audit log activity', { error: err?.message || String(err) });
+      }
+    }
   }
 
   /**

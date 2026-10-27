@@ -8,6 +8,7 @@
 //            to prevent accidental exposure in logs, monitoring, or error reports.
 // ──────────────────────────────────────────────────────────────────────────────
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.cleanTokenExpiry = cleanTokenExpiry;
 exports.cleanEnvConfig = cleanEnvConfig;
 exports.getSanitizedEnvSummary = getSanitizedEnvSummary;
 /**
@@ -19,6 +20,25 @@ function getRequiredEnv(key, customValue) {
         throw new Error(`[Config Error] Missing required environment variable: ${key}`);
     }
     return value.trim();
+}
+/**
+ * Sanitizes and validates JWT token expiration strings (e.g. "15m", "7d", "3600").
+ * Strips accidental surrounding quotes and whitespace, and validates the format
+ * to prevent jsonwebtoken sign runtime errors.
+ */
+function cleanTokenExpiry(val, fallback = '15m') {
+    if (!val || typeof val !== 'string')
+        return fallback;
+    const cleaned = val.replace(/^["']|["']$/g, '').trim();
+    if (!cleaned || cleaned.toLowerCase() === 'undefined' || cleaned.toLowerCase() === 'null') {
+        return fallback;
+    }
+    const isNumeric = /^\d+$/.test(cleaned);
+    const isTimespan = /^(\d+)\s*(s|m|h|d|w|y|sec|secs|second|seconds|min|mins|minute|minutes|hr|hrs|hour|hours|day|days)$/i.test(cleaned);
+    if (isNumeric || isTimespan) {
+        return cleaned;
+    }
+    return fallback;
 }
 /**
  * Cleans, sanitizes, and returns the strongly typed configuration object.
@@ -61,8 +81,8 @@ function cleanEnvConfig() {
         CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
         ACCESS_TOKEN_SECRET: getRequiredEnv('ACCESS_TOKEN_SECRET', process.env.ACCESS_TOKEN_SECRET || defaultAccessSecret),
         REFRESH_TOKEN_SECRET: getRequiredEnv('REFRESH_TOKEN_SECRET', process.env.REFRESH_TOKEN_SECRET || defaultRefreshSecret),
-        ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY || '15m',
-        REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || '7d',
+        ACCESS_TOKEN_EXPIRY: cleanTokenExpiry(process.env.ACCESS_TOKEN_EXPIRY, '15m'),
+        REFRESH_TOKEN_EXPIRY: cleanTokenExpiry(process.env.REFRESH_TOKEN_EXPIRY, '7d'),
         SALT_ROUNDS: Number.isNaN(saltRounds) ? 10 : saltRounds,
         CORS_ORIGIN: process.env.CORS_ORIGIN ||
             process.env.FRONTEND_ORIGIN ||
