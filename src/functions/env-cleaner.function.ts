@@ -53,10 +53,16 @@ export function cleanEnvConfig(): CleanEnvConfig {
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
   const nodeEnv = (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development';
 
+  // In production (cPanel shared hosting without Redis/workers), default to Direct SMTP (Nodemailer)
+  // unless Redis is explicitly enabled via ENABLE_REDIS=true.
+  const isProd = nodeEnv === 'production';
   const useDirectSmtp =
-    process.env.USE_DIRECT_SMTP === 'true' || process.env.ENABLE_REDIS === 'false';
+    process.env.USE_DIRECT_SMTP === 'true' ||
+    process.env.ENABLE_REDIS === 'false' ||
+    (isProd && process.env.ENABLE_REDIS !== 'true');
 
-  const enableRedis = !useDirectSmtp && process.env.ENABLE_REDIS !== 'false';
+  const enableRedis =
+    !useDirectSmtp && (isProd ? process.env.ENABLE_REDIS === 'true' : process.env.ENABLE_REDIS !== 'false');
 
   const defaultDatabaseUrl =
     nodeEnv === 'production'

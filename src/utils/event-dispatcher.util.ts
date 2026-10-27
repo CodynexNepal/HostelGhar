@@ -79,6 +79,8 @@ class AppEventDispatcher extends EventEmitter {
     const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
     const isPassenger =
       typeof (global as any).PhusionPassenger !== 'undefined' ||
+      typeof process.env.PASSENGER_APP_ENV !== 'undefined' ||
+      typeof process.env.PASSENGER_SPAWN_METHOD !== 'undefined' ||
       process.env.PASSENGER_MODE === 'true';
     const isDirectSmtpMode =
       !isTest &&
@@ -238,6 +240,8 @@ class AppEventDispatcher extends EventEmitter {
     const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
     const isPassenger =
       typeof (global as any).PhusionPassenger !== 'undefined' ||
+      typeof process.env.PASSENGER_APP_ENV !== 'undefined' ||
+      typeof process.env.PASSENGER_SPAWN_METHOD !== 'undefined' ||
       process.env.PASSENGER_MODE === 'true';
     const isDirectSmtpMode =
       !isTest &&

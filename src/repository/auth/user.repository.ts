@@ -46,13 +46,20 @@ export class UserRepository {
   // EVERY login and registration attempt to check for existing accounts.
   // The `unique` index on `email` in the entity ensures O(1) lookup.
   public async findByEmail(email: string): Promise<User | null> {
-    // `findOne` returns the first matching record or null.
-    // `where: { email }` generates: SELECT * FROM users WHERE email = $1
-    return this.repository.findOne({ where: { email } });
+    const normalized = email.trim().toLowerCase();
+    return this.repository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: normalized })
+      .getOne();
   }
 
   public async findOwnerByEmail(email: string): Promise<User | null> {
-    return this.repository.findOne({ where: { email, role: IROLES.OWNER } });
+    const normalized = email.trim().toLowerCase();
+    return this.repository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: normalized })
+      .andWhere('user.role = :role', { role: IROLES.OWNER })
+      .getOne();
   }
 
   // ─── findById ───────────────────────────────────────────────────────────
