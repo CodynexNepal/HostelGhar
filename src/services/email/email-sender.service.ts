@@ -15,6 +15,8 @@ export interface SendEmailOptions {
 }
 
 export class EmailSenderService {
+  private primaryTransporterInstance: Transporter | null = null;
+
   private createTransporter(host: string, port: number, secure: boolean): Transporter {
     return nodemailer.createTransport({
       name: 'hostelghar.com', // Explicit FQDN EHLO/HELO domain avoids reverse DNS/HELO mismatch in Exim & Gmail
@@ -25,9 +27,9 @@ export class EmailSenderService {
       tls: {
         rejectUnauthorized: false, // Ensures compatibility with cPanel/shared SSL certificates
       },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 12000,
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 8000,
     });
   }
 

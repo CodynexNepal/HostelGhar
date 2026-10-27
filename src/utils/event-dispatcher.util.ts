@@ -22,6 +22,9 @@ export interface AppDomainEvent<T = any> {
   timestamp?: Date;
 }
 
+let cachedWorkerCheck: { hasWorkers: boolean; timestamp: number } | null = null;
+const WORKER_CHECK_TTL_MS = 30000;
+
 class AppEventDispatcher extends EventEmitter {
   constructor() {
     super();
@@ -100,16 +103,27 @@ class AppEventDispatcher extends EventEmitter {
     // 2. Check if active BullMQ workers are currently subscribed to the email queue.
     // If no workers exist (e.g. on cPanel Passenger where background workers are not spawned),
     // enqueuing to Redis would strand the job indefinitely. Dispatch via direct SMTP immediately.
+    const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
     let hasActiveWorkers = false;
-    if (typeof (emailQueue as any).getWorkers === 'function') {
+
+    if (
+      !isTest &&
+      cachedWorkerCheck &&
+      Date.now() - cachedWorkerCheck.timestamp < WORKER_CHECK_TTL_MS
+    ) {
+      hasActiveWorkers = cachedWorkerCheck.hasWorkers;
+    } else if (typeof (emailQueue as any).getWorkers === 'function') {
       try {
         const workers = await Promise.race([
           emailQueue.getWorkers(),
           new Promise<any[]>((_, reject) =>
-            setTimeout(() => reject(new Error('Worker check timed out')), 1000).unref(),
+            setTimeout(() => reject(new Error('Worker check timed out')), 2500).unref(),
           ),
         ]);
         hasActiveWorkers = Array.isArray(workers) && workers.length > 0;
+        if (!isTest) {
+          cachedWorkerCheck = { hasWorkers: hasActiveWorkers, timestamp: Date.now() };
+        }
       } catch {
         hasActiveWorkers = false;
       }
@@ -128,7 +142,7 @@ class AppEventDispatcher extends EventEmitter {
         },
       );
       const { emailSenderService } = await import('../services/email/email-sender.service');
-      await emailSenderService.send(
+      const sendPromise = emailSenderService.send(
         {
           to: data.to,
           subject: data.subject,
@@ -137,6 +151,13 @@ class AppEventDispatcher extends EventEmitter {
         },
         { correlationId },
       );
+
+      // In production, prevent slow external SMTP from hanging and exceeding the frontend 10000ms Axios timeout
+      if (!isTest) {
+        await Promise.race([sendPromise, new Promise((resolve) => setTimeout(resolve, 3500))]);
+      } else {
+        await sendPromise;
+      }
       return { id: 'direct-smtp-fallback', name: jobType, data } as any;
     }
 
