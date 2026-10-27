@@ -1,0 +1,26 @@
+2026-10-27 10:11:57 +05:45: ◇ injected env (21) from .env // tip: ⌘ override existing { override: true }
+2026-10-27 10:11:57 +05:45: ◇ injected env (0) from .env.local // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+2026-10-27 10:11:58 +05:45: [Redis:queues-shared] Connected successfully
+2026-10-27 10:11:58 +05:45: [Redis:main] Connected successfully
+2026-10-27 10:11:59 +05:45: [Redis:queues-shared] Ready
+2026-10-27 10:11:59 +05:45: [Redis:main] Ready
+2026-10-27 10:12:03 +05:45: ✅ Database connection established successfully
+2026-10-27 10:12:03 +05:45: ⚡ Socket.io Server initialized with Redis Adapter
+2026-10-27 10:12:03 +05:45: 🚀 Initializing BullMQ background workers...
+2026-10-27 10:12:03 +05:45: ✅ BullMQ background workers active (Email, Notification, Audit, Fee Automation, Resident Import)
+2026-10-27 10:12:03 +05:45: {"timestamp":"2026-10-27T04:27:03.426Z","level":"info","service":"hostelghar-api","environment":"production","message":"HTTP server started","port":8000,"cors_origin":"https://dashboard.hostelghar.com,https://hostelghar.com"}
+2026-10-27 10:12:03 +05:45: [Redis:socket-sub] Connected successfully
+2026-10-27 10:12:03 +05:45: [Redis:worker:email-queue] Connected successfully
+2026-10-27 10:12:03 +05:45: [Redis:socket-pub] Connected successfully
+2026-10-27 10:12:03 +05:45: [Redis:worker:resident-import-queue] Connected successfully
+2026-10-27 10:12:03 +05:45: [Redis:worker:notification-queue] Connected successfully
+2026-10-27 10:12:03 +05:45: [Redis:worker:audit-log-queue] Connected successfully
+2026-10-27 10:12:03 +05:45: [Redis:worker:system-event-queue] Connected successfully
+2026-10-27 10:12:04 +05:45: ⏰ [Scheduler] Nepali monthly fee cron registered (daily 00:05 check; bills only on Nepali 1st)
+2026-10-27 10:12:04 +05:45: [Redis:socket-sub] Ready
+2026-10-27 10:12:04 +05:45: [Redis:worker:email-queue] Ready
+2026-10-27 10:12:04 +05:45: [Redis:socket-pub] Ready
+2026-10-27 10:12:04 +05:45: [Redis:worker:resident-import-queue] Ready
+2026-10-27 10:12:04 +05:45: [Redis:worker:notification-queue] Ready
+2026-10-27 10:12:04 +05:45: [Redis:worker:system-event-queue] Ready
+2026-10-27 10:12:04 +05:45: [Redis:worker:audit-log-queue] Ready

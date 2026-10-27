@@ -1,5 +1,5 @@
 import { smtpConfig } from '../../configs/smtp.config';
-import nodemailer, { Transporter } from 'nodemailer';
+import nodemailer, { Transporter, SendMailOptions } from 'nodemailer';
 import { logger } from '../../observability/logger';
 
 export interface SendEmailPayload {
@@ -17,6 +17,7 @@ export interface SendEmailOptions {
 export class EmailSenderService {
   private createTransporter(host: string, port: number, secure: boolean): Transporter {
     return nodemailer.createTransport({
+      name: 'hostelghar.com', // Explicit FQDN EHLO/HELO domain avoids reverse DNS/HELO mismatch in Exim & Gmail
       host,
       port,
       secure,
@@ -24,9 +25,9 @@ export class EmailSenderService {
       tls: {
         rejectUnauthorized: false, // Ensures compatibility with cPanel/shared SSL certificates
       },
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 8000,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 12000,
     });
   }
 
@@ -39,12 +40,25 @@ export class EmailSenderService {
     const port = smtpConfig.port;
     const secure = smtpConfig.secure;
 
-    const mailOptions = {
-      from: smtpConfig.from,
+    const senderEmail = smtpConfig.auth?.user || 'info@hostelghar.com';
+    const fromAddress = smtpConfig.from || `HostelGhar <${senderEmail}>`;
+
+    const mailOptions: SendMailOptions = {
+      from: fromAddress,
+      sender: senderEmail,
+      replyTo: senderEmail,
       to: payload.to,
       subject: payload.subject,
       text: payload.body,
       ...(payload.html ? { html: payload.html } : {}),
+      envelope: {
+        from: senderEmail,
+        to: payload.to,
+      },
+      headers: {
+        'X-Mailer': 'HostelGhar-Mailer',
+        'X-Entity-Ref-ID': options?.correlationId || options?.jobId || payload.to,
+      },
     };
 
     // 1. Try primary configured SMTP host

@@ -4,42 +4,175 @@ export type EmailTemplate = {
   html?: string;
 };
 
-export const renderWelcomeEmail = (firstName: string): EmailTemplate => ({
-  subject: 'Welcome to HostelGhar',
-  body: `Hi ${firstName},\n\nWelcome to HostelGhar. Your account is ready.\n\nRegards,\nHostelGhar Team`,
-});
+const escapeHtml = (value: string): string =>
+  (value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+export const renderWelcomeEmail = (firstName: string): EmailTemplate => {
+  const safeName = escapeHtml(firstName || 'Member');
+  const subject = 'Welcome to HostelGhar';
+  const body = `Hi ${firstName},\n\nWelcome to HostelGhar. Your account is ready.\n\nRegards,\nHostelGhar Team`;
+  const html = `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1e293b;">
+  <div style="max-width:540px;margin:0 auto;background:#ffffff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+    <h2 style="color:#2563eb;margin-top:0;">Welcome to HostelGhar</h2>
+    <p>Hi <strong>${safeName}</strong>,</p>
+    <p>Welcome to HostelGhar. Your account is now active and ready to use.</p>
+    <p style="margin-top:24px;color:#64748b;font-size:13px;">Warm regards,<br>HostelGhar Team &bull; <a href="https://hostelghar.com" style="color:#2563eb;">hostelghar.com</a></p>
+  </div>
+</body>
+</html>`;
+  return { subject, body, html };
+};
 
 export const renderOwnerCredentialsEmail = (
   firstName: string,
   email: string,
   temporaryPassword: string,
-): EmailTemplate => ({
-  subject: 'Your HostelGhar owner account is ready',
-  body:
+): EmailTemplate => {
+  const safeName = escapeHtml(firstName || 'Owner');
+  const safeEmail = escapeHtml(email);
+  const subject = 'Your HostelGhar owner account is ready';
+  const body =
     `Hi ${firstName},\n\n` +
     'An owner dashboard account has been created for you.\n\n' +
     `Login email: ${email}\n` +
     `Temporary password: ${temporaryPassword}\n\n` +
     'Please log in and change this password immediately. Do not share these credentials.\n\n' +
-    'Regards,\nHostelGhar Team',
-});
+    'Regards,\nHostelGhar Team';
+  const html = `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1e293b;">
+  <div style="max-width:540px;margin:0 auto;background:#ffffff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+    <h2 style="color:#2563eb;margin-top:0;">HostelGhar Owner Account</h2>
+    <p>Hi <strong>${safeName}</strong>,</p>
+    <p>An owner dashboard account has been created for you:</p>
+    <div style="background:#f1f5f9;border-radius:8px;padding:16px;margin:16px 0;">
+      <p style="margin:4px 0;"><strong>Login email:</strong> ${safeEmail}</p>
+      <p style="margin:4px 0;"><strong>Temporary password:</strong> <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">${escapeHtml(temporaryPassword)}</code></p>
+    </div>
+    <p style="color:#dc2626;font-size:13px;">⚠️ Please log in and change this password immediately. Never share these credentials.</p>
+    <p style="margin-top:24px;color:#64748b;font-size:13px;">Regards,<br>HostelGhar Team</p>
+  </div>
+</body>
+</html>`;
+  return { subject, body, html };
+};
 
-export const renderPasswordResetEmail = (firstName: string, resetToken: string): EmailTemplate => ({
-  subject: 'Reset your HostelGhar password',
-  body:
+export const renderPasswordResetEmail = (
+  firstName: string,
+  resetToken: string,
+  resetUrl?: string,
+): EmailTemplate => {
+  const safeName = escapeHtml(firstName || 'User');
+  const targetUrl =
+    resetUrl || `https://hostelghar.com/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+  const subject = 'Reset your HostelGhar password';
+  const body =
     `Hi ${firstName},\n\n` +
     `Use this password reset token to reset your password:\n\n${resetToken}\n\n` +
+    `Or click this link directly:\n${targetUrl}\n\n` +
     'This token expires in 15 minutes. If you did not request this, ignore this email.\n\n' +
-    'Regards,\nHostelGhar Security',
-});
+    'Regards,\nHostelGhar Security';
 
-export const renderPasswordChangedEmail = (firstName: string): EmailTemplate => ({
-  subject: 'Your HostelGhar password was changed',
-  body:
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f8fafc;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%);padding:28px 32px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.5px;">HostelGhar</h1>
+              <p style="margin:6px 0 0;color:#93c5fd;font-size:14px;">Password Reset Request</p>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px 32px 24px;">
+              <p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#334155;">Hi <strong>${safeName}</strong>,</p>
+              <p style="margin:0 0 20px;font-size:15px;line-height:24px;color:#475569;">
+                We received a request to reset the password for your HostelGhar account. Click the button below to set a new password:
+              </p>
+              <!-- CTA Button -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin:24px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${targetUrl}" target="_blank" style="display:inline-block;background-color:#2563eb;color:#ffffff;font-size:15px;font-weight:600;line-height:48px;text-align:center;text-decoration:none;padding:0 32px;border-radius:8px;box-shadow:0 2px 4px rgba(37,99,235,0.25);">Reset My Password</a>
+                  </td>
+                </tr>
+              </table>
+              <!-- Token Box -->
+              <div style="background-color:#f1f5f9;border-radius:8px;padding:16px;margin:24px 0 20px;border:1px dashed #cbd5e1;text-align:center;">
+                <p style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;font-weight:600;">Or enter this reset token manually:</p>
+                <code style="display:inline-block;background:#ffffff;padding:8px 12px;border-radius:6px;border:1px solid #e2e8f0;font-size:13px;font-family:monospace;color:#0f172a;word-break:break-all;">${escapeHtml(resetToken)}</code>
+              </div>
+              <p style="margin:0 0 16px;font-size:13px;line-height:20px;color:#64748b;">
+                ⏰ <strong>This link and token expire in 15 minutes.</strong>
+              </p>
+              <div style="border-top:1px solid #f1f5f9;padding-top:16px;margin-top:20px;">
+                <p style="margin:0;font-size:13px;line-height:20px;color:#94a3b8;">
+                  If you did not request a password reset, you can safely ignore this email. Your password will not change.
+                </p>
+              </div>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f8fafc;padding:20px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;line-height:18px;">
+                HostelGhar &bull; Nepal's Premier Hostel Management Platform<br>
+                <a href="https://hostelghar.com" style="color:#64748b;text-decoration:underline;">hostelghar.com</a> &bull; Support: <a href="mailto:info@hostelghar.com" style="color:#64748b;text-decoration:underline;">info@hostelghar.com</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return { subject, body, html };
+};
+
+export const renderPasswordChangedEmail = (firstName: string): EmailTemplate => {
+  const safeName = escapeHtml(firstName || 'User');
+  const subject = 'Your HostelGhar password was changed';
+  const body =
     `Hi ${firstName},\n\n` +
     'Your HostelGhar password was changed successfully. If this was not you, contact support immediately.\n\n' +
-    'Regards,\nHostelGhar Security',
-});
+    'Regards,\nHostelGhar Security';
+  const html = `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1e293b;">
+  <div style="max-width:540px;margin:0 auto;background:#ffffff;border-radius:10px;padding:28px;border:1px solid #e2e8f0;">
+    <h2 style="color:#059669;margin-top:0;">Password Changed Successfully</h2>
+    <p>Hi <strong>${safeName}</strong>,</p>
+    <p>Your HostelGhar password was changed successfully.</p>
+    <p style="color:#dc2626;font-size:13px;">If you did not make this change, please contact our support team immediately at <a href="mailto:info@hostelghar.com">info@hostelghar.com</a>.</p>
+    <p style="margin-top:24px;color:#64748b;font-size:13px;">Regards,<br>HostelGhar Security Team</p>
+  </div>
+</body>
+</html>`;
+  return { subject, body, html };
+};
 
 export interface MonthlyFeeBillInput {
   studentName: string;
@@ -62,14 +195,6 @@ export interface MonthlyFeeBillInput {
 
 const npr = (value: number): string =>
   `NPR ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 
 export const renderMonthlyFeeBillEmail = (
   input: MonthlyFeeBillInput,

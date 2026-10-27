@@ -151,7 +151,12 @@ export class AuthService {
       expiresAt: expiresAt.toISOString(),
     });
 
-    const template = renderPasswordResetEmail(user.firstName, resetToken);
+    const frontendBaseUrl =
+      process.env.FRONTEND_URL ||
+      process.env.FRONTEND_ORIGIN?.split(',')[0] ||
+      'https://hostelghar.com';
+    const resetUrl = `${frontendBaseUrl.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(resetToken)}`;
+    const template = renderPasswordResetEmail(user.firstName, resetToken, resetUrl);
     try {
       await eventDispatcher.queueEmail(
         JobType.SEND_PASSWORD_RESET,
