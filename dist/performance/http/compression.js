@@ -1,0 +1,335 @@
+"use strict";
+// ──────────────────────────────────────────────────────────────────────────────
+// FILE: compression.ts
+// PURPOSE: Production response compression — Brotli (`br`) first, gzip and
+//          deflate as fallbacks — built directly on Node's native `zlib`, so
+//          there is no native addon to compile and no third-party compression
+//          dependency.
+//
+// WHY BROTLI: Brotli yields ~15-25% smaller text/JSON payloads than gzip at a
+//   comparable encode cost and browsers decode it transparently from the
+//   `Content-Encoding: br` header. Smaller payloads = faster mobile load and
+//   fewer bytes leaving the host.
+//
+// WHY NOT `brotliCompressSync`: the async form runs on the libuv threadpool, so
+//   large JSON bodies are compressed OFF the event loop while the server keeps
+//   serving other requests.
+//
+// BEHAVIOUR:
+//   - Negotiates the best coding from `Accept-Encoding` (q-values honoured,
+//     `br;q=0` disables Brotli, `*` acts as a wildcard).
+//   - Buffers the body (cap `COMPRESSION_MAX_BUFFER_BYTES`) and compresses once
+//     on `res.end()` → exact `Content-Length`, no chunked-encoding overhead.
+//   - Always sets `Vary: Accept-Encoding` so proxies/CDNs never hand a Brotli
+//     body to a client that cannot decode it.
+//   - Skips HEAD, 1xx/204/205/304, already-encoded bodies, non-compressible
+//     content types, bodies below `COMPRESSION_THRESHOLD_BYTES`,
+//     `Cache-Control: no-transform` and `x-no-compression` opt-outs.
+//   - Skips `text/event-stream` (SSE), chunked/flushed streams and 206 partial
+//     content: buffering those would break real-time delivery.
+//   - Skips responses that set cookies (`Set-Cookie`): login / register /
+//     refresh bodies carry auth secrets next to potentially attacker-influenced
+//     fields (e.g. email), so they are left uncompressed as a BREACH
+//     side-channel precaution. These bodies are ~200-400 B (below the 1 KiB
+//     threshold) so skipping them costs no measurable bandwidth.
+//   - If compression does not shrink the body, the ORIGINAL bytes are sent — a
+//     compression problem must never fail a request.
+//
+// ENV KNOBS (all optional; production defaults shown):
+//   COMPRESSION_ENABLED=true|false        (default true)
+//   COMPRESSION_BROTLI_QUALITY=0..11      (default 5 — dynamic-content sweet spot)
+//   COMPRESSION_GZIP_LEVEL=0..9           (default 6 — zlib default)
+//   COMPRESSION_THRESHOLD_BYTES=1024      (default 1 KiB)
+//   COMPRESSION_MAX_BUFFER_BYTES=2097152  (default 2 MiB, then pass-through)
+// ──────────────────────────────────────────────────────────────────────────────
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.compressionMiddleware = exports.createCompressionMiddleware = exports.negotiateContentCoding = exports.resolveCompressionOptions = exports.isCompressibleContentType = void 0;
+const zlib_1 = __importDefault(require("zlib"));
+const metrics_1 = require("../../observability/metrics");
+const CODING_PREFERENCE = ['br', 'gzip', 'deflate'];
+// ─── Content types worth compressing ─────────────────────────────────────────
+// Everything textual/structured. Anything else (images, video, zip, pdf,
+// octet-stream) is already compressed and would only burn CPU.
+const COMPRESSIBLE_CONTENT_TYPE = /^(?:text\/|application\/(?:[\w.+-]*\+)?(?:json|xml|javascript|ecmascript|graphql|x-ndjson|x-www-form-urlencoded|x-yaml|yaml|csv|rtf|wasm|sql)|image\/svg\+xml|font\/)/i;
+const isCompressibleContentType = (contentType) => COMPRESSIBLE_CONTENT_TYPE.test(contentType.split(';')[0]?.trim() ?? '');
+exports.isCompressibleContentType = isCompressibleContentType;
+// ─── Env helpers (same style as app.ts, which also reads process.env) ────────
+const intFromEnv = (key, fallback) => {
+    const raw = Number(process.env[key]);
+    return Number.isFinite(raw) ? Math.floor(raw) : fallback;
+};
+const boolFromEnv = (key, fallback) => {
+    const raw = process.env[key];
+    if (raw === undefined || raw.trim() === '')
+        return fallback;
+    return /^(?:1|true|yes|on)$/i.test(raw.trim());
+};
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+/** Defaults resolved from the environment; overridable per middleware instance. */
+const resolveCompressionOptions = (overrides = {}) => ({
+    enabled: overrides.enabled ?? boolFromEnv('COMPRESSION_ENABLED', true),
+    brotliQuality: clamp(overrides.brotliQuality ?? intFromEnv('COMPRESSION_BROTLI_QUALITY', 5), 0, 11),
+    gzipLevel: clamp(overrides.gzipLevel ?? intFromEnv('COMPRESSION_GZIP_LEVEL', 6), 0, 9),
+    thresholdBytes: Math.max(overrides.thresholdBytes ?? intFromEnv('COMPRESSION_THRESHOLD_BYTES', 1024), 0),
+    maxBufferedBytes: Math.max(overrides.maxBufferedBytes ?? intFromEnv('COMPRESSION_MAX_BUFFER_BYTES', 2 * 1024 * 1024), 1024 * 1024),
+});
+exports.resolveCompressionOptions = resolveCompressionOptions;
+/**
+ * Picks the best coding the client accepts. Client quality values decide first
+ * (`br;q=0.1, gzip;q=0.9` → `gzip`, `br;q=0` disables Brotli), and the server
+ * preference `br` → `gzip` → `deflate` breaks ties (`gzip, deflate, br` → `br`,
+ * `*` → `br`). `identity` → `null`, i.e. send the body as-is.
+ */
+const negotiateContentCoding = (acceptEncoding) => {
+    if (!acceptEncoding)
+        return null;
+    const weights = new Map();
+    for (const part of acceptEncoding.split(',')) {
+        const [rawName, ...params] = part.trim().split(';');
+        const name = rawName?.trim().toLowerCase();
+        if (!name)
+            continue;
+        let quality = 1;
+        for (const param of params) {
+            const match = /^\s*q\s*=\s*([0-9.]+)\s*$/i.exec(param);
+            if (match?.[1] !== undefined)
+                quality = Number.parseFloat(match[1]);
+        }
+        weights.set(name, Number.isFinite(quality) ? quality : 0);
+    }
+    const ranked = CODING_PREFERENCE.map((coding, index) => ({
+        coding,
+        index,
+        // A wildcard covers every coding the client did not name explicitly.
+        quality: weights.get(coding) ?? weights.get('*') ?? 0,
+    }))
+        .filter((candidate) => candidate.quality > 0)
+        // Highest q wins; equal q falls back to server preference order.
+        .sort((a, b) => b.quality - a.quality || a.index - b.index);
+    return ranked[0]?.coding ?? null;
+};
+exports.negotiateContentCoding = negotiateContentCoding;
+/**
+ * Compresses a buffer with the negotiated coding. Async on purpose: libuv runs
+ * the blocking Brotli/gzip work on its threadpool, so the event loop stays free.
+ */
+const compressBuffer = (coding, body, options) => new Promise((resolve, reject) => {
+    const done = (error, result) => {
+        if (error)
+            reject(error);
+        else
+            resolve(result);
+    };
+    if (coding === 'br') {
+        zlib_1.default.brotliCompress(body, {
+            params: {
+                [zlib_1.default.constants.BROTLI_PARAM_QUALITY]: options.brotliQuality,
+                // SIZE_HINT lets the encoder pick a matching window/block strategy.
+                [zlib_1.default.constants.BROTLI_PARAM_SIZE_HINT]: body.length,
+                // JSON/HTML/JS is text — text mode beats generic mode here.
+                [zlib_1.default.constants.BROTLI_PARAM_MODE]: zlib_1.default.constants.BROTLI_MODE_TEXT,
+            },
+        }, done);
+        return;
+    }
+    const compress = coding === 'gzip' ? zlib_1.default.gzip : zlib_1.default.deflate;
+    compress(body, { level: options.gzipLevel }, done);
+});
+const asBuffer = (chunk, encoding) => {
+    if (typeof chunk === 'string')
+        return Buffer.from(chunk, encoding ?? 'utf8');
+    if (Buffer.isBuffer(chunk))
+        return chunk;
+    if (chunk instanceof Uint8Array)
+        return Buffer.from(chunk);
+    return null;
+};
+/**
+ * Brotli-first compression middleware. Register it EARLY (before routes) so the
+ * `res.write`/`res.end` overrides below are in place for every handler.
+ */
+const createCompressionMiddleware = (overrides = {}) => {
+    const options = (0, exports.resolveCompressionOptions)(overrides);
+    return (req, res, next) => {
+        if (!options.enabled || req.method === 'HEAD') {
+            next();
+            return;
+        }
+        const coding = (0, exports.negotiateContentCoding)(req.headers['accept-encoding']);
+        if (!coding) {
+            next();
+            return;
+        }
+        // Caches key on this: a Brotli body must never be handed to a client that
+        // only asked for gzip (or for nothing at all).
+        res.vary('Accept-Encoding');
+        const rawWrite = res.write.bind(res);
+        const rawEnd = res.end.bind(res);
+        const chunks = [];
+        const pendingCallbacks = [];
+        let bufferedBytes = 0;
+        let passThrough = false;
+        /** True while this response still qualifies for compression. */
+        const shouldCompress = () => {
+            if (passThrough || res.headersSent)
+                return false;
+            if (res.getHeader('content-encoding') !== undefined)
+                return false;
+            const status = res.statusCode;
+            if (status < 200 || status === 204 || status === 205 || status === 304)
+                return false;
+            // 206 partial content: ranges are byte-exact; never transform them.
+            if (status === 206)
+                return false;
+            // BREACH precaution: responses that set auth cookies pair a secret with
+            // potentially attacker-influenced fields (e.g. login email reflector).
+            // These bodies are ~200-400 B (below the 1 KiB threshold) so skipping
+            // them costs no measurable bandwidth.
+            if (res.getHeader('set-cookie') !== undefined)
+                return false;
+            const contentType = String(res.getHeader('content-type') ?? '');
+            // SSE and other open-ended text streams must never be buffered: holding
+            // their first chunk until `res.end()` would break real-time delivery.
+            if (/text\/event-stream/i.test(contentType))
+                return false;
+            if (!(0, exports.isCompressibleContentType)(contentType))
+                return false;
+            // A handler that flushed headers early (streaming / hijacked socket /
+            // explicit chunked framing) owns the wire — do not buffer behind it.
+            const transferEncoding = String(res.getHeader('transfer-encoding') ?? '');
+            if (/chunked/i.test(transferEncoding))
+                return false;
+            if (/no-transform/i.test(String(res.getHeader('cache-control') ?? '')))
+                return false;
+            if (req.headers['x-no-compression'] !== undefined)
+                return false;
+            return true;
+        };
+        /**
+         * Write-path eligibility: like {@link shouldCompress} but WITHOUT the
+         * content-type check. Express sets `Content-Type` lazily — the first
+         * `res.write()` of a multi-write response may run before the handler sets
+         * it, and treating "no content-type yet" as ineligible would lock the
+         * response into pass-through forever. So `res.write` only bails on signals
+         * that are already definitive (status, cookies, SSE, opt-outs); the final
+         * content-type verdict happens once in `res.end`, when headers are final.
+         */
+        const isDefinitivelyIneligible = () => {
+            if (passThrough || res.headersSent)
+                return true;
+            if (res.getHeader('content-encoding') !== undefined)
+                return true;
+            const status = res.statusCode;
+            if (status < 200 || status === 204 || status === 205 || status === 304 || status === 206)
+                return true;
+            if (res.getHeader('set-cookie') !== undefined)
+                return true;
+            if (/text\/event-stream/i.test(String(res.getHeader('content-type') ?? '')))
+                return true;
+            if (/chunked/i.test(String(res.getHeader('transfer-encoding') ?? '')))
+                return true;
+            if (/no-transform/i.test(String(res.getHeader('cache-control') ?? '')))
+                return true;
+            if (req.headers['x-no-compression'] !== undefined)
+                return true;
+            return false;
+        };
+        const runCallbacks = (error) => {
+            for (const callback of pendingCallbacks.splice(0))
+                callback(error);
+        };
+        /** Flush whatever is buffered, uncompressed, and stop intercepting. */
+        const releaseBuffers = () => {
+            if (chunks.length > 0) {
+                rawWrite(Buffer.concat(chunks));
+                chunks.length = 0;
+                bufferedBytes = 0;
+            }
+            runCallbacks();
+        };
+        const appendChunk = (chunk, encoding) => {
+            const buffer = asBuffer(chunk, encoding);
+            if (buffer === null || buffer.length === 0)
+                return;
+            chunks.push(buffer);
+            bufferedBytes += buffer.length;
+        };
+        // ── res.write / res.end overrides: buffer now, compress once at end ──────
+        res.write = ((chunk, encodingOrCallback, callback) => {
+            const cb = (typeof encodingOrCallback === 'function' ? encodingOrCallback : callback);
+            const encoding = typeof encodingOrCallback === 'string' ? encodingOrCallback : undefined;
+            if (cb !== undefined)
+                pendingCallbacks.push(cb);
+            // Only bail on definitive signals here (see isDefinitivelyIneligible):
+            // content-type may not be set until the handler's first res.json/res.send,
+            // and the final verdict happens in res.end when headers are final.
+            if (isDefinitivelyIneligible()) {
+                passThrough = true;
+                releaseBuffers();
+                const written = rawWrite(chunk, encoding);
+                runCallbacks();
+                return written;
+            }
+            appendChunk(chunk, encoding);
+            // Guard rail: a huge/streamed body must never pile up in memory — flush
+            // what we have and stream the remainder untouched.
+            if (bufferedBytes > options.maxBufferedBytes) {
+                passThrough = true;
+                releaseBuffers();
+            }
+            return true;
+        });
+        res.end = ((chunk, encodingOrCallback, callback) => {
+            const cb = (typeof encodingOrCallback === 'function' ? encodingOrCallback : callback);
+            const encoding = typeof encodingOrCallback === 'string' ? encodingOrCallback : undefined;
+            if (cb !== undefined)
+                pendingCallbacks.push(cb);
+            appendChunk(chunk, encoding);
+            const body = Buffer.concat(chunks);
+            chunks.length = 0;
+            bufferedBytes = 0;
+            const finish = (payload, appliedCoding) => {
+                if (appliedCoding !== undefined) {
+                    res.setHeader('Content-Encoding', appliedCoding);
+                    // Only for non-chunked responses: Node rejects a Transfer-Encoding
+                    // header combined with an explicit Content-Length.
+                    if (res.getHeader('transfer-encoding') === undefined) {
+                        res.setHeader('Content-Length', String(payload.length));
+                    }
+                }
+                rawEnd(payload);
+                runCallbacks();
+            };
+            // Too small to bother, or no longer eligible (streamed/partial content).
+            if (body.length < options.thresholdBytes || !shouldCompress()) {
+                finish(body);
+                return res;
+            }
+            void compressBuffer(coding, body, options).then((compressed) => {
+                // Incompressible (already random/binary): keep the smaller original.
+                if (compressed.length >= body.length) {
+                    finish(body);
+                    return;
+                }
+                try {
+                    metrics_1.httpResponsesCompressedTotal.inc({ encoding: coding });
+                    metrics_1.httpCompressionSavedBytesTotal.inc({ encoding: coding }, body.length - compressed.length);
+                }
+                catch {
+                    // Metrics are best-effort; they must never fail a response.
+                }
+                finish(compressed, coding);
+            }, 
+            // Compression must never be able to fail a request.
+            () => finish(body));
+            return res;
+        });
+        next();
+    };
+};
+exports.createCompressionMiddleware = createCompressionMiddleware;
+/** Ready-to-use instance, registered by `registerPerformanceMiddleware`. */
+exports.compressionMiddleware = (0, exports.createCompressionMiddleware)();

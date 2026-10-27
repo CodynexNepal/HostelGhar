@@ -10,7 +10,7 @@ docker-compose.yml
 Dockerfile
 
 # Compiled output
-dist/
+# dist/ is tracked so cPanel Phusion Passenger (app.js -> dist/index.js) runs the compiled build without needing tsc on shared hosting
 src/**/*.js
 src/**/*.js.map
 src/**/*.d.ts

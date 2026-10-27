@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.bedRouter = void 0;
+const express_1 = require("express");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const roles_enum_1 = require("../../enum/roles.enum");
+const validate_dto_middleware_1 = require("../../middleware/validate-dto.middleware");
+const create_bed_dto_1 = require("../../dto/bed/create-bed.dto");
+const bed_factory_1 = require("../../factory/bed/bed.factory");
+const bedRouter = (0, express_1.Router)();
+exports.bedRouter = bedRouter;
+const bedController = bed_factory_1.BedFactory.create();
+bedRouter.use(auth_middleware_1.authenticate, (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.OWNER, roles_enum_1.IROLES.ADMIN));
+bedRouter.get('/', bedController.listBeds);
+bedRouter.post('/', (0, validate_dto_middleware_1.validateDto)(create_bed_dto_1.CreateBedDto), bedController.createBed);

@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.leaveRouter = void 0;
+const express_1 = require("express");
+const leave_factory_1 = require("../../factory/leave/leave.factory");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const roles_enum_1 = require("../../enum/roles.enum");
+const http_decorator_1 = require("../../decorators/http.decorator");
+const leaveRouter = (0, express_1.Router)();
+exports.leaveRouter = leaveRouter;
+const leaveController = leave_factory_1.LeaveFactory.create();
+leaveRouter.use(auth_middleware_1.authenticate, (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.ADMIN, roles_enum_1.IROLES.OWNER));
+leaveRouter.get('/hostels/:hostelId/requests', (0, http_decorator_1.requireParam)('hostelId'), leaveController.listHostelLeaves);
+leaveRouter.patch('/requests/:id/status', (0, http_decorator_1.requireParam)('id'), leaveController.updateStatus);
