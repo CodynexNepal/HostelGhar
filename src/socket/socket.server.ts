@@ -28,20 +28,37 @@ class SocketService {
   private subClient: import('ioredis').default | null = null;
 
   public init(httpServer: HttpServer): Server {
-    // Dedicated pub/sub clients for socket.io redis adapter.
-    // Reuse across nodemon restarts of init() in the same process.
-    if (!this.pubClient || this.pubClient.status === 'end') {
-      this.pubClient = createRedisClient('socket-pub');
+    const isPassenger =
+      typeof (global as any).PhusionPassenger !== 'undefined' ||
+      process.env.PASSENGER_MODE === 'true';
+    const isRedisDisabled =
+      !dotEnvConfig.ENABLE_REDIS ||
+      dotEnvConfig.USE_DIRECT_SMTP ||
+      (isPassenger && process.env.ENABLE_WORKERS !== 'true');
+
+    let redisAdapter: any = undefined;
+    if (!isRedisDisabled) {
+      try {
+        if (!this.pubClient || this.pubClient.status === 'end') {
+          this.pubClient = createRedisClient('socket-pub');
+        }
+        if (!this.subClient || this.subClient.status === 'end') {
+          this.subClient = createRedisClient('socket-sub');
+        }
+        redisAdapter = createAdapter(this.pubClient, this.subClient);
+        console.log('⚡ Socket.io Server initialized with Redis Adapter');
+      } catch {
+        console.warn('⚡ Redis adapter unavailable; falling back to in-memory Socket.io adapter');
+      }
+    } else {
+      console.log(
+        '⚡ Socket.io Server initialized with in-memory adapter (cPanel / standalone mode)',
+      );
     }
-    if (!this.subClient || this.subClient.status === 'end') {
-      this.subClient = createRedisClient('socket-sub');
-    }
-    const pubClient = this.pubClient!;
-    const subClient = this.subClient!;
 
     this.io = new Server(httpServer, {
       cors: socketConfig.cors,
-      adapter: createAdapter(pubClient, subClient),
+      ...(redisAdapter ? { adapter: redisAdapter } : {}),
       transports: socketConfig.transports,
       pingTimeout: socketConfig.pingTimeout,
       pingInterval: socketConfig.pingInterval,
@@ -50,7 +67,6 @@ class SocketService {
     this.setupAuthMiddleware();
     this.setupEventHandlers();
 
-    console.log('⚡ Socket.io Server initialized with Redis Adapter');
     return this.io;
   }
 

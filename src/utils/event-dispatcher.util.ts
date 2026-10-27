@@ -11,6 +11,7 @@ import { redisClient } from '../configs/redis.config';
 import { JobType, QueueName } from '../constant/queue.constants';
 import { socketServer } from '../socket/socket.server';
 import { logger } from '../observability/logger';
+import { dotEnvConfig } from '../configs/envConfig';
 
 export interface AppDomainEvent<T = any> {
   type: string;
@@ -75,20 +76,33 @@ class AppEventDispatcher extends EventEmitter {
     const correlationId = data.context?.correlationId || crypto.randomUUID();
     const recipientDomain = data.to.split('@')[1] || 'unknown';
 
-    // 1. If Redis is not connected, immediately deliver via direct SMTP to avoid blocking the request
-    if (redisClient.status !== 'ready' && options?.fallbackToDirectSmtp !== false) {
-      logger.warn(
-        'Redis queue connection unavailable; dispatching email via direct SMTP fallback',
+    const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
+    const isPassenger =
+      typeof (global as any).PhusionPassenger !== 'undefined' ||
+      process.env.PASSENGER_MODE === 'true';
+    const isDirectSmtpMode =
+      !isTest &&
+      (dotEnvConfig.USE_DIRECT_SMTP ||
+        !dotEnvConfig.ENABLE_REDIS ||
+        (isPassenger && process.env.ENABLE_WORKERS !== 'true') ||
+        redisClient.status !== 'ready');
+
+    // 1. Direct SMTP Mode: on cPanel, shared hosting without Redis, or disconnected Redis
+    if (
+      (isDirectSmtpMode || redisClient.status !== 'ready') &&
+      options?.fallbackToDirectSmtp !== false
+    ) {
+      logger.info(
+        'Dispatching email via direct SMTP (cPanel/direct-SMTP mode without BullMQ Redis)',
         {
           correlationId,
-          redisStatus: redisClient.status,
           queue: QueueName.EMAIL,
           jobType,
           recipientDomain,
         },
       );
       const { emailSenderService } = await import('../services/email/email-sender.service');
-      await emailSenderService.send(
+      const sendPromise = emailSenderService.send(
         {
           to: data.to,
           subject: data.subject,
@@ -97,13 +111,19 @@ class AppEventDispatcher extends EventEmitter {
         },
         { correlationId },
       );
+
+      // In production, prevent slow external SMTP from hanging and exceeding the frontend 10000ms Axios timeout
+      if (!isTest) {
+        await Promise.race([sendPromise, new Promise((resolve) => setTimeout(resolve, 3500))]);
+      } else {
+        await sendPromise;
+      }
       return { id: 'direct-smtp-fallback', name: jobType, data } as any;
     }
 
     // 2. Check if active BullMQ workers are currently subscribed to the email queue.
     // If no workers exist (e.g. on cPanel Passenger where background workers are not spawned),
     // enqueuing to Redis would strand the job indefinitely. Dispatch via direct SMTP immediately.
-    const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
     let hasActiveWorkers = false;
 
     if (
@@ -228,6 +248,36 @@ class AppEventDispatcher extends EventEmitter {
     options?: { timeoutMs?: number },
   ) {
     if (jobs.length === 0) return [];
+
+    const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
+    const isPassenger =
+      typeof (global as any).PhusionPassenger !== 'undefined' ||
+      process.env.PASSENGER_MODE === 'true';
+    const isDirectSmtpMode =
+      !isTest &&
+      (dotEnvConfig.USE_DIRECT_SMTP ||
+        !dotEnvConfig.ENABLE_REDIS ||
+        (isPassenger && process.env.ENABLE_WORKERS !== 'true') ||
+        redisClient.status !== 'ready');
+
+    if (isDirectSmtpMode) {
+      const { emailSenderService } = await import('../services/email/email-sender.service');
+      await Promise.allSettled(
+        jobs.map((job) =>
+          emailSenderService.send(
+            {
+              to: job.data.to,
+              subject: job.data.subject,
+              body: job.data.body || '',
+              ...(job.data.html ? { html: job.data.html } : {}),
+            },
+            { correlationId: job.data.context?.correlationId },
+          ),
+        ),
+      );
+      return jobs.map((j, i) => ({ id: `direct-bulk-${i}`, name: j.name, data: j.data })) as any;
+    }
+
     const timeoutMs = options?.timeoutMs ?? 5000;
     return await Promise.race([
       emailQueue.addBulk(jobs),

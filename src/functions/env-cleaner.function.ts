@@ -12,6 +12,8 @@ export interface CleanEnvConfig {
   NODE_ENV: 'development' | 'production' | 'test';
   DATABASE_URL: string;
   REDIS_URL: string;
+  USE_DIRECT_SMTP: boolean;
+  ENABLE_REDIS: boolean;
   CLOUDINARY_CLOUD_NAME: string;
   CLOUDINARY_API_KEY: string;
   CLOUDINARY_API_SECRET: string;
@@ -51,11 +53,18 @@ export function cleanEnvConfig(): CleanEnvConfig {
   const saltRounds = parseInt(process.env.SALT_ROUND || process.env.SALT_ROUNDS || '10', 10);
   const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
   const nodeEnv = (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development';
+  const useDirectSmtp =
+    process.env.USE_DIRECT_SMTP === 'true' ||
+    process.env.ENABLE_REDIS === 'false' ||
+    process.env.PASSENGER_MODE === 'true';
   const defaultDatabaseUrl =
     nodeEnv === 'production'
       ? undefined
       : 'postgresql://hostelghar:hostelghar_dev_pass@127.0.0.1:5432/hostelghar_dev';
-  const defaultRedisUrl = nodeEnv === 'production' ? undefined : 'redis://127.0.0.1:6379';
+  const defaultRedisUrl =
+    useDirectSmtp || nodeEnv !== 'production'
+      ? 'redis://127.0.0.1:6379'
+      : process.env.REDIS_URL || 'redis://127.0.0.1:6379';
   const defaultAccessSecret =
     nodeEnv === 'production'
       ? undefined
@@ -69,10 +78,12 @@ export function cleanEnvConfig(): CleanEnvConfig {
     PORT: Number.isNaN(port) ? 3000 : port,
     NODE_ENV: nodeEnv,
     DATABASE_URL: getRequiredEnv('DATABASE_URL', process.env.DATABASE_URL || defaultDatabaseUrl),
-    REDIS_URL: getRequiredEnv('REDIS_URL', process.env.REDIS_URL || defaultRedisUrl)
+    REDIS_URL: (process.env.REDIS_URL || defaultRedisUrl)
       .replace(/^REDIS_URL=/, '')
       .replace(/^"|"$/g, '')
       .trim(),
+    USE_DIRECT_SMTP: useDirectSmtp,
+    ENABLE_REDIS: !useDirectSmtp && process.env.ENABLE_REDIS !== 'false',
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',

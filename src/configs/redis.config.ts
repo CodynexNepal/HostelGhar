@@ -10,24 +10,30 @@ import { dotEnvConfig } from './envConfig';
 
 const redisUrl = dotEnvConfig.REDIS_URL || 'redis://127.0.0.1:6379';
 const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST);
+const isPassenger =
+  typeof (global as any).PhusionPassenger !== 'undefined' || process.env.PASSENGER_MODE === 'true';
+const isRedisDisabled =
+  !dotEnvConfig.ENABLE_REDIS ||
+  dotEnvConfig.USE_DIRECT_SMTP ||
+  (isPassenger && process.env.ENABLE_WORKERS !== 'true');
 
 export const redisOptions: RedisOptions = {
   maxRetriesPerRequest: isTest ? 1 : null,
   enableReadyCheck: false,
-  enableOfflineQueue: !isTest,
-  lazyConnect: isTest,
+  enableOfflineQueue: !isTest && !isRedisDisabled,
+  lazyConnect: isTest || isRedisDisabled,
   keepAlive: 10000,
   connectTimeout: isTest ? 1000 : 3500,
   retryStrategy: (times: number) => {
-    if (isTest) {
+    if (isTest || isRedisDisabled) {
       return null;
     }
-    if (times > 20) {
-      console.error('[Redis] Giving up reconnection after 20 attempts.');
+    if (times > 5) {
+      console.warn('[Redis] Connection attempts exhausted. Running in standalone direct mode.');
       return null;
     }
     const delay = Math.min(times * 200 + Math.floor(Math.random() * 300), 20000);
-    if (times % 5 === 1) {
+    if (times % 3 === 1) {
       console.warn(`[Redis] Connection lost. Reconnect #${times} in ${delay}ms...`);
     }
     return delay;
