@@ -639,6 +639,344 @@ Add (or update) one facility. Body: `{ "id?", "title", "description?", "tag?" }`
 Removes a facility. `:facilityKey` accepts the junction UUID **or** the frontend
 `clientKey` (e.g. `security-mu5ofghs`).
 
+## Weekly Meals & Menu
+
+Base URL: `/api/v1/hostel-ghar/hostels/:hostelId/meals`
+
+Manages the 7-day weekly breakfast and main meal menu for a hostel. Week runs from `SUNDAY` through `SATURDAY` (Nepali standard schedule).
+
+### Table Schema (`hostel_meals`)
+
+The PostgreSQL table is `hostel_meals`:
+
+| Column | Type | Constraints / Description |
+|---|---|---|
+| `id` | `uuid` | Primary Key, `DEFAULT uuid_generate_v4()` |
+| `hostel_id` | `uuid` | Foreign Key → `hostels(id)` ON DELETE CASCADE |
+| `day_of_week` | `enum` | `'SUNDAY'`, `'MONDAY'`, `'TUESDAY'`, `'WEDNESDAY'`, `'THURSDAY'`, `'FRIDAY'`, `'SATURDAY'` |
+| `breakfast_description` | `text` | Nullable, max 1000 characters |
+| `breakfast_time` | `varchar(50)` | Nullable, serving time e.g. `"07:30 AM - 09:00 AM"` |
+| `breakfast_notes` | `text` | Nullable, max 500 characters |
+| `main_meal_description` | `text` | Nullable, max 1000 characters |
+| `main_meal_time` | `varchar(50)` | Nullable, serving time e.g. `"07:30 PM - 09:30 PM"` |
+| `main_meal_notes` | `text` | Nullable, max 500 characters |
+| `created_at` | `timestamptz` | Auto-set creation timestamp |
+| `updated_at` | `timestamptz` | Auto-set update timestamp |
+
+**Unique Constraint**: `UQ_hostel_meals_hostel_day` on `(hostel_id, day_of_week)`.
+
+---
+
+### PUT `/hostels/:hostelId/meals`
+
+**Create or update the weekly meal schedule for a specific hostel.**
+
+- **Method**: `PUT`
+- **Route**: `/api/v1/hostel-ghar/hostels/:hostelId/meals`
+- **Auth**: Protected. Requires `Authorization: Bearer <accessToken>` (or auth cookie).
+- **Allowed Roles**: `owner` (must be the verified owner of the hostel) or `admin`.
+- **Content-Type**: `application/json`
+
+#### URL Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `hostelId` | `string` (UUID) | **Yes** | The unique ID of the hostel to configure meals for. |
+
+#### Request Body Values to Pass from Frontend
+
+The request body takes an object with a `meals` array containing up to 7 day items.
+
+```json
+{
+  "meals": [
+    {
+      "dayOfWeek": "SUNDAY",
+      "breakfastDescription": "Milk Tea, Boiled Eggs, Bread & Jam",
+      "breakfastTime": "07:30 AM - 09:00 AM",
+      "breakfastNotes": "Extra egg available on request",
+      "mainMealDescription": "Dal Bhat, Chicken Curry, Seasonal Saag, Tomato Achar",
+      "mainMealTime": "07:30 PM - 09:30 PM",
+      "mainMealNotes": "Veg option: Paneer Curry"
+    },
+    {
+      "dayOfWeek": "MONDAY",
+      "breakfastDescription": "Black Tea, Chiura, Fried Chana",
+      "breakfastTime": "07:30 AM - 09:00 AM",
+      "breakfastNotes": null,
+      "mainMealDescription": "Rice, Mix Dal, Aloo Gobi Tarkari, Papad",
+      "mainMealTime": "07:30 PM - 09:30 PM",
+      "mainMealNotes": null
+    },
+    {
+      "dayOfWeek": "TUESDAY",
+      "breakfastDescription": "Tea, Boiled Chana, Toast",
+      "breakfastTime": "07:30 AM - 09:00 AM",
+      "breakfastNotes": null,
+      "mainMealDescription": "Rice, Dal, Green Vegetables, Egg Curry",
+      "mainMealTime": "07:30 PM - 09:30 PM",
+      "mainMealNotes": null
+    },
+    {
+      "dayOfWeek": "WEDNESDAY",
+      "breakfastDescription": "Tea, Halwa, Bread",
+      "breakfastTime": "07:30 AM - 09:00 AM",
+      "breakfastNotes": null,
+      "mainMealDescription": "Dal Bhat, Seasonal Tarkari, Chicken Curry",
+      "mainMealTime": "07:30 PM - 09:30 PM",
+      "mainMealNotes": null
+    },
+    {
+      "dayOfWeek": "THURSDAY",
+      "breakfastDescription": "Milk Tea, Paratha, Aloo Tarkari",
+      "breakfastTime": "07:30 AM - 09:00 AM",
+      "breakfastNotes": null,
+      "mainMealDescription": "Rice, Dal, Mushroom Curry, Salad",
+      "mainMealTime": "07:30 PM - 09:30 PM",
+      "mainMealNotes": null
+    },
+    {
+      "dayOfWeek": "FRIDAY",
+      "breakfastDescription": "Tea, Chowmein, Boiled Egg",
+      "breakfastTime": "07:30 AM - 09:00 AM",
+      "breakfastNotes": null,
+      "mainMealDescription": "Dal Bhat, Fish Curry / Soyabean, Saag",
+      "mainMealTime": "07:30 PM - 09:30 PM",
+      "mainMealNotes": null
+    },
+    {
+      "dayOfWeek": "SATURDAY",
+      "breakfastDescription": "Special Morning Tea, Puri Tarkari",
+      "breakfastTime": "08:00 AM - 09:30 AM",
+      "breakfastNotes": "Saturday special breakfast timing",
+      "mainMealDescription": "Fried Rice / Khichdi, Tomato Chutney, Papad",
+      "mainMealTime": "07:30 PM - 09:30 PM",
+      "mainMealNotes": null
+    }
+  ]
+}
+```
+
+#### Field Specifications
+
+| Field | Type | Required | Max Length | Description |
+|---|---|---|---|---|
+| `meals` | `Array<MealDayItem>` | **Yes** | Max 7 items | Array of meal items for the week. |
+| `meals[].dayOfWeek` | `string` | **Yes** | Enum | Must be one of: `"SUNDAY"`, `"MONDAY"`, `"TUESDAY"`, `"WEDNESDAY"`, `"THURSDAY"`, `"FRIDAY"`, `"SATURDAY"`. |
+| `meals[].breakfastDescription` | `string \| null` | No | 1000 chars | Food items served for breakfast. Can be empty or `null` if not configured. |
+| `meals[].breakfastTime` | `string \| null` | No | 50 chars | Breakfast serving time window (e.g. `"07:30 AM - 09:00 AM"`). |
+| `meals[].breakfastNotes` | `string \| null` | No | 500 chars | Optional dietary notes or instructions for breakfast. |
+| `meals[].mainMealDescription` | `string \| null` | No | 1000 chars | Food items served for the main meal (lunch / dinner). |
+| `meals[].mainMealTime` | `string \| null` | No | 50 chars | Main meal serving time window (e.g. `"07:30 PM - 09:30 PM"`). |
+| `meals[].mainMealNotes` | `string \| null` | No | 500 chars | Optional dietary notes or instructions for the main meal. |
+
+#### Frontend Fetch / Axios Example
+
+```typescript
+// Example using fetch
+const hostelId = 'a38bf07a-b7b1-49dc-85c8-dd5542a8e90a';
+const token = localStorage.getItem('token'); // or access_token cookie
+
+const response = await fetch(`/api/v1/hostel-ghar/hostels/${hostelId}/meals`, {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  },
+  body: JSON.stringify({
+    meals: [
+      {
+        dayOfWeek: 'SUNDAY',
+        breakfastDescription: 'Milk Tea, Boiled Eggs, Bread & Jam',
+        breakfastTime: '07:30 AM - 09:00 AM',
+        breakfastNotes: 'Extra egg available on request',
+        mainMealDescription: 'Dal Bhat, Chicken Curry, Saag',
+        mainMealTime: '07:30 PM - 09:30 PM',
+        mainMealNotes: 'Veg option available'
+      },
+      // ... other days
+    ]
+  }),
+});
+
+const result = await response.json();
+```
+
+#### Success Response (`200 OK`)
+
+```json
+{
+  "success": true,
+  "message": "Weekly meal schedule saved successfully",
+  "data": {
+    "hostelId": "a38bf07a-b7b1-49dc-85c8-dd5542a8e90a",
+    "updatedAt": "2026-10-28T14:30:00.000Z",
+    "days": [
+      {
+        "dayOfWeek": "SUNDAY",
+        "breakfastDescription": "Milk Tea, Boiled Eggs, Bread & Jam",
+        "breakfastTime": "07:30 AM - 09:00 AM",
+        "breakfastNotes": "Extra egg available on request",
+        "mainMealDescription": "Dal Bhat, Chicken Curry, Saag",
+        "mainMealTime": "07:30 PM - 09:30 PM",
+        "mainMealNotes": "Veg option available"
+      },
+      {
+        "dayOfWeek": "MONDAY",
+        "breakfastDescription": "Black Tea, Chiura, Fried Chana",
+        "breakfastTime": "07:30 AM - 09:00 AM",
+        "breakfastNotes": null,
+        "mainMealDescription": "Rice, Mix Dal, Aloo Gobi Tarkari",
+        "mainMealTime": "07:30 PM - 09:30 PM",
+        "mainMealNotes": null
+      }
+      // ... all 7 days returned in SUNDAY -> SATURDAY order
+    ]
+  }
+}
+```
+
+#### Error Responses
+
+- **`400 Bad Request`**: Missing `hostelId` parameter.
+- **`401 Unauthorized`**: Missing or expired auth token.
+- **`403 Forbidden`**: User is not an owner of this hostel, or not an administrator.
+- **`404 Not Found`**: Hostel with the given `hostelId` does not exist.
+- **`422 Unprocessable Entity`**: Payload validation failed (e.g. invalid `dayOfWeek`, description exceeds 1000 characters, or `meals` exceeds 7 days).
+
+---
+
+### GET `/hostels/:hostelId/meals`
+
+**Retrieve the complete 7-day meal schedule for a hostel.**
+
+- **Method**: `GET`
+- **Route**: `/api/v1/hostel-ghar/hostels/:hostelId/meals`
+- **Auth**: Public route (no authentication required). Accessible by public listing visitors, residents, owners, and admins.
+- **Cache**: Fast response with automatic cache invalidation on save/reset.
+
+#### Example Response (`200 OK`)
+
+Always returns all 7 days from `SUNDAY` to `SATURDAY` in order. If a day has not been configured yet, its description, time, and notes are returned as `null`.
+
+```json
+{
+  "success": true,
+  "data": {
+    "hostelId": "a38bf07a-b7b1-49dc-85c8-dd5542a8e90a",
+    "updatedAt": "2026-10-28T14:30:00.000Z",
+    "days": [
+      {
+        "dayOfWeek": "SUNDAY",
+        "breakfastDescription": "Milk Tea, Boiled Eggs, Bread & Jam",
+        "breakfastTime": "07:30 AM - 09:00 AM",
+        "breakfastNotes": "Extra egg available on request",
+        "mainMealDescription": "Dal Bhat, Chicken Curry, Saag",
+        "mainMealTime": "07:30 PM - 09:30 PM",
+        "mainMealNotes": "Veg option available"
+      },
+      {
+        "dayOfWeek": "MONDAY",
+        "breakfastDescription": null,
+        "breakfastTime": null,
+        "breakfastNotes": null,
+        "mainMealDescription": null,
+        "mainMealTime": null,
+        "mainMealNotes": null
+      }
+      // ... all 7 days
+    ]
+  }
+}
+```
+
+---
+
+### DELETE `/hostels/:hostelId/meals`
+
+**Clear/reset the entire weekly meal schedule for a hostel.**
+
+- **Method**: `DELETE`
+- **Route**: `/api/v1/hostel-ghar/hostels/:hostelId/meals`
+- **Auth**: Protected (`owner` or `admin`).
+- **Response**: `200 OK` with `{ "success": true, "message": "Weekly meal schedule reset successfully" }`.
+
+---
+
+## Hostel Location & Map
+
+Base URL: `/api/v1/hostel-ghar/hostels/:hostelId/location`
+
+Manages precise geographic coordinates (latitude and longitude) and public visibility toggling.
+
+### GET `/hostels/:hostelId/location`
+
+- **Method**: `GET`
+- **Auth**: Public or Authenticated.
+- **Privacy Rule**:
+  - When accessed publicly: if `isLocationShared` is `false`, coordinates are masked (`latitude: null`, `longitude: null`) to prevent leaks.
+  - When accessed by the hostel's verified `owner` or `admin`: exact coordinates and `isLocationShared` state are always returned.
+
+#### Example Response (`200 OK`)
+
+```json
+{
+  "success": true,
+  "data": {
+    "hostelId": "a38bf07a-b7b1-49dc-85c8-dd5542a8e90a",
+    "latitude": 27.717245,
+    "longitude": 85.323961,
+    "isLocationShared": true,
+    "locationUpdatedAt": "2026-10-28T14:15:00.000Z"
+  }
+}
+```
+
+---
+
+### PUT `/hostels/:hostelId/location`
+
+**Update hostel GPS coordinates and toggle public visibility.**
+
+- **Method**: `PUT`
+- **Route**: `/api/v1/hostel-ghar/hostels/:hostelId/location`
+- **Auth**: Protected (`owner` or `admin`).
+- **Content-Type**: `application/json`
+
+#### Request Body Values to Pass from Frontend
+
+```json
+{
+  "latitude": 27.717245,
+  "longitude": 85.323961,
+  "isLocationShared": true
+}
+```
+
+#### Field Specifications
+
+| Field | Type | Required | Validation Range | Description |
+|---|---|---|---|---|
+| `latitude` | `number \| null` | No | `-90` to `90` | Exact GPS latitude. |
+| `longitude` | `number \| null` | No | `-180` to `180` | Exact GPS longitude. |
+| `isLocationShared` | `boolean` | **Yes** | `true` or `false` | Whether coordinates are displayed publicly on `hostelghar.com`. |
+
+#### Success Response (`200 OK`)
+
+```json
+{
+  "success": true,
+  "message": "Hostel location updated successfully",
+  "data": {
+    "hostelId": "a38bf07a-b7b1-49dc-85c8-dd5542a8e90a",
+    "latitude": 27.717245,
+    "longitude": 85.323961,
+    "isLocationShared": true,
+    "locationUpdatedAt": "2026-10-28T14:15:00.000Z"
+  }
+}
+```
+
 ## Bed
 
 Requires role: `owner` or `admin`.
