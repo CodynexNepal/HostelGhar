@@ -18,6 +18,7 @@ import { Room } from '../../src/entities/room/room.entity';
 import { HostelRating } from '../../src/entities/rating/hostel-rating.entity';
 import { Bed } from '../../src/entities/bed/bed.entity';
 import { HostelFacility } from '../../src/entities/facility/hostel-facility.entity';
+import { HostelMeal } from '../../src/entities/meal/hostel-meal.entity';
 import { HostelRepository } from '../../src/repository/hostel/hostel.repository';
 import { HostelType } from '../../src/enum/hostel.enum';
 
@@ -105,6 +106,7 @@ describe('HostelRepository findById', () => {
     repositoryMap.set(HostelRating, {});
     repositoryMap.set(Bed, fakeBedRepo);
     repositoryMap.set(HostelFacility, {});
+    repositoryMap.set(HostelMeal, { find: vi.fn().mockResolvedValue([]) });
 
     const repo = new HostelRepository();
     const result = await repo.findById(mockHostel.id);
@@ -170,6 +172,7 @@ describe('HostelRepository findById', () => {
     repositoryMap.set(HostelRating, {});
     repositoryMap.set(Bed, fakeBedRepo);
     repositoryMap.set(HostelFacility, {});
+    repositoryMap.set(HostelMeal, { find: vi.fn().mockResolvedValue([]) });
 
     const repo = new HostelRepository();
     const result = await repo.findById(mockHostel.id);
@@ -198,6 +201,7 @@ describe('HostelRepository findById', () => {
     repositoryMap.set(HostelRating, {});
     repositoryMap.set(Bed, { createQueryBuilder: () => stubQueryBuilder(null) });
     repositoryMap.set(HostelFacility, {});
+    repositoryMap.set(HostelMeal, { find: vi.fn().mockResolvedValue([]) });
 
     const repo = new HostelRepository();
     const result = await repo.findById('non-existent-id');

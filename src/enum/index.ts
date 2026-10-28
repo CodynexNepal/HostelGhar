@@ -15,3 +15,4 @@ export * from './platform-qr.enum';
 export * from './payment-proof.enum';
 export * from './subscription.enum';
 export * from './staff.enum';
+export * from './meal.enum';

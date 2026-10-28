@@ -24,8 +24,7 @@ const env_cleaner_function_1 = require("../functions/env-cleaner.function");
 const initialNodeEnv = process.env.NODE_ENV;
 const isProduction = initialNodeEnv === 'production';
 const isTestEnv = initialNodeEnv === 'test' || Boolean(process.env.VITEST);
-const isPassengerEnv = typeof global.PhusionPassenger !== 'undefined' ||
-    process.env.PASSENGER_MODE === 'true';
+const isPassengerEnv = typeof global.PhusionPassenger !== 'undefined' || process.env.PASSENGER_MODE === 'true';
 const previousPort = process.env.PORT;
 if (isProduction) {
     // In production, cPanel environment variables take precedence.

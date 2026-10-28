@@ -8,6 +8,8 @@ const roles_enum_1 = require("../../enum/roles.enum");
 const rateLimiter_config_1 = require("../../configs/rateLimiter.config");
 const http_decorator_1 = require("../../decorators/http.decorator");
 const facility_routes_1 = require("../facility/facility.routes");
+const meal_routes_1 = require("../meal/meal.routes");
+const location_routes_1 = require("../location/location.routes");
 const hostelRouter = (0, express_1.Router)();
 exports.hostelRouter = hostelRouter;
 const hostelController = hostel_factory_1.HostelFactory.create();
@@ -17,6 +19,8 @@ hostelRouter.get('/', rateLimiter_config_1.apiReadLimiter, hostelController.list
 // Mounted before generic /:id so /:hostelId/facilities never collides.
 // Public for GET; mutations (PUT/POST/DELETE) are protected inside facilityRouter.
 hostelRouter.use('/:hostelId/facilities', facility_routes_1.facilityRouter);
+hostelRouter.use('/:hostelId/meals', meal_routes_1.mealRouter);
+hostelRouter.use('/:hostelId/location', location_routes_1.locationRouter);
 // Public hostel detail by ID
 hostelRouter.get('/:id', (0, http_decorator_1.requireParam)('id'), rateLimiter_config_1.apiReadLimiter, hostelController.getHostel);
 // Ratings endpoints

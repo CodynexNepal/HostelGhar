@@ -23,6 +23,7 @@ import { PaymentQr } from '../payment-qr/payment-qr.entity';
 import { Subscription } from '../subscription/subscription.entity';
 import { Staff } from '../staff/staff.entity';
 import { HostelRating } from '../rating/hostel-rating.entity';
+import { HostelMeal } from '../meal/hostel-meal.entity';
 
 @Entity('hostels')
 @Index('idx_hostels_owner_id', ['ownerId'])
@@ -65,6 +66,39 @@ export class Hostel {
   @Column({ type: 'varchar', length: 500, nullable: true, default: null })
   suspendReason!: string | null;
 
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    default: null,
+    transformer: {
+      to: (value?: number | null) => value,
+      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+    },
+  })
+  latitude!: number | null;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    default: null,
+    transformer: {
+      to: (value?: number | null) => value,
+      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+    },
+  })
+  longitude!: number | null;
+
+  @Column({ type: 'boolean', nullable: false, default: false })
+  @Index('idx_hostels_is_location_shared')
+  isLocationShared!: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true, default: null })
+  locationUpdatedAt!: Date | null;
+
   @Column({ type: 'uuid', nullable: true })
   ownerId!: string | null;
 
@@ -100,6 +134,9 @@ export class Hostel {
 
   @OneToMany(() => HostelRating, (rating) => rating.hostel)
   ratings!: HostelRating[];
+
+  @OneToMany(() => HostelMeal, (meal) => meal.hostel)
+  meals!: HostelMeal[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

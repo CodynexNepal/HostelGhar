@@ -54,7 +54,8 @@ function cleanEnvConfig() {
     const useDirectSmtp = process.env.USE_DIRECT_SMTP === 'true' ||
         process.env.ENABLE_REDIS === 'false' ||
         (isProd && process.env.ENABLE_REDIS !== 'true');
-    const enableRedis = !useDirectSmtp && (isProd ? process.env.ENABLE_REDIS === 'true' : process.env.ENABLE_REDIS !== 'false');
+    const enableRedis = !useDirectSmtp &&
+        (isProd ? process.env.ENABLE_REDIS === 'true' : process.env.ENABLE_REDIS !== 'false');
     const defaultDatabaseUrl = nodeEnv === 'production'
         ? undefined
         : 'postgresql://hostelghar:hostelghar_dev_pass@127.0.0.1:5432/hostelghar_dev';

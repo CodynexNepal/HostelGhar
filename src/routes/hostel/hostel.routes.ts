@@ -5,6 +5,8 @@ import { IROLES } from '../../enum/roles.enum';
 import { apiReadLimiter } from '../../configs/rateLimiter.config';
 import { requireParam } from '../../decorators/http.decorator';
 import { facilityRouter } from '../facility/facility.routes';
+import { mealRouter } from '../meal/meal.routes';
+import { locationRouter } from '../location/location.routes';
 
 const hostelRouter = Router();
 const hostelController = HostelFactory.create();
@@ -16,6 +18,8 @@ hostelRouter.get('/', apiReadLimiter, hostelController.listHostels);
 // Mounted before generic /:id so /:hostelId/facilities never collides.
 // Public for GET; mutations (PUT/POST/DELETE) are protected inside facilityRouter.
 hostelRouter.use('/:hostelId/facilities', facilityRouter);
+hostelRouter.use('/:hostelId/meals', mealRouter);
+hostelRouter.use('/:hostelId/location', locationRouter);
 
 // Public hostel detail by ID
 hostelRouter.get('/:id', requireParam('id'), apiReadLimiter, hostelController.getHostel);

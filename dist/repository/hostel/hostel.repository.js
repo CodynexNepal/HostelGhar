@@ -11,6 +11,7 @@ const room_entity_1 = require("../../entities/room/room.entity");
 const hostel_rating_entity_1 = require("../../entities/rating/hostel-rating.entity");
 const bed_entity_1 = require("../../entities/bed/bed.entity");
 const hostel_facility_entity_1 = require("../../entities/facility/hostel-facility.entity");
+const hostel_meal_entity_1 = require("../../entities/meal/hostel-meal.entity");
 const bed_enum_1 = require("../../enum/bed.enum");
 const hostel_enum_1 = require("../../enum/hostel.enum");
 class HostelRepository {
@@ -23,6 +24,7 @@ class HostelRepository {
         this.ratingRepo = database_source_1.AppDataSource.getRepository(hostel_rating_entity_1.HostelRating);
         this.bedRepo = database_source_1.AppDataSource.getRepository(bed_entity_1.Bed);
         this.hostelFacilityRepo = database_source_1.AppDataSource.getRepository(hostel_facility_entity_1.HostelFacility);
+        this.mealRepo = database_source_1.AppDataSource.getRepository(hostel_meal_entity_1.HostelMeal);
     }
     async findAll(page, limit) {
         const [hostels, total] = await this.hostelRepo.findAndCount({
@@ -192,7 +194,7 @@ class HostelRepository {
         return [items, total];
     }
     async findById(id) {
-        const [hostel, residentRaw, bedRaw, roomRaw, feeAmountRaw] = await Promise.all([
+        const [hostel, residentRaw, bedRaw, roomRaw, feeAmountRaw, mealsRaw] = await Promise.all([
             this.hostelRepo.findOne({
                 where: { id },
                 relations: {
@@ -210,6 +212,10 @@ class HostelRepository {
                     email: true,
                     logoUrl: true,
                     isActive: true,
+                    latitude: true,
+                    longitude: true,
+                    isLocationShared: true,
+                    locationUpdatedAt: true,
                     owner: {
                         id: true,
                         firstName: true,
@@ -261,6 +267,10 @@ class HostelRepository {
                 .where('fee.hostelId = :id', { id })
                 .andWhere('fee.amount > 0')
                 .getRawOne(),
+            this.mealRepo.find({
+                where: { hostelId: id },
+                order: { dayOfWeek: 'ASC' },
+            }),
         ]);
         if (!hostel) {
             return null;
@@ -313,8 +323,17 @@ class HostelRepository {
         else if (feeMinAmount != null && feeMinAmount > 0) {
             monthlyRent = feeMinAmount;
         }
+        const isShared = Boolean(hostel.isLocationShared);
+        const latitude = isShared && hostel.latitude != null ? Number(hostel.latitude) : null;
+        const longitude = isShared && hostel.longitude != null ? Number(hostel.longitude) : null;
+        const locationUpdatedAt = isShared ? hostel.locationUpdatedAt : null;
         return {
             ...hostel,
+            latitude,
+            longitude,
+            isLocationShared: isShared,
+            locationUpdatedAt,
+            meals: mealsRaw || [],
             totalBeds,
             availableBeds,
             occupiedBeds,

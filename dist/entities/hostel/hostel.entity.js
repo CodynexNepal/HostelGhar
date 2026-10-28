@@ -24,6 +24,7 @@ const payment_qr_entity_1 = require("../payment-qr/payment-qr.entity");
 const subscription_entity_1 = require("../subscription/subscription.entity");
 const staff_entity_1 = require("../staff/staff.entity");
 const hostel_rating_entity_1 = require("../rating/hostel-rating.entity");
+const hostel_meal_entity_1 = require("../meal/hostel-meal.entity");
 let Hostel = class Hostel {
 };
 exports.Hostel = Hostel;
@@ -76,6 +77,43 @@ __decorate([
     __metadata("design:type", Object)
 ], Hostel.prototype, "suspendReason", void 0);
 __decorate([
+    (0, typeorm_1.Column)({
+        type: 'numeric',
+        precision: 10,
+        scale: 7,
+        nullable: true,
+        default: null,
+        transformer: {
+            to: (value) => value,
+            from: (value) => (value != null ? parseFloat(value) : null),
+        },
+    }),
+    __metadata("design:type", Object)
+], Hostel.prototype, "latitude", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'numeric',
+        precision: 10,
+        scale: 7,
+        nullable: true,
+        default: null,
+        transformer: {
+            to: (value) => value,
+            from: (value) => (value != null ? parseFloat(value) : null),
+        },
+    }),
+    __metadata("design:type", Object)
+], Hostel.prototype, "longitude", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'boolean', nullable: false, default: false }),
+    (0, typeorm_1.Index)('idx_hostels_is_location_shared'),
+    __metadata("design:type", Boolean)
+], Hostel.prototype, "isLocationShared", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamptz', nullable: true, default: null }),
+    __metadata("design:type", Object)
+], Hostel.prototype, "locationUpdatedAt", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'uuid', nullable: true }),
     __metadata("design:type", Object)
 ], Hostel.prototype, "ownerId", void 0);
@@ -122,6 +160,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => hostel_rating_entity_1.HostelRating, (rating) => rating.hostel),
     __metadata("design:type", Array)
 ], Hostel.prototype, "ratings", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => hostel_meal_entity_1.HostelMeal, (meal) => meal.hostel),
+    __metadata("design:type", Array)
+], Hostel.prototype, "meals", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ type: 'timestamptz' }),
     __metadata("design:type", Date)

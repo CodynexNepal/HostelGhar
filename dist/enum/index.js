@@ -30,3 +30,4 @@ __exportStar(require("./platform-qr.enum"), exports);
 __exportStar(require("./payment-proof.enum"), exports);
 __exportStar(require("./subscription.enum"), exports);
 __exportStar(require("./staff.enum"), exports);
+__exportStar(require("./meal.enum"), exports);
