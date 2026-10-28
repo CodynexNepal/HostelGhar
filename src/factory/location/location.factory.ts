@@ -14,4 +14,3 @@ export class LocationFactory {
     return new LocationController(service);
   }
 }
-

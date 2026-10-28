@@ -55,7 +55,10 @@ describe('MealService', () => {
   const fakeMealRepo = {
     find: vi.fn().mockImplementation(async () => mealStore),
     findOne: vi.fn().mockImplementation(async ({ where }) => {
-      return mealStore.find((m) => m.hostelId === where.hostelId && m.dayOfWeek === where.dayOfWeek) || null;
+      return (
+        mealStore.find((m) => m.hostelId === where.hostelId && m.dayOfWeek === where.dayOfWeek) ||
+        null
+      );
     }),
     create: vi.fn().mockImplementation((payload) => ({
       id: 'meal-uuid-' + Math.random(),
@@ -64,7 +67,9 @@ describe('MealService', () => {
       ...payload,
     })),
     save: vi.fn().mockImplementation(async (meal) => {
-      const idx = mealStore.findIndex((m) => m.hostelId === meal.hostelId && m.dayOfWeek === meal.dayOfWeek);
+      const idx = mealStore.findIndex(
+        (m) => m.hostelId === meal.hostelId && m.dayOfWeek === meal.dayOfWeek,
+      );
       if (idx >= 0) {
         mealStore[idx] = { ...meal, updatedAt: new Date() };
         return mealStore[idx];
@@ -87,28 +92,24 @@ describe('MealService', () => {
   it('allows owner to save a complete weekly meal schedule', async () => {
     const service = new MealService(new MealRepository());
 
-    const result = await service.saveWeeklySchedule(
-      hostelId,
-      { userId: ownerId, role: 'OWNER' },
-      [
-        {
-          dayOfWeek: DayOfWeek.SUNDAY,
-          breakfastDescription: 'Tea, boiled eggs, bread',
-          breakfastTime: '7:30 AM',
-          breakfastNotes: 'Vegetarian option: banana',
-          mainMealDescription: 'Dal bhat, seasonal vegetables, chicken curry',
-          mainMealTime: '7:00 PM',
-          mainMealNotes: 'Special Sunday non-veg dinner',
-        },
-        {
-          dayOfWeek: DayOfWeek.MONDAY,
-          breakfastDescription: 'Milk tea, chiura, yogurt',
-          breakfastTime: '7:30 AM',
-          mainMealDescription: 'Rice, dal, mixed vegetables',
-          mainMealTime: '7:00 PM',
-        },
-      ],
-    );
+    const result = await service.saveWeeklySchedule(hostelId, { userId: ownerId, role: 'OWNER' }, [
+      {
+        dayOfWeek: DayOfWeek.SUNDAY,
+        breakfastDescription: 'Tea, boiled eggs, bread',
+        breakfastTime: '7:30 AM',
+        breakfastNotes: 'Vegetarian option: banana',
+        mainMealDescription: 'Dal bhat, seasonal vegetables, chicken curry',
+        mainMealTime: '7:00 PM',
+        mainMealNotes: 'Special Sunday non-veg dinner',
+      },
+      {
+        dayOfWeek: DayOfWeek.MONDAY,
+        breakfastDescription: 'Milk tea, chiura, yogurt',
+        breakfastTime: '7:30 AM',
+        mainMealDescription: 'Rice, dal, mixed vegetables',
+        mainMealTime: '7:00 PM',
+      },
+    ]);
 
     expect(result.error).toBeUndefined();
     expect(result.data).toBeDefined();
@@ -131,35 +132,27 @@ describe('MealService', () => {
     const service = new MealService(new MealRepository());
 
     // 1. Save Sunday and Monday
-    await service.saveWeeklySchedule(
-      hostelId,
-      { userId: ownerId, role: 'OWNER' },
-      [
-        {
-          dayOfWeek: DayOfWeek.SUNDAY,
-          breakfastDescription: 'Tea & Toast',
-          mainMealDescription: 'Dal Bhat',
-        },
-        {
-          dayOfWeek: DayOfWeek.MONDAY,
-          breakfastDescription: 'Puri Tarkari',
-          mainMealDescription: 'Rice & Curry',
-        },
-      ],
-    );
+    await service.saveWeeklySchedule(hostelId, { userId: ownerId, role: 'OWNER' }, [
+      {
+        dayOfWeek: DayOfWeek.SUNDAY,
+        breakfastDescription: 'Tea & Toast',
+        mainMealDescription: 'Dal Bhat',
+      },
+      {
+        dayOfWeek: DayOfWeek.MONDAY,
+        breakfastDescription: 'Puri Tarkari',
+        mainMealDescription: 'Rice & Curry',
+      },
+    ]);
 
     // 2. Update ONLY Sunday
-    const updated = await service.saveWeeklySchedule(
-      hostelId,
-      { userId: ownerId, role: 'OWNER' },
-      [
-        {
-          dayOfWeek: DayOfWeek.SUNDAY,
-          breakfastDescription: 'Oatmeal & Milk',
-          mainMealDescription: 'Dal Bhat & Paneer',
-        },
-      ],
-    );
+    const updated = await service.saveWeeklySchedule(hostelId, { userId: ownerId, role: 'OWNER' }, [
+      {
+        dayOfWeek: DayOfWeek.SUNDAY,
+        breakfastDescription: 'Oatmeal & Milk',
+        mainMealDescription: 'Dal Bhat & Paneer',
+      },
+    ]);
 
     expect(updated.error).toBeUndefined();
     const sunday = updated.data?.schedule.find((s) => s.dayOfWeek === DayOfWeek.SUNDAY);
@@ -220,17 +213,13 @@ describe('MealService', () => {
   it('allows clearing the weekly schedule with proper confirmation', async () => {
     const service = new MealService(new MealRepository());
 
-    await service.saveWeeklySchedule(
-      hostelId,
-      { userId: ownerId, role: 'OWNER' },
-      [
-        {
-          dayOfWeek: DayOfWeek.SUNDAY,
-          breakfastDescription: 'Tea',
-          mainMealDescription: 'Dal Bhat',
-        },
-      ],
-    );
+    await service.saveWeeklySchedule(hostelId, { userId: ownerId, role: 'OWNER' }, [
+      {
+        dayOfWeek: DayOfWeek.SUNDAY,
+        breakfastDescription: 'Tea',
+        mainMealDescription: 'Dal Bhat',
+      },
+    ]);
 
     const cleared = await service.clearWeeklySchedule(hostelId, { userId: ownerId, role: 'OWNER' });
     expect(cleared.error).toBeUndefined();
@@ -240,4 +229,3 @@ describe('MealService', () => {
     expect(sunday?.breakfastDescription).toBeNull();
   });
 });
-

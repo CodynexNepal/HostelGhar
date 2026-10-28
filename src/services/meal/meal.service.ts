@@ -245,4 +245,3 @@ export class MealService {
     return { data: empty };
   }
 }
-

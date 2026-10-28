@@ -37,4 +37,3 @@ locationRouter.put(
 );
 
 export { locationRouter };
-

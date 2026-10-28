@@ -113,4 +113,3 @@ export class CreateHostelMealsAndLocationFields1801000000000 implements Migratio
     await queryRunner.query(`ALTER TABLE "hostels" DROP COLUMN IF EXISTS "latitude"`);
   }
 }
-

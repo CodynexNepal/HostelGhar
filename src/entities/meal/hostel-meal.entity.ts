@@ -57,4 +57,3 @@ export class HostelMeal {
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt!: Date;
 }
-

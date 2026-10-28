@@ -6,7 +6,7 @@
 import { Repository } from 'typeorm';
 import { AppDataSource } from '../../database/database-source';
 import { HostelMeal } from '../../entities/meal/hostel-meal.entity';
-import { DayOfWeek, DAYS_OF_WEEK_ORDER } from '../../enum/meal.enum';
+import { DayOfWeek } from '../../enum/meal.enum';
 
 export interface MealDayInput {
   dayOfWeek: DayOfWeek;

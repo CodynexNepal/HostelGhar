@@ -188,4 +188,3 @@ describe('LocationService', () => {
     expect(result.error?.status).toBe(STATUS_CODE.FORBIDDEN);
   });
 });
-

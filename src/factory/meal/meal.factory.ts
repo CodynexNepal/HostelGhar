@@ -16,4 +16,3 @@ export class MealFactory {
     return new MealController(service);
   }
 }
-

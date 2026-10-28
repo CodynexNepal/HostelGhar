@@ -21,4 +21,3 @@ export class UpdateHostelLocationDto {
   @IsBoolean({ message: 'isLocationShared must be a boolean' })
   isLocationShared!: boolean;
 }
-

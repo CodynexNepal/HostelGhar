@@ -17,7 +17,8 @@ import { DayOfWeek } from '../../enum/meal.enum';
 
 export class MealDayItemDto {
   @IsEnum(DayOfWeek, {
-    message: 'dayOfWeek must be one of: SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY',
+    message:
+      'dayOfWeek must be one of: SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY',
   })
   dayOfWeek!: DayOfWeek;
 
@@ -59,4 +60,3 @@ export class SaveWeeklyMealsDto {
   @Type(() => MealDayItemDto)
   meals!: MealDayItemDto[];
 }
-

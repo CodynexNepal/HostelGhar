@@ -12,11 +12,7 @@ import { UpdateHostelLocationDto } from '../../dto/location/location.dto';
 export class LocationController {
   constructor(private readonly locationService: LocationService) {}
 
-  public getLocation = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
+  public getLocation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const hostelId = getRequiredParam(req, 'hostelId');
       const user = req.user
@@ -70,4 +66,3 @@ export class LocationController {
     }
   };
 }
-
