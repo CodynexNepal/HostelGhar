@@ -31,7 +31,7 @@ export class HostelDailyMeal {
   hostel!: Hostel;
 
   /** Day of week (e.g. ALL, SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY) */
-  @Column({ type: 'varchar', length: 20, default: 'ALL', nullable: false })
+  @Column({ name: 'dayOfWeek', type: 'varchar', length: 20, default: 'ALL', nullable: false })
   dayOfWeek!: string;
 
   /** Nepali meal name, e.g. बिहानको नास्ता, बिहानको खाजा, दिउँसोको खाना */

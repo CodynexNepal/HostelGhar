@@ -28,6 +28,10 @@ export class CreateHostelDailyMeals1802000000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(
+      `ALTER TABLE "hostel_daily_meals" ADD COLUMN IF NOT EXISTS "dayOfWeek" character varying(20) NOT NULL DEFAULT 'ALL'`,
+    );
+
+    await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "idx_hostel_daily_meals_hostel_id" ON "hostel_daily_meals" ("hostelId")`,
     );
 

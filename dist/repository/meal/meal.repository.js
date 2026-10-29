@@ -5,6 +5,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MealRepository = void 0;
+const typeorm_1 = require("typeorm");
 const database_source_1 = require("../../database/database-source");
 const hostel_meal_entity_1 = require("../../entities/meal/hostel-meal.entity");
 const hostel_daily_meal_entity_1 = require("../../entities/meal/hostel-daily-meal.entity");
@@ -30,7 +31,10 @@ class MealRepository {
                 return specific;
         }
         return this.dailyMealRepo.find({
-            where: { hostelId, dayOfWeek: 'ALL' },
+            where: [
+                { hostelId, dayOfWeek: 'ALL' },
+                { hostelId, dayOfWeek: (0, typeorm_1.IsNull)() },
+            ],
             order: { orderIndex: 'ASC', createdAt: 'ASC' },
         });
     }

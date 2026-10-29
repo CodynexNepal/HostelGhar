@@ -33,7 +33,7 @@ __decorate([
     __metadata("design:type", hostel_entity_1.Hostel)
 ], HostelDailyMeal.prototype, "hostel", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 20, default: 'ALL', nullable: false }),
+    (0, typeorm_1.Column)({ name: 'dayOfWeek', type: 'varchar', length: 20, default: 'ALL', nullable: false }),
     __metadata("design:type", String)
 ], HostelDailyMeal.prototype, "dayOfWeek", void 0);
 __decorate([

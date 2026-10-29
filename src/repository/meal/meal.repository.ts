@@ -3,7 +3,7 @@
 // PURPOSE: Data access layer for hostel meals and weekly schedules.
 // ──────────────────────────────────────────────────────────────────────────────
 
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { AppDataSource } from '../../database/database-source';
 import { HostelMeal } from '../../entities/meal/hostel-meal.entity';
 import { HostelDailyMeal } from '../../entities/meal/hostel-daily-meal.entity';
@@ -59,7 +59,10 @@ export class MealRepository {
       if (specific.length > 0) return specific;
     }
     return this.dailyMealRepo.find({
-      where: { hostelId, dayOfWeek: 'ALL' },
+      where: [
+        { hostelId, dayOfWeek: 'ALL' },
+        { hostelId, dayOfWeek: IsNull() },
+      ],
       order: { orderIndex: 'ASC', createdAt: 'ASC' },
     });
   }

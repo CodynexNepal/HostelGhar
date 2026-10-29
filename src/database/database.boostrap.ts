@@ -28,6 +28,24 @@ export const bootstrapDatabase = async (): Promise<void> => {
     // (wrong credentials, network issue), it throws — which we catch below.
     await AppDataSource.initialize();
 
+    // Ensure daily meals table and dayOfWeek column exist (self-healing schema check)
+    try {
+      await AppDataSource.query(`
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.tables WHERE table_name = 'hostel_daily_meals'
+          ) THEN
+            ALTER TABLE "hostel_daily_meals" ADD COLUMN IF NOT EXISTS "dayOfWeek" character varying(20) NOT NULL DEFAULT 'ALL';
+            UPDATE "hostel_daily_meals" SET "dayOfWeek" = 'ALL' WHERE "dayOfWeek" IS NULL OR "dayOfWeek" = '';
+            CREATE INDEX IF NOT EXISTS "idx_hostel_daily_meals_hostel_day_order" ON "hostel_daily_meals" ("hostelId", "dayOfWeek", "orderIndex");
+          END IF;
+        END $$;
+      `);
+    } catch (schemaErr) {
+      console.warn('⚠️ Non-blocking schema check notice for hostel_daily_meals:', schemaErr);
+    }
+
     // Log success so operators can confirm the DB is connected in server logs.
     // In production, this could be replaced with a structured logger (winston/pino).
     console.log('✅ Database connection established successfully');

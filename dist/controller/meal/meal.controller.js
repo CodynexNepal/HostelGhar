@@ -178,7 +178,10 @@ class MealController {
                     role: req.user.role ?? '',
                 };
                 const meals = Array.isArray(req.body?.meals) ? req.body.meals : req.body;
-                const dayOfWeek = (req.body?.dayOfWeek || req.query.dayOfWeek || req.query.day || 'ALL');
+                const dayOfWeek = (req.body?.dayOfWeek ||
+                    req.query.dayOfWeek ||
+                    req.query.day ||
+                    'ALL');
                 const result = await this.mealService.saveDailySchedule(hostelId, user, meals, dayOfWeek);
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
