@@ -225,7 +225,7 @@ class MealService {
         return { data: empty };
     }
     // ─── DAILY MEAL SCHEDULE (दैनिक भोजन तालिका) ─────────────────────────────
-    async getDailySchedule(hostelId, user) {
+    async getDailySchedule(hostelId, user, dayOfWeek) {
         if (!(0, exports.isUuidV4)(hostelId)) {
             return {
                 error: { status: statusCode_interface_1.STATUS_CODE.BAD_REQUEST, message: 'Invalid hostel id — must be UUID v4' },
@@ -258,15 +258,20 @@ class MealService {
                 };
             }
         }
-        const rawDailyMeals = await this.repo.findDailyMealsByHostelId(hostelId);
+        const allRawMeals = await this.repo.findAllDailyMealsRaw(hostelId);
+        const configuredDays = Array.from(new Set(allRawMeals.map((m) => m.dayOfWeek || 'ALL')));
+        const normDay = dayOfWeek ? dayOfWeek.toUpperCase().trim() : 'ALL';
+        const rawDailyMeals = await this.repo.findDailyMealsByHostelId(hostelId, normDay);
         if (rawDailyMeals.length === 0) {
             return {
                 data: {
                     hostelId,
+                    dayOfWeek: normDay,
                     hasSchedule: false,
-                    isConfigured: false,
+                    isConfigured: configuredDays.length > 0,
                     lastUpdatedAt: null,
-                    schedule: exports.DEFAULT_DAILY_MEAL_SLOTS,
+                    schedule: exports.DEFAULT_DAILY_MEAL_SLOTS.map((s) => ({ ...s, dayOfWeek: normDay })),
+                    configuredDays,
                 },
             };
         }
@@ -277,6 +282,7 @@ class MealService {
             }
             return {
                 id: m.id,
+                dayOfWeek: m.dayOfWeek,
                 mealName: m.mealName,
                 mealNameEn: m.mealNameEn,
                 time: m.time,
@@ -290,10 +296,12 @@ class MealService {
         return {
             data: {
                 hostelId,
+                dayOfWeek: normDay,
                 hasSchedule: true,
                 isConfigured: true,
                 lastUpdatedAt: maxUpdated,
                 schedule,
+                configuredDays,
             },
         };
     }
@@ -312,6 +320,7 @@ class MealService {
         return {
             data: {
                 id: created.id,
+                dayOfWeek: created.dayOfWeek,
                 mealName: created.mealName,
                 mealNameEn: created.mealNameEn,
                 time: created.time,
@@ -349,6 +358,7 @@ class MealService {
         return {
             data: {
                 id: updated.id,
+                dayOfWeek: updated.dayOfWeek,
                 mealName: updated.mealName,
                 mealNameEn: updated.mealNameEn,
                 time: updated.time,
@@ -380,7 +390,7 @@ class MealService {
         await this.invalidate(hostelId);
         return { success: true };
     }
-    async saveDailySchedule(hostelId, user, meals) {
+    async saveDailySchedule(hostelId, user, meals, dayOfWeek = 'ALL') {
         if (!(0, exports.isUuidV4)(hostelId)) {
             return {
                 error: { status: statusCode_interface_1.STATUS_CODE.BAD_REQUEST, message: 'Invalid hostel id — must be UUID v4' },
@@ -390,8 +400,11 @@ class MealService {
         if (authCheck.error) {
             return { error: authCheck.error };
         }
-        const saved = await this.repo.saveDailyMeals(hostelId, meals);
+        const normDay = (dayOfWeek || 'ALL').toUpperCase().trim();
+        const saved = await this.repo.saveDailyMeals(hostelId, meals, normDay);
         await this.invalidate(hostelId);
+        const allRawMeals = await this.repo.findAllDailyMealsRaw(hostelId);
+        const configuredDays = Array.from(new Set(allRawMeals.map((m) => m.dayOfWeek || 'ALL')));
         let maxUpdated = null;
         const schedule = saved.map((m) => {
             if (m.updatedAt && (!maxUpdated || new Date(m.updatedAt) > new Date(maxUpdated))) {
@@ -399,6 +412,7 @@ class MealService {
             }
             return {
                 id: m.id,
+                dayOfWeek: m.dayOfWeek,
                 mealName: m.mealName,
                 mealNameEn: m.mealNameEn,
                 time: m.time,
@@ -412,14 +426,16 @@ class MealService {
         return {
             data: {
                 hostelId,
+                dayOfWeek: normDay,
                 hasSchedule: schedule.length > 0,
                 isConfigured: true,
                 lastUpdatedAt: maxUpdated,
                 schedule,
+                configuredDays,
             },
         };
     }
-    async clearDailySchedule(hostelId, user) {
+    async clearDailySchedule(hostelId, user, dayOfWeek) {
         if (!(0, exports.isUuidV4)(hostelId)) {
             return {
                 error: { status: statusCode_interface_1.STATUS_CODE.BAD_REQUEST, message: 'Invalid hostel id — must be UUID v4' },
@@ -429,15 +445,20 @@ class MealService {
         if (authCheck.error) {
             return { error: authCheck.error };
         }
-        await this.repo.clearDailyMeals(hostelId);
+        const normDay = dayOfWeek ? dayOfWeek.toUpperCase().trim() : undefined;
+        await this.repo.clearDailyMeals(hostelId, normDay);
         await this.invalidate(hostelId);
+        const allRawMeals = await this.repo.findAllDailyMealsRaw(hostelId);
+        const configuredDays = Array.from(new Set(allRawMeals.map((m) => m.dayOfWeek || 'ALL')));
         return {
             data: {
                 hostelId,
+                dayOfWeek: normDay || 'ALL',
                 hasSchedule: false,
-                isConfigured: false,
+                isConfigured: configuredDays.length > 0,
                 lastUpdatedAt: null,
-                schedule: exports.DEFAULT_DAILY_MEAL_SLOTS,
+                schedule: exports.DEFAULT_DAILY_MEAL_SLOTS.map((s) => ({ ...s, dayOfWeek: normDay || 'ALL' })),
+                configuredDays,
             },
         };
     }

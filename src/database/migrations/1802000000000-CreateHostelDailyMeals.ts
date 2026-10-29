@@ -13,6 +13,7 @@ export class CreateHostelDailyMeals1802000000000 implements MigrationInterface {
       CREATE TABLE IF NOT EXISTS "hostel_daily_meals" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "hostelId" uuid NOT NULL,
+        "dayOfWeek" character varying(20) NOT NULL DEFAULT 'ALL',
         "mealName" character varying(100) NOT NULL,
         "mealNameEn" character varying(100) DEFAULT null,
         "time" character varying(100) NOT NULL,
@@ -33,9 +34,14 @@ export class CreateHostelDailyMeals1802000000000 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "idx_hostel_daily_meals_hostel_order" ON "hostel_daily_meals" ("hostelId", "orderIndex")`,
     );
+
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_hostel_daily_meals_hostel_day_order" ON "hostel_daily_meals" ("hostelId", "dayOfWeek", "orderIndex")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_hostel_daily_meals_hostel_day_order"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_hostel_daily_meals_hostel_order"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_hostel_daily_meals_hostel_id"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "hostel_daily_meals"`);

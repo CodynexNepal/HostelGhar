@@ -19,10 +19,25 @@ class MealRepository {
             order: { dayOfWeek: 'ASC' },
         });
     }
-    async findDailyMealsByHostelId(hostelId) {
+    async findDailyMealsByHostelId(hostelId, dayOfWeek) {
+        const normDay = dayOfWeek ? dayOfWeek.toUpperCase().trim() : undefined;
+        if (normDay && normDay !== 'ALL') {
+            const specific = await this.dailyMealRepo.find({
+                where: { hostelId, dayOfWeek: normDay },
+                order: { orderIndex: 'ASC', createdAt: 'ASC' },
+            });
+            if (specific.length > 0)
+                return specific;
+        }
+        return this.dailyMealRepo.find({
+            where: { hostelId, dayOfWeek: 'ALL' },
+            order: { orderIndex: 'ASC', createdAt: 'ASC' },
+        });
+    }
+    async findAllDailyMealsRaw(hostelId) {
         return this.dailyMealRepo.find({
             where: { hostelId },
-            order: { orderIndex: 'ASC', createdAt: 'ASC' },
+            order: { dayOfWeek: 'ASC', orderIndex: 'ASC', createdAt: 'ASC' },
         });
     }
     async findDailyMealById(id) {
@@ -31,6 +46,7 @@ class MealRepository {
     async createDailyMeal(hostelId, data) {
         const meal = this.dailyMealRepo.create({
             hostelId,
+            dayOfWeek: (data.dayOfWeek || 'ALL').toUpperCase().trim(),
             mealName: data.mealName.trim(),
             mealNameEn: data.mealNameEn?.trim() || null,
             time: data.time.trim(),
@@ -44,6 +60,8 @@ class MealRepository {
         const existing = await this.dailyMealRepo.findOne({ where: { id } });
         if (!existing)
             return null;
+        if (data.dayOfWeek !== undefined)
+            existing.dayOfWeek = data.dayOfWeek.toUpperCase().trim();
         if (data.mealName !== undefined)
             existing.mealName = data.mealName.trim();
         if (data.mealNameEn !== undefined)
@@ -62,12 +80,14 @@ class MealRepository {
         const result = await this.dailyMealRepo.delete({ id });
         return (result.affected ?? 0) > 0;
     }
-    async saveDailyMeals(hostelId, meals) {
+    async saveDailyMeals(hostelId, meals, dayOfWeek = 'ALL') {
+        const normDay = (dayOfWeek || 'ALL').toUpperCase().trim();
         return database_source_1.AppDataSource.transaction(async (manager) => {
             const repo = manager.getRepository(hostel_daily_meal_entity_1.HostelDailyMeal);
-            await repo.delete({ hostelId });
+            await repo.delete({ hostelId, dayOfWeek: normDay });
             const entities = meals.map((m, idx) => repo.create({
                 hostelId,
+                dayOfWeek: normDay,
                 mealName: m.mealName.trim(),
                 mealNameEn: m.mealNameEn?.trim() || null,
                 time: m.time.trim(),
@@ -77,13 +97,21 @@ class MealRepository {
             }));
             await repo.save(entities);
             return repo.find({
-                where: { hostelId },
+                where: { hostelId, dayOfWeek: normDay },
                 order: { orderIndex: 'ASC', createdAt: 'ASC' },
             });
         });
     }
-    async clearDailyMeals(hostelId) {
-        await this.dailyMealRepo.delete({ hostelId });
+    async clearDailyMeals(hostelId, dayOfWeek) {
+        if (dayOfWeek) {
+            await this.dailyMealRepo.delete({
+                hostelId,
+                dayOfWeek: dayOfWeek.toUpperCase().trim(),
+            });
+        }
+        else {
+            await this.dailyMealRepo.delete({ hostelId });
+        }
     }
     async saveWeeklySchedule(hostelId, mealInputs) {
         return database_source_1.AppDataSource.transaction(async (manager) => {

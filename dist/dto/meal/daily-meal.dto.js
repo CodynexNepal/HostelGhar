@@ -25,6 +25,12 @@ __decorate([
     __metadata("design:type", String)
 ], DailyMealItemDto.prototype, "id", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'dayOfWeek must be a string' }),
+    (0, class_validator_1.MaxLength)(20, { message: 'dayOfWeek cannot exceed 20 characters' }),
+    __metadata("design:type", String)
+], DailyMealItemDto.prototype, "dayOfWeek", void 0);
+__decorate([
     (0, class_validator_1.IsNotEmpty)({ message: 'खानाको प्रकार (mealName) is required' }),
     (0, class_validator_1.IsString)({ message: 'mealName must be a string' }),
     (0, class_validator_1.MinLength)(2, { message: 'mealName must be at least 2 characters' }),
@@ -63,6 +69,12 @@ __decorate([
 class CreateDailyMealDto {
 }
 exports.CreateDailyMealDto = CreateDailyMealDto;
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'dayOfWeek must be a string' }),
+    (0, class_validator_1.MaxLength)(20, { message: 'dayOfWeek cannot exceed 20 characters' }),
+    __metadata("design:type", String)
+], CreateDailyMealDto.prototype, "dayOfWeek", void 0);
 __decorate([
     (0, class_validator_1.IsNotEmpty)({ message: 'खानाको प्रकार (mealName) is required' }),
     (0, class_validator_1.IsString)({ message: 'mealName must be a string' }),
@@ -104,6 +116,12 @@ class UpdateDailyMealDto {
 exports.UpdateDailyMealDto = UpdateDailyMealDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'dayOfWeek must be a string' }),
+    (0, class_validator_1.MaxLength)(20, { message: 'dayOfWeek cannot exceed 20 characters' }),
+    __metadata("design:type", String)
+], UpdateDailyMealDto.prototype, "dayOfWeek", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)({ message: 'mealName must be a string' }),
     (0, class_validator_1.MinLength)(2, { message: 'mealName must be at least 2 characters' }),
     (0, class_validator_1.MaxLength)(100, { message: 'mealName cannot exceed 100 characters' }),
@@ -141,6 +159,12 @@ __decorate([
 class SaveDailyMealsDto {
 }
 exports.SaveDailyMealsDto = SaveDailyMealsDto;
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'dayOfWeek must be a string' }),
+    (0, class_validator_1.MaxLength)(20, { message: 'dayOfWeek cannot exceed 20 characters' }),
+    __metadata("design:type", String)
+], SaveDailyMealsDto.prototype, "dayOfWeek", void 0);
 __decorate([
     (0, class_validator_1.IsArray)({ message: 'meals must be an array' }),
     (0, class_validator_1.ArrayMaxSize)(20, { message: 'meals cannot contain more than 20 daily items' }),

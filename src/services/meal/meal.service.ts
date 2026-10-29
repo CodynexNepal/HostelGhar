@@ -31,6 +31,7 @@ export interface FormattedMealDay {
 
 export interface DailyMealSlot {
   id?: string | null;
+  dayOfWeek?: string;
   mealName: string;
   mealNameEn: string | null;
   time: string;
@@ -43,10 +44,12 @@ export interface DailyMealSlot {
 
 export interface DailyScheduleResponse {
   hostelId: string;
+  dayOfWeek?: string;
   hasSchedule: boolean;
   isConfigured: boolean;
   lastUpdatedAt: Date | null;
   schedule: DailyMealSlot[];
+  configuredDays?: string[];
 }
 
 export const DEFAULT_DAILY_MEAL_SLOTS: DailyMealSlot[] = [
@@ -314,6 +317,7 @@ export class MealService {
   public async getDailySchedule(
     hostelId: string,
     user?: { userId: string; role: string },
+    dayOfWeek?: string,
   ): Promise<{ data?: DailyScheduleResponse; error?: { status: number; message: string } }> {
     if (!isUuidV4(hostelId)) {
       return {
@@ -350,15 +354,21 @@ export class MealService {
       }
     }
 
-    const rawDailyMeals = await this.repo.findDailyMealsByHostelId(hostelId);
+    const allRawMeals = await this.repo.findAllDailyMealsRaw(hostelId);
+    const configuredDays = Array.from(new Set(allRawMeals.map((m) => m.dayOfWeek || 'ALL')));
+
+    const normDay = dayOfWeek ? dayOfWeek.toUpperCase().trim() : 'ALL';
+    const rawDailyMeals = await this.repo.findDailyMealsByHostelId(hostelId, normDay);
     if (rawDailyMeals.length === 0) {
       return {
         data: {
           hostelId,
+          dayOfWeek: normDay,
           hasSchedule: false,
-          isConfigured: false,
+          isConfigured: configuredDays.length > 0,
           lastUpdatedAt: null,
-          schedule: DEFAULT_DAILY_MEAL_SLOTS,
+          schedule: DEFAULT_DAILY_MEAL_SLOTS.map((s) => ({ ...s, dayOfWeek: normDay })),
+          configuredDays,
         },
       };
     }
@@ -370,6 +380,7 @@ export class MealService {
       }
       return {
         id: m.id,
+        dayOfWeek: m.dayOfWeek,
         mealName: m.mealName,
         mealNameEn: m.mealNameEn,
         time: m.time,
@@ -384,10 +395,12 @@ export class MealService {
     return {
       data: {
         hostelId,
+        dayOfWeek: normDay,
         hasSchedule: true,
         isConfigured: true,
         lastUpdatedAt: maxUpdated,
         schedule,
+        configuredDays,
       },
     };
   }
@@ -396,6 +409,7 @@ export class MealService {
     hostelId: string,
     user: { userId: string; role: string },
     dto: {
+      dayOfWeek?: string;
       mealName: string;
       mealNameEn?: string | null;
       time: string;
@@ -421,6 +435,7 @@ export class MealService {
     return {
       data: {
         id: created.id,
+        dayOfWeek: created.dayOfWeek,
         mealName: created.mealName,
         mealNameEn: created.mealNameEn,
         time: created.time,
@@ -438,6 +453,7 @@ export class MealService {
     mealId: string,
     user: { userId: string; role: string },
     dto: {
+      dayOfWeek?: string;
       mealName?: string;
       mealNameEn?: string | null;
       time?: string;
@@ -475,6 +491,7 @@ export class MealService {
     return {
       data: {
         id: updated.id,
+        dayOfWeek: updated.dayOfWeek,
         mealName: updated.mealName,
         mealNameEn: updated.mealNameEn,
         time: updated.time,
@@ -521,6 +538,7 @@ export class MealService {
     user: { userId: string; role: string },
     meals: Array<{
       id?: string;
+      dayOfWeek?: string;
       mealName: string;
       mealNameEn?: string | null;
       time: string;
@@ -528,6 +546,7 @@ export class MealService {
       isActive?: boolean;
       orderIndex?: number;
     }>,
+    dayOfWeek: string = 'ALL',
   ): Promise<{ data?: DailyScheduleResponse; error?: { status: number; message: string } }> {
     if (!isUuidV4(hostelId)) {
       return {
@@ -540,8 +559,12 @@ export class MealService {
       return { error: authCheck.error };
     }
 
-    const saved = await this.repo.saveDailyMeals(hostelId, meals);
+    const normDay = (dayOfWeek || 'ALL').toUpperCase().trim();
+    const saved = await this.repo.saveDailyMeals(hostelId, meals, normDay);
     await this.invalidate(hostelId);
+
+    const allRawMeals = await this.repo.findAllDailyMealsRaw(hostelId);
+    const configuredDays = Array.from(new Set(allRawMeals.map((m) => m.dayOfWeek || 'ALL')));
 
     let maxUpdated: Date | null = null;
     const schedule: DailyMealSlot[] = saved.map((m) => {
@@ -550,6 +573,7 @@ export class MealService {
       }
       return {
         id: m.id,
+        dayOfWeek: m.dayOfWeek,
         mealName: m.mealName,
         mealNameEn: m.mealNameEn,
         time: m.time,
@@ -564,10 +588,12 @@ export class MealService {
     return {
       data: {
         hostelId,
+        dayOfWeek: normDay,
         hasSchedule: schedule.length > 0,
         isConfigured: true,
         lastUpdatedAt: maxUpdated,
         schedule,
+        configuredDays,
       },
     };
   }
@@ -575,6 +601,7 @@ export class MealService {
   public async clearDailySchedule(
     hostelId: string,
     user: { userId: string; role: string },
+    dayOfWeek?: string,
   ): Promise<{ data?: DailyScheduleResponse; error?: { status: number; message: string } }> {
     if (!isUuidV4(hostelId)) {
       return {
@@ -587,16 +614,22 @@ export class MealService {
       return { error: authCheck.error };
     }
 
-    await this.repo.clearDailyMeals(hostelId);
+    const normDay = dayOfWeek ? dayOfWeek.toUpperCase().trim() : undefined;
+    await this.repo.clearDailyMeals(hostelId, normDay);
     await this.invalidate(hostelId);
+
+    const allRawMeals = await this.repo.findAllDailyMealsRaw(hostelId);
+    const configuredDays = Array.from(new Set(allRawMeals.map((m) => m.dayOfWeek || 'ALL')));
 
     return {
       data: {
         hostelId,
+        dayOfWeek: normDay || 'ALL',
         hasSchedule: false,
-        isConfigured: false,
+        isConfigured: configuredDays.length > 0,
         lastUpdatedAt: null,
-        schedule: DEFAULT_DAILY_MEAL_SLOTS,
+        schedule: DEFAULT_DAILY_MEAL_SLOTS.map((s) => ({ ...s, dayOfWeek: normDay || 'ALL' })),
+        configuredDays,
       },
     };
   }

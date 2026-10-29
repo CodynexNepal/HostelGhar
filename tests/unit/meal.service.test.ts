@@ -86,9 +86,14 @@ describe('MealService', () => {
   let dailyMealStore: HostelDailyMeal[] = [];
 
   const fakeDailyMealRepo = {
-    find: vi.fn().mockImplementation(async ({ where }) => {
+    find: vi.fn().mockImplementation(async (opts) => {
+      const where = opts?.where;
       if (where?.hostelId) {
-        return dailyMealStore.filter((m) => m.hostelId === where.hostelId);
+        return dailyMealStore.filter((m) => {
+          if (m.hostelId !== where.hostelId) return false;
+          if (where.dayOfWeek && (m.dayOfWeek || 'ALL') !== where.dayOfWeek) return false;
+          return true;
+        });
       }
       return dailyMealStore;
     }),
@@ -131,8 +136,13 @@ describe('MealService', () => {
         return { affected: initial - dailyMealStore.length };
       }
       if (criteria.hostelId) {
-        dailyMealStore = dailyMealStore.filter((m) => m.hostelId !== criteria.hostelId);
-        return { affected: 1 };
+        const initial = dailyMealStore.length;
+        dailyMealStore = dailyMealStore.filter((m) => {
+          if (m.hostelId !== criteria.hostelId) return true;
+          if (criteria.dayOfWeek && (m.dayOfWeek || 'ALL') !== criteria.dayOfWeek) return true;
+          return false;
+        });
+        return { affected: initial - dailyMealStore.length };
       }
       return { affected: 0 };
     }),
@@ -473,6 +483,51 @@ describe('MealService', () => {
 
       expect(res.error).toBeUndefined();
       expect(res.data?.schedule).toBeDefined();
+    });
+
+    it('supports configuring and retrieving meal schedules for specific days of the week', async () => {
+      const service = new MealService(new MealRepository());
+
+      // Save schedule specifically for SUNDAY
+      const sundaySlots = [
+        {
+          mealName: 'बिहानको नास्ता',
+          mealNameEn: 'Breakfast',
+          time: '7:30 AM–8:30 AM',
+          menuDescription: 'Sunday Special: Halwa Puri & Milk Tea',
+          isActive: true,
+          orderIndex: 1,
+        },
+        {
+          mealName: 'दिउँसोको खाना',
+          mealNameEn: 'Lunch / Khana',
+          time: '12:00 PM–1:00 PM',
+          menuDescription: 'Sunday Special: Rice, Mutton Curry, Salad',
+          isActive: true,
+          orderIndex: 2,
+        },
+      ];
+
+      const saveRes = await service.saveDailySchedule(
+        hostelId,
+        { userId: ownerId, role: 'OWNER' },
+        sundaySlots,
+        'SUNDAY',
+      );
+      expect(saveRes.error).toBeUndefined();
+      expect(saveRes.data?.dayOfWeek).toBe('SUNDAY');
+      expect(saveRes.data?.schedule).toHaveLength(2);
+      expect(saveRes.data?.schedule[0].menuDescription).toContain('Halwa Puri');
+
+      // Retrieve for SUNDAY
+      const getSunday = await service.getDailySchedule(
+        hostelId,
+        { userId: ownerId, role: 'OWNER' },
+        'SUNDAY',
+      );
+      expect(getSunday.data?.schedule).toHaveLength(2);
+      expect(getSunday.data?.schedule[1].menuDescription).toContain('Mutton Curry');
+      expect(getSunday.data?.configuredDays).toContain('SUNDAY');
     });
   });
 });

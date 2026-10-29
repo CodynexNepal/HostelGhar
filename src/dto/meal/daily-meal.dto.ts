@@ -22,6 +22,11 @@ export class DailyMealItemDto {
   @IsString()
   id?: string;
 
+  @IsOptional()
+  @IsString({ message: 'dayOfWeek must be a string' })
+  @MaxLength(20, { message: 'dayOfWeek cannot exceed 20 characters' })
+  dayOfWeek?: string;
+
   @IsNotEmpty({ message: 'खानाको प्रकार (mealName) is required' })
   @IsString({ message: 'mealName must be a string' })
   @MinLength(2, { message: 'mealName must be at least 2 characters' })
@@ -54,6 +59,11 @@ export class DailyMealItemDto {
 }
 
 export class CreateDailyMealDto {
+  @IsOptional()
+  @IsString({ message: 'dayOfWeek must be a string' })
+  @MaxLength(20, { message: 'dayOfWeek cannot exceed 20 characters' })
+  dayOfWeek?: string;
+
   @IsNotEmpty({ message: 'खानाको प्रकार (mealName) is required' })
   @IsString({ message: 'mealName must be a string' })
   @MinLength(2, { message: 'mealName must be at least 2 characters' })
@@ -87,6 +97,11 @@ export class CreateDailyMealDto {
 
 export class UpdateDailyMealDto {
   @IsOptional()
+  @IsString({ message: 'dayOfWeek must be a string' })
+  @MaxLength(20, { message: 'dayOfWeek cannot exceed 20 characters' })
+  dayOfWeek?: string;
+
+  @IsOptional()
   @IsString({ message: 'mealName must be a string' })
   @MinLength(2, { message: 'mealName must be at least 2 characters' })
   @MaxLength(100, { message: 'mealName cannot exceed 100 characters' })
@@ -118,6 +133,11 @@ export class UpdateDailyMealDto {
 }
 
 export class SaveDailyMealsDto {
+  @IsOptional()
+  @IsString({ message: 'dayOfWeek must be a string' })
+  @MaxLength(20, { message: 'dayOfWeek cannot exceed 20 characters' })
+  dayOfWeek?: string;
+
   @IsArray({ message: 'meals must be an array' })
   @ArrayMaxSize(20, { message: 'meals cannot contain more than 20 daily items' })
   @ValidateNested({ each: true })

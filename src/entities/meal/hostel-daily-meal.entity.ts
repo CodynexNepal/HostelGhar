@@ -18,6 +18,7 @@ import { Hostel } from '../hostel/hostel.entity';
 @Entity('hostel_daily_meals')
 @Index('idx_hostel_daily_meals_hostel_id', ['hostelId'])
 @Index('idx_hostel_daily_meals_hostel_order', ['hostelId', 'orderIndex'])
+@Index('idx_hostel_daily_meals_hostel_day_order', ['hostelId', 'dayOfWeek', 'orderIndex'])
 export class HostelDailyMeal {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -28,6 +29,10 @@ export class HostelDailyMeal {
   @ManyToOne(() => Hostel, (hostel) => hostel.dailyMeals, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'hostelId' })
   hostel!: Hostel;
+
+  /** Day of week (e.g. ALL, SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY) */
+  @Column({ type: 'varchar', length: 20, default: 'ALL', nullable: false })
+  dayOfWeek!: string;
 
   /** Nepali meal name, e.g. बिहानको नास्ता, बिहानको खाजा, दिउँसोको खाना */
   @Column({ type: 'varchar', length: 100, nullable: false })

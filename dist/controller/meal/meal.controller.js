@@ -88,7 +88,8 @@ class MealController {
                         role: req.user.role ?? '',
                     }
                     : undefined;
-                const result = await this.mealService.getDailySchedule(hostelId, user);
+                const dayOfWeek = (req.query.dayOfWeek || req.query.day);
+                const result = await this.mealService.getDailySchedule(hostelId, user, dayOfWeek);
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
                     return;
@@ -177,7 +178,8 @@ class MealController {
                     role: req.user.role ?? '',
                 };
                 const meals = Array.isArray(req.body?.meals) ? req.body.meals : req.body;
-                const result = await this.mealService.saveDailySchedule(hostelId, user, meals);
+                const dayOfWeek = (req.body?.dayOfWeek || req.query.dayOfWeek || req.query.day || 'ALL');
+                const result = await this.mealService.saveDailySchedule(hostelId, user, meals, dayOfWeek);
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
                     return;
@@ -199,7 +201,8 @@ class MealController {
                     userId: req.user.userId,
                     role: req.user.role ?? '',
                 };
-                const result = await this.mealService.clearDailySchedule(hostelId, user);
+                const dayOfWeek = (req.query.dayOfWeek || req.query.day);
+                const result = await this.mealService.clearDailySchedule(hostelId, user, dayOfWeek);
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
                     return;

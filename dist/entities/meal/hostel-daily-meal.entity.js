@@ -33,6 +33,10 @@ __decorate([
     __metadata("design:type", hostel_entity_1.Hostel)
 ], HostelDailyMeal.prototype, "hostel", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 20, default: 'ALL', nullable: false }),
+    __metadata("design:type", String)
+], HostelDailyMeal.prototype, "dayOfWeek", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'varchar', length: 100, nullable: false }),
     __metadata("design:type", String)
 ], HostelDailyMeal.prototype, "mealName", void 0);
@@ -67,5 +71,6 @@ __decorate([
 exports.HostelDailyMeal = HostelDailyMeal = __decorate([
     (0, typeorm_1.Entity)('hostel_daily_meals'),
     (0, typeorm_1.Index)('idx_hostel_daily_meals_hostel_id', ['hostelId']),
-    (0, typeorm_1.Index)('idx_hostel_daily_meals_hostel_order', ['hostelId', 'orderIndex'])
+    (0, typeorm_1.Index)('idx_hostel_daily_meals_hostel_order', ['hostelId', 'orderIndex']),
+    (0, typeorm_1.Index)('idx_hostel_daily_meals_hostel_day_order', ['hostelId', 'dayOfWeek', 'orderIndex'])
 ], HostelDailyMeal);

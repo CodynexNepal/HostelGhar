@@ -21,6 +21,7 @@ export interface MealDayInput {
 
 export interface DailyMealInput {
   id?: string;
+  dayOfWeek?: string;
   mealName: string;
   mealNameEn?: string | null;
   time: string;
@@ -45,10 +46,28 @@ export class MealRepository {
     });
   }
 
-  public async findDailyMealsByHostelId(hostelId: string): Promise<HostelDailyMeal[]> {
+  public async findDailyMealsByHostelId(
+    hostelId: string,
+    dayOfWeek?: string,
+  ): Promise<HostelDailyMeal[]> {
+    const normDay = dayOfWeek ? dayOfWeek.toUpperCase().trim() : undefined;
+    if (normDay && normDay !== 'ALL') {
+      const specific = await this.dailyMealRepo.find({
+        where: { hostelId, dayOfWeek: normDay },
+        order: { orderIndex: 'ASC', createdAt: 'ASC' },
+      });
+      if (specific.length > 0) return specific;
+    }
+    return this.dailyMealRepo.find({
+      where: { hostelId, dayOfWeek: 'ALL' },
+      order: { orderIndex: 'ASC', createdAt: 'ASC' },
+    });
+  }
+
+  public async findAllDailyMealsRaw(hostelId: string): Promise<HostelDailyMeal[]> {
     return this.dailyMealRepo.find({
       where: { hostelId },
-      order: { orderIndex: 'ASC', createdAt: 'ASC' },
+      order: { dayOfWeek: 'ASC', orderIndex: 'ASC', createdAt: 'ASC' },
     });
   }
 
@@ -59,6 +78,7 @@ export class MealRepository {
   public async createDailyMeal(hostelId: string, data: DailyMealInput): Promise<HostelDailyMeal> {
     const meal = this.dailyMealRepo.create({
       hostelId,
+      dayOfWeek: (data.dayOfWeek || 'ALL').toUpperCase().trim(),
       mealName: data.mealName.trim(),
       mealNameEn: data.mealNameEn?.trim() || null,
       time: data.time.trim(),
@@ -76,6 +96,7 @@ export class MealRepository {
     const existing = await this.dailyMealRepo.findOne({ where: { id } });
     if (!existing) return null;
 
+    if (data.dayOfWeek !== undefined) existing.dayOfWeek = data.dayOfWeek.toUpperCase().trim();
     if (data.mealName !== undefined) existing.mealName = data.mealName.trim();
     if (data.mealNameEn !== undefined) existing.mealNameEn = data.mealNameEn?.trim() || null;
     if (data.time !== undefined) existing.time = data.time.trim();
@@ -95,14 +116,17 @@ export class MealRepository {
   public async saveDailyMeals(
     hostelId: string,
     meals: DailyMealInput[],
+    dayOfWeek: string = 'ALL',
   ): Promise<HostelDailyMeal[]> {
+    const normDay = (dayOfWeek || 'ALL').toUpperCase().trim();
     return AppDataSource.transaction(async (manager) => {
       const repo = manager.getRepository(HostelDailyMeal);
-      await repo.delete({ hostelId });
+      await repo.delete({ hostelId, dayOfWeek: normDay });
 
       const entities = meals.map((m, idx) =>
         repo.create({
           hostelId,
+          dayOfWeek: normDay,
           mealName: m.mealName.trim(),
           mealNameEn: m.mealNameEn?.trim() || null,
           time: m.time.trim(),
@@ -114,14 +138,21 @@ export class MealRepository {
 
       await repo.save(entities);
       return repo.find({
-        where: { hostelId },
+        where: { hostelId, dayOfWeek: normDay },
         order: { orderIndex: 'ASC', createdAt: 'ASC' },
       });
     });
   }
 
-  public async clearDailyMeals(hostelId: string): Promise<void> {
-    await this.dailyMealRepo.delete({ hostelId });
+  public async clearDailyMeals(hostelId: string, dayOfWeek?: string): Promise<void> {
+    if (dayOfWeek) {
+      await this.dailyMealRepo.delete({
+        hostelId,
+        dayOfWeek: dayOfWeek.toUpperCase().trim(),
+      });
+    } else {
+      await this.dailyMealRepo.delete({ hostelId });
+    }
   }
 
   public async saveWeeklySchedule(
