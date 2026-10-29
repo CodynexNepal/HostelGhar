@@ -24,6 +24,7 @@ import { Subscription } from '../subscription/subscription.entity';
 import { Staff } from '../staff/staff.entity';
 import { HostelRating } from '../rating/hostel-rating.entity';
 import { HostelMeal } from '../meal/hostel-meal.entity';
+import { HostelDailyMeal } from '../meal/hostel-daily-meal.entity';
 
 @Entity('hostels')
 @Index('idx_hostels_owner_id', ['ownerId'])
@@ -137,6 +138,9 @@ export class Hostel {
 
   @OneToMany(() => HostelMeal, (meal) => meal.hostel)
   meals!: HostelMeal[];
+
+  @OneToMany(() => HostelDailyMeal, (m) => m.hostel)
+  dailyMeals!: HostelDailyMeal[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

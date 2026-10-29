@@ -23,6 +23,7 @@ interface SendInvoiceEmailInput {
   dueDate: string;
   isDraftPreview: boolean;
   actorId: string;
+  residentEmail?: string | undefined;
 }
 
 const MONTH_SHORT = [
@@ -42,7 +43,7 @@ const MONTH_SHORT = [
 
 export const sendInvoiceEmail = async (input: SendInvoiceEmailInput): Promise<string | null> => {
   const { fee, resident, hostel } = input;
-  const recipient = resident.user?.email?.trim();
+  const recipient = resident.user?.email?.trim() || input.residentEmail?.trim();
   if (!recipient) return null;
 
   const ownerName =
@@ -76,14 +77,20 @@ export const sendInvoiceEmail = async (input: SendInvoiceEmailInput): Promise<st
     html: bill.html,
   });
 
-  socketServer.toUser(resident.userId, SocketEvent.PAYMENT_PROCESSED, {
-    title: input.isDraftPreview ? 'Invoice Preview Ready' : 'New Invoice Issued',
-    message: input.isDraftPreview
-      ? `A draft invoice preview for ${billingLabel} is ready at ${hostel.name}.`
-      : `Your ${billingLabel} hostel invoice of NPR ${input.totalPayable} is due by ${input.dueDate}.`,
-    feeId: fee.id,
-    totalPayable: input.totalPayable,
-  });
+  try {
+    if (resident.userId) {
+      socketServer.toUser(resident.userId, SocketEvent.PAYMENT_PROCESSED, {
+        title: input.isDraftPreview ? 'Invoice Preview Ready' : 'New Invoice Issued',
+        message: input.isDraftPreview
+          ? `A draft invoice preview for ${billingLabel} is ready at ${hostel.name}.`
+          : `Your ${billingLabel} hostel invoice of NPR ${input.totalPayable} is due by ${input.dueDate}.`,
+        feeId: fee.id,
+        totalPayable: input.totalPayable,
+      });
+    }
+  } catch {
+    // Non-blocking socket broadcast
+  }
 
   return recipient;
 };

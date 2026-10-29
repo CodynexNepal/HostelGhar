@@ -25,6 +25,7 @@ const subscription_entity_1 = require("../subscription/subscription.entity");
 const staff_entity_1 = require("../staff/staff.entity");
 const hostel_rating_entity_1 = require("../rating/hostel-rating.entity");
 const hostel_meal_entity_1 = require("../meal/hostel-meal.entity");
+const hostel_daily_meal_entity_1 = require("../meal/hostel-daily-meal.entity");
 let Hostel = class Hostel {
 };
 exports.Hostel = Hostel;
@@ -164,6 +165,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => hostel_meal_entity_1.HostelMeal, (meal) => meal.hostel),
     __metadata("design:type", Array)
 ], Hostel.prototype, "meals", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => hostel_daily_meal_entity_1.HostelDailyMeal, (m) => m.hostel),
+    __metadata("design:type", Array)
+], Hostel.prototype, "dailyMeals", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ type: 'timestamptz' }),
     __metadata("design:type", Date)

@@ -649,19 +649,19 @@ Manages the 7-day weekly breakfast and main meal menu for a hostel. Week runs fr
 
 The PostgreSQL table is `hostel_meals`:
 
-| Column | Type | Constraints / Description |
-|---|---|---|
-| `id` | `uuid` | Primary Key, `DEFAULT uuid_generate_v4()` |
-| `hostel_id` | `uuid` | Foreign Key → `hostels(id)` ON DELETE CASCADE |
-| `day_of_week` | `enum` | `'SUNDAY'`, `'MONDAY'`, `'TUESDAY'`, `'WEDNESDAY'`, `'THURSDAY'`, `'FRIDAY'`, `'SATURDAY'` |
-| `breakfast_description` | `text` | Nullable, max 1000 characters |
-| `breakfast_time` | `varchar(50)` | Nullable, serving time e.g. `"07:30 AM - 09:00 AM"` |
-| `breakfast_notes` | `text` | Nullable, max 500 characters |
-| `main_meal_description` | `text` | Nullable, max 1000 characters |
-| `main_meal_time` | `varchar(50)` | Nullable, serving time e.g. `"07:30 PM - 09:30 PM"` |
-| `main_meal_notes` | `text` | Nullable, max 500 characters |
-| `created_at` | `timestamptz` | Auto-set creation timestamp |
-| `updated_at` | `timestamptz` | Auto-set update timestamp |
+| Column                  | Type          | Constraints / Description                                                                  |
+| ----------------------- | ------------- | ------------------------------------------------------------------------------------------ |
+| `id`                    | `uuid`        | Primary Key, `DEFAULT uuid_generate_v4()`                                                  |
+| `hostel_id`             | `uuid`        | Foreign Key → `hostels(id)` ON DELETE CASCADE                                              |
+| `day_of_week`           | `enum`        | `'SUNDAY'`, `'MONDAY'`, `'TUESDAY'`, `'WEDNESDAY'`, `'THURSDAY'`, `'FRIDAY'`, `'SATURDAY'` |
+| `breakfast_description` | `text`        | Nullable, max 1000 characters                                                              |
+| `breakfast_time`        | `varchar(50)` | Nullable, serving time e.g. `"07:30 AM - 09:00 AM"`                                        |
+| `breakfast_notes`       | `text`        | Nullable, max 500 characters                                                               |
+| `main_meal_description` | `text`        | Nullable, max 1000 characters                                                              |
+| `main_meal_time`        | `varchar(50)` | Nullable, serving time e.g. `"07:30 PM - 09:30 PM"`                                        |
+| `main_meal_notes`       | `text`        | Nullable, max 500 characters                                                               |
+| `created_at`            | `timestamptz` | Auto-set creation timestamp                                                                |
+| `updated_at`            | `timestamptz` | Auto-set update timestamp                                                                  |
 
 **Unique Constraint**: `UQ_hostel_meals_hostel_day` on `(hostel_id, day_of_week)`.
 
@@ -679,9 +679,9 @@ The PostgreSQL table is `hostel_meals`:
 
 #### URL Parameters
 
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `hostelId` | `string` (UUID) | **Yes** | The unique ID of the hostel to configure meals for. |
+| Parameter  | Type            | Required | Description                                         |
+| ---------- | --------------- | -------- | --------------------------------------------------- |
+| `hostelId` | `string` (UUID) | **Yes**  | The unique ID of the hostel to configure meals for. |
 
 #### Request Body Values to Pass from Frontend
 
@@ -759,16 +759,16 @@ The request body takes an object with a `meals` array containing up to 7 day ite
 
 #### Field Specifications
 
-| Field | Type | Required | Max Length | Description |
-|---|---|---|---|---|
-| `meals` | `Array<MealDayItem>` | **Yes** | Max 7 items | Array of meal items for the week. |
-| `meals[].dayOfWeek` | `string` | **Yes** | Enum | Must be one of: `"SUNDAY"`, `"MONDAY"`, `"TUESDAY"`, `"WEDNESDAY"`, `"THURSDAY"`, `"FRIDAY"`, `"SATURDAY"`. |
-| `meals[].breakfastDescription` | `string \| null` | No | 1000 chars | Food items served for breakfast. Can be empty or `null` if not configured. |
-| `meals[].breakfastTime` | `string \| null` | No | 50 chars | Breakfast serving time window (e.g. `"07:30 AM - 09:00 AM"`). |
-| `meals[].breakfastNotes` | `string \| null` | No | 500 chars | Optional dietary notes or instructions for breakfast. |
-| `meals[].mainMealDescription` | `string \| null` | No | 1000 chars | Food items served for the main meal (lunch / dinner). |
-| `meals[].mainMealTime` | `string \| null` | No | 50 chars | Main meal serving time window (e.g. `"07:30 PM - 09:30 PM"`). |
-| `meals[].mainMealNotes` | `string \| null` | No | 500 chars | Optional dietary notes or instructions for the main meal. |
+| Field                          | Type                 | Required | Max Length  | Description                                                                                                 |
+| ------------------------------ | -------------------- | -------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| `meals`                        | `Array<MealDayItem>` | **Yes**  | Max 7 items | Array of meal items for the week.                                                                           |
+| `meals[].dayOfWeek`            | `string`             | **Yes**  | Enum        | Must be one of: `"SUNDAY"`, `"MONDAY"`, `"TUESDAY"`, `"WEDNESDAY"`, `"THURSDAY"`, `"FRIDAY"`, `"SATURDAY"`. |
+| `meals[].breakfastDescription` | `string \| null`     | No       | 1000 chars  | Food items served for breakfast. Can be empty or `null` if not configured.                                  |
+| `meals[].breakfastTime`        | `string \| null`     | No       | 50 chars    | Breakfast serving time window (e.g. `"07:30 AM - 09:00 AM"`).                                               |
+| `meals[].breakfastNotes`       | `string \| null`     | No       | 500 chars   | Optional dietary notes or instructions for breakfast.                                                       |
+| `meals[].mainMealDescription`  | `string \| null`     | No       | 1000 chars  | Food items served for the main meal (lunch / dinner).                                                       |
+| `meals[].mainMealTime`         | `string \| null`     | No       | 50 chars    | Main meal serving time window (e.g. `"07:30 PM - 09:30 PM"`).                                               |
+| `meals[].mainMealNotes`        | `string \| null`     | No       | 500 chars   | Optional dietary notes or instructions for the main meal.                                                   |
 
 #### Frontend Fetch / Axios Example
 
@@ -781,7 +781,7 @@ const response = await fetch(`/api/v1/hostel-ghar/hostels/${hostelId}/meals`, {
   method: 'PUT',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
   },
   body: JSON.stringify({
     meals: [
@@ -792,10 +792,10 @@ const response = await fetch(`/api/v1/hostel-ghar/hostels/${hostelId}/meals`, {
         breakfastNotes: 'Extra egg available on request',
         mainMealDescription: 'Dal Bhat, Chicken Curry, Saag',
         mainMealTime: '07:30 PM - 09:30 PM',
-        mainMealNotes: 'Veg option available'
+        mainMealNotes: 'Veg option available',
       },
       // ... other days
-    ]
+    ],
   }),
 });
 
@@ -955,11 +955,11 @@ Manages precise geographic coordinates (latitude and longitude) and public visib
 
 #### Field Specifications
 
-| Field | Type | Required | Validation Range | Description |
-|---|---|---|---|---|
-| `latitude` | `number \| null` | No | `-90` to `90` | Exact GPS latitude. |
-| `longitude` | `number \| null` | No | `-180` to `180` | Exact GPS longitude. |
-| `isLocationShared` | `boolean` | **Yes** | `true` or `false` | Whether coordinates are displayed publicly on `hostelghar.com`. |
+| Field              | Type             | Required | Validation Range  | Description                                                     |
+| ------------------ | ---------------- | -------- | ----------------- | --------------------------------------------------------------- |
+| `latitude`         | `number \| null` | No       | `-90` to `90`     | Exact GPS latitude.                                             |
+| `longitude`        | `number \| null` | No       | `-180` to `180`   | Exact GPS longitude.                                            |
+| `isLocationShared` | `boolean`        | **Yes**  | `true` or `false` | Whether coordinates are displayed publicly on `hostelghar.com`. |
 
 #### Success Response (`200 OK`)
 

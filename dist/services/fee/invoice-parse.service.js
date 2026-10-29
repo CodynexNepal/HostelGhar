@@ -120,6 +120,7 @@ const resolveInvoiceSendMode = (dto) => {
             'SEND_NOW',
             'SENDNOW',
             'SEND',
+            'SENT',
             'FINAL',
             'ISSUE',
             'ISSUED',

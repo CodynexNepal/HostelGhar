@@ -4,7 +4,7 @@
 // PURPOSE: Business logic, validation, caching, and authorization for hostel meals.
 // ──────────────────────────────────────────────────────────────────────────────
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MealService = exports.isUuidV4 = void 0;
+exports.MealService = exports.DEFAULT_DAILY_MEAL_SLOTS = exports.isUuidV4 = void 0;
 const database_source_1 = require("../../database/database-source");
 const hostel_entity_1 = require("../../entities/hostel/hostel.entity");
 const meal_enum_1 = require("../../enum/meal.enum");
@@ -15,6 +15,48 @@ const meal_repository_1 = require("../../repository/meal/meal.repository");
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const isUuidV4 = (v) => typeof v === 'string' && UUID_V4.test(v.trim());
 exports.isUuidV4 = isUuidV4;
+exports.DEFAULT_DAILY_MEAL_SLOTS = [
+    {
+        mealName: 'बिहानको नास्ता',
+        mealNameEn: 'Morning Breakfast',
+        time: '7:00 AM–8:00 AM',
+        menuDescription: '',
+        isActive: true,
+        orderIndex: 1,
+    },
+    {
+        mealName: 'बिहानको खाजा',
+        mealNameEn: 'Morning Khaja',
+        time: '10:00 AM–11:00 AM',
+        menuDescription: '',
+        isActive: true,
+        orderIndex: 2,
+    },
+    {
+        mealName: 'दिउँसोको खाना',
+        mealNameEn: 'Lunch / Khana',
+        time: '12:00 PM–1:00 PM',
+        menuDescription: '',
+        isActive: true,
+        orderIndex: 3,
+    },
+    {
+        mealName: 'दिउँसोको खाजा',
+        mealNameEn: 'Afternoon Khaja',
+        time: '2:00 PM–3:00 PM',
+        menuDescription: '',
+        isActive: true,
+        orderIndex: 4,
+    },
+    {
+        mealName: 'बेलुकाको खाना',
+        mealNameEn: 'Dinner / Khana',
+        time: '7:00 PM–8:00 PM',
+        menuDescription: '',
+        isActive: true,
+        orderIndex: 5,
+    },
+];
 class MealService {
     constructor(repo = new meal_repository_1.MealRepository()) {
         this.repo = repo;
@@ -181,6 +223,223 @@ class MealService {
         await this.invalidate(hostelId);
         const empty = this.formatSchedule(hostelId, []);
         return { data: empty };
+    }
+    // ─── DAILY MEAL SCHEDULE (दैनिक भोजन तालिका) ─────────────────────────────
+    async getDailySchedule(hostelId, user) {
+        if (!(0, exports.isUuidV4)(hostelId)) {
+            return {
+                error: { status: statusCode_interface_1.STATUS_CODE.BAD_REQUEST, message: 'Invalid hostel id — must be UUID v4' },
+            };
+        }
+        const hostelRepo = database_source_1.AppDataSource.getRepository(hostel_entity_1.Hostel);
+        const hostel = await hostelRepo.findOne({
+            where: { id: hostelId },
+            select: { id: true, ownerId: true, isActive: true },
+        });
+        if (!hostel) {
+            return {
+                error: { status: statusCode_interface_1.STATUS_CODE.NOT_FOUND, message: 'Hostel not found' },
+            };
+        }
+        if (user) {
+            const authCheck = await this.verifyHostelOwner(hostelId, user);
+            if (authCheck.error) {
+                // Residents can view their own hostel's daily meals
+                const role = user.role?.toLowerCase();
+                if (role !== roles_enum_1.IROLES.RESIDENT) {
+                    return { error: authCheck.error };
+                }
+            }
+        }
+        else {
+            if (!hostel.isActive) {
+                return {
+                    error: { status: statusCode_interface_1.STATUS_CODE.NOT_FOUND, message: 'Hostel is inactive or not found' },
+                };
+            }
+        }
+        const rawDailyMeals = await this.repo.findDailyMealsByHostelId(hostelId);
+        if (rawDailyMeals.length === 0) {
+            return {
+                data: {
+                    hostelId,
+                    hasSchedule: false,
+                    isConfigured: false,
+                    lastUpdatedAt: null,
+                    schedule: exports.DEFAULT_DAILY_MEAL_SLOTS,
+                },
+            };
+        }
+        let maxUpdated = null;
+        const schedule = rawDailyMeals.map((m) => {
+            if (m.updatedAt && (!maxUpdated || new Date(m.updatedAt) > new Date(maxUpdated))) {
+                maxUpdated = m.updatedAt;
+            }
+            return {
+                id: m.id,
+                mealName: m.mealName,
+                mealNameEn: m.mealNameEn,
+                time: m.time,
+                menuDescription: m.menuDescription,
+                isActive: m.isActive,
+                orderIndex: m.orderIndex,
+                createdAt: m.createdAt,
+                updatedAt: m.updatedAt,
+            };
+        });
+        return {
+            data: {
+                hostelId,
+                hasSchedule: true,
+                isConfigured: true,
+                lastUpdatedAt: maxUpdated,
+                schedule,
+            },
+        };
+    }
+    async createDailyMeal(hostelId, user, dto) {
+        if (!(0, exports.isUuidV4)(hostelId)) {
+            return {
+                error: { status: statusCode_interface_1.STATUS_CODE.BAD_REQUEST, message: 'Invalid hostel id — must be UUID v4' },
+            };
+        }
+        const authCheck = await this.verifyHostelOwner(hostelId, user);
+        if (authCheck.error) {
+            return { error: authCheck.error };
+        }
+        const created = await this.repo.createDailyMeal(hostelId, dto);
+        await this.invalidate(hostelId);
+        return {
+            data: {
+                id: created.id,
+                mealName: created.mealName,
+                mealNameEn: created.mealNameEn,
+                time: created.time,
+                menuDescription: created.menuDescription,
+                isActive: created.isActive,
+                orderIndex: created.orderIndex,
+                createdAt: created.createdAt,
+                updatedAt: created.updatedAt,
+            },
+        };
+    }
+    async updateDailyMeal(hostelId, mealId, user, dto) {
+        if (!(0, exports.isUuidV4)(hostelId)) {
+            return {
+                error: { status: statusCode_interface_1.STATUS_CODE.BAD_REQUEST, message: 'Invalid hostel id — must be UUID v4' },
+            };
+        }
+        const authCheck = await this.verifyHostelOwner(hostelId, user);
+        if (authCheck.error) {
+            return { error: authCheck.error };
+        }
+        const existing = await this.repo.findDailyMealById(mealId);
+        if (!existing || existing.hostelId !== hostelId) {
+            return {
+                error: { status: statusCode_interface_1.STATUS_CODE.NOT_FOUND, message: 'Daily meal not found for this hostel' },
+            };
+        }
+        const updated = await this.repo.updateDailyMeal(mealId, dto);
+        if (!updated) {
+            return {
+                error: { status: statusCode_interface_1.STATUS_CODE.NOT_FOUND, message: 'Failed to update daily meal' },
+            };
+        }
+        await this.invalidate(hostelId);
+        return {
+            data: {
+                id: updated.id,
+                mealName: updated.mealName,
+                mealNameEn: updated.mealNameEn,
+                time: updated.time,
+                menuDescription: updated.menuDescription,
+                isActive: updated.isActive,
+                orderIndex: updated.orderIndex,
+                createdAt: updated.createdAt,
+                updatedAt: updated.updatedAt,
+            },
+        };
+    }
+    async deleteDailyMeal(hostelId, mealId, user) {
+        if (!(0, exports.isUuidV4)(hostelId)) {
+            return {
+                error: { status: statusCode_interface_1.STATUS_CODE.BAD_REQUEST, message: 'Invalid hostel id — must be UUID v4' },
+            };
+        }
+        const authCheck = await this.verifyHostelOwner(hostelId, user);
+        if (authCheck.error) {
+            return { error: authCheck.error };
+        }
+        const existing = await this.repo.findDailyMealById(mealId);
+        if (!existing || existing.hostelId !== hostelId) {
+            return {
+                error: { status: statusCode_interface_1.STATUS_CODE.NOT_FOUND, message: 'Daily meal not found for this hostel' },
+            };
+        }
+        await this.repo.deleteDailyMeal(mealId);
+        await this.invalidate(hostelId);
+        return { success: true };
+    }
+    async saveDailySchedule(hostelId, user, meals) {
+        if (!(0, exports.isUuidV4)(hostelId)) {
+            return {
+                error: { status: statusCode_interface_1.STATUS_CODE.BAD_REQUEST, message: 'Invalid hostel id — must be UUID v4' },
+            };
+        }
+        const authCheck = await this.verifyHostelOwner(hostelId, user);
+        if (authCheck.error) {
+            return { error: authCheck.error };
+        }
+        const saved = await this.repo.saveDailyMeals(hostelId, meals);
+        await this.invalidate(hostelId);
+        let maxUpdated = null;
+        const schedule = saved.map((m) => {
+            if (m.updatedAt && (!maxUpdated || new Date(m.updatedAt) > new Date(maxUpdated))) {
+                maxUpdated = m.updatedAt;
+            }
+            return {
+                id: m.id,
+                mealName: m.mealName,
+                mealNameEn: m.mealNameEn,
+                time: m.time,
+                menuDescription: m.menuDescription,
+                isActive: m.isActive,
+                orderIndex: m.orderIndex,
+                createdAt: m.createdAt,
+                updatedAt: m.updatedAt,
+            };
+        });
+        return {
+            data: {
+                hostelId,
+                hasSchedule: schedule.length > 0,
+                isConfigured: true,
+                lastUpdatedAt: maxUpdated,
+                schedule,
+            },
+        };
+    }
+    async clearDailySchedule(hostelId, user) {
+        if (!(0, exports.isUuidV4)(hostelId)) {
+            return {
+                error: { status: statusCode_interface_1.STATUS_CODE.BAD_REQUEST, message: 'Invalid hostel id — must be UUID v4' },
+            };
+        }
+        const authCheck = await this.verifyHostelOwner(hostelId, user);
+        if (authCheck.error) {
+            return { error: authCheck.error };
+        }
+        await this.repo.clearDailyMeals(hostelId);
+        await this.invalidate(hostelId);
+        return {
+            data: {
+                hostelId,
+                hasSchedule: false,
+                isConfigured: false,
+                lastUpdatedAt: null,
+                schedule: exports.DEFAULT_DAILY_MEAL_SLOTS,
+            },
+        };
     }
 }
 exports.MealService = MealService;

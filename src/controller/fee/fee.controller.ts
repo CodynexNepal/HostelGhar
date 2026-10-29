@@ -12,6 +12,9 @@ import {
   toNepaliDate,
   formatNepaliMonthYear,
 } from '../../utils/nepali-date.util';
+import { IROLES } from '../../enum/roles.enum';
+import { AppDataSource } from '../../database/database-source';
+import { Hostel } from '../../entities/hostel/hostel.entity';
 
 export class FeeController {
   constructor(private readonly feeService: FeeService) {}
@@ -22,6 +25,42 @@ export class FeeController {
     next: NextFunction,
   ): Promise<void> => {
     try {
+      let hostelId =
+        req.body?.hostelId || (req.query?.hostelId as string) || req.headers['x-hostel-id'];
+      if (typeof hostelId !== 'string' || !hostelId.trim()) {
+        hostelId = undefined;
+      }
+
+      if (req.user?.role?.toLowerCase() === IROLES.OWNER.toLowerCase()) {
+        const hostelRepo = AppDataSource.getRepository(Hostel);
+        if (!hostelId) {
+          const ownerHostel = await hostelRepo.findOne({
+            where: { ownerId: req.user.userId },
+            select: { id: true },
+          });
+          if (!ownerHostel) {
+            res.status(STATUS_CODE.FORBIDDEN).json({
+              success: false,
+              message: 'No hostel associated with this owner account',
+            });
+            return;
+          }
+          hostelId = ownerHostel.id;
+        } else {
+          const authorizedHostel = await hostelRepo.findOne({
+            where: { id: hostelId, ownerId: req.user.userId },
+            select: { id: true },
+          });
+          if (!authorizedHostel) {
+            res.status(STATUS_CODE.FORBIDDEN).json({
+              success: false,
+              message: 'You are not authorized to generate fees for this hostel',
+            });
+            return;
+          }
+        }
+      }
+
       const isAsync = req.query.async === 'true' || req.body?.async === true;
       if (isAsync) {
         const job = await systemEventQueue.add(
@@ -31,6 +70,7 @@ export class FeeController {
             billingMonth: req.body?.billingMonth,
             billingYear: req.body?.billingYear,
             baseFee: req.body?.baseFee,
+            hostelId,
           },
           {
             removeOnComplete: 100,
@@ -52,6 +92,7 @@ export class FeeController {
         req.body?.billingMonth,
         req.body?.billingYear,
         req.body?.baseFee,
+        { hostelId },
       );
       res.status(STATUS_CODE.OK).json({ success: true, result });
     } catch (error) {

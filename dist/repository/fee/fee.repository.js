@@ -11,9 +11,13 @@ class FeeRepository {
         this.feeRepo = database_source_1.AppDataSource.getRepository(fee_entity_1.Fee);
         this.residentRepo = database_source_1.AppDataSource.getRepository(resident_entity_1.Resident);
     }
-    async findActiveResidents() {
+    async findActiveResidents(hostelId) {
+        const where = { isActive: true };
+        if (hostelId) {
+            where.hostelId = hostelId;
+        }
         return this.residentRepo.find({
-            where: { isActive: true },
+            where,
             relations: { user: true, hostel: { owner: true } },
         });
     }

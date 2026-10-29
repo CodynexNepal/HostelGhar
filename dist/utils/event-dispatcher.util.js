@@ -233,11 +233,63 @@ class AppEventDispatcher extends events_1.EventEmitter {
             }, { correlationId: job.data.context?.correlationId })));
             return jobs.map((j, i) => ({ id: `direct-bulk-${i}`, name: j.name, data: j.data }));
         }
+        // Check if active BullMQ workers are currently subscribed to the email queue.
+        let hasActiveWorkers = false;
+        if (!isTest &&
+            cachedWorkerCheck &&
+            Date.now() - cachedWorkerCheck.timestamp < WORKER_CHECK_TTL_MS) {
+            hasActiveWorkers = cachedWorkerCheck.hasWorkers;
+        }
+        else if (typeof queue_factory_1.emailQueue.getWorkers === 'function') {
+            try {
+                const workers = await Promise.race([
+                    queue_factory_1.emailQueue.getWorkers(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Worker check timed out')), 2500).unref()),
+                ]);
+                hasActiveWorkers = Array.isArray(workers) && workers.length > 0;
+                if (!isTest) {
+                    cachedWorkerCheck = { hasWorkers: hasActiveWorkers, timestamp: Date.now() };
+                }
+            }
+            catch {
+                hasActiveWorkers = false;
+            }
+        }
+        else {
+            hasActiveWorkers = true;
+        }
+        if (!hasActiveWorkers) {
+            logger_1.logger.warn('No active BullMQ workers listening on email queue; dispatching bulk emails via direct SMTP', { jobCount: jobs.length });
+            const { emailSenderService } = await Promise.resolve().then(() => __importStar(require('../services/email/email-sender.service')));
+            await Promise.allSettled(jobs.map((job) => emailSenderService.send({
+                to: job.data.to,
+                subject: job.data.subject,
+                body: job.data.body || '',
+                ...(job.data.html ? { html: job.data.html } : {}),
+            }, { correlationId: job.data.context?.correlationId })));
+            return jobs.map((j, i) => ({ id: `direct-bulk-fallback-${i}`, name: j.name, data: j.data }));
+        }
         const timeoutMs = options?.timeoutMs ?? 5000;
-        return await Promise.race([
-            queue_factory_1.emailQueue.addBulk(jobs),
-            new Promise((_, reject) => setTimeout(() => reject(new Error(`Bulk queue jobs confirmation timed out after ${timeoutMs}ms`)), timeoutMs).unref()),
-        ]);
+        try {
+            return await Promise.race([
+                queue_factory_1.emailQueue.addBulk(jobs),
+                new Promise((_, reject) => setTimeout(() => reject(new Error(`Bulk queue jobs confirmation timed out after ${timeoutMs}ms`)), timeoutMs).unref()),
+            ]);
+        }
+        catch (err) {
+            logger_1.logger.warn('BullMQ bulk enqueue failed or timed out; falling back to direct SMTP delivery', {
+                error: err?.message || String(err),
+                jobCount: jobs.length,
+            });
+            const { emailSenderService } = await Promise.resolve().then(() => __importStar(require('../services/email/email-sender.service')));
+            await Promise.allSettled(jobs.map((job) => emailSenderService.send({
+                to: job.data.to,
+                subject: job.data.subject,
+                body: job.data.body || '',
+                ...(job.data.html ? { html: job.data.html } : {}),
+            }, { correlationId: job.data.context?.correlationId })));
+            return jobs.map((j, i) => ({ id: `direct-bulk-err-fallback-${i}`, name: j.name, data: j.data }));
+        }
     }
     /**
      * Helper to dispatch push/in-app notification to BullMQ queue

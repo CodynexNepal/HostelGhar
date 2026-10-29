@@ -36,7 +36,7 @@ class FeeAutomationWorker extends base_worker_1.BaseWorker {
     }
     async process(job) {
         if (job.name === exports.TRIGGER_MONTHLY_FEES_JOB) {
-            const result = await fee_service_1.feeService.generateMonthlyFeesForAllHostels(job.data?.billingMonth, job.data?.billingYear, job.data?.baseFee, { enforceNepaliFirstDay: false });
+            const result = await fee_service_1.feeService.generateMonthlyFeesForAllHostels(job.data?.billingMonth, job.data?.billingYear, job.data?.baseFee, { enforceNepaliFirstDay: false, hostelId: job.data?.hostelId });
             return result;
         }
         if (job.name === exports.SCHEDULED_NEPALI_FEE_CHECK_JOB || job.name === exports.SCHEDULED_MONTHLY_FEE_JOB) {

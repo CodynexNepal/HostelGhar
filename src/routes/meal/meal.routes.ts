@@ -10,14 +10,79 @@ import { Router } from 'express';
 import { MealFactory } from '../../factory/meal/meal.factory';
 import { validateDto } from '../../middleware/validate-dto.middleware';
 import { SaveWeeklyMealsDto } from '../../dto/meal/meal.dto';
+import {
+  CreateDailyMealDto,
+  UpdateDailyMealDto,
+  SaveDailyMealsDto,
+} from '../../dto/meal/daily-meal.dto';
 import { authenticate, optionalAuthenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
-import { apiReadLimiter } from '../../configs/rateLimiter.config';
+import { apiReadLimiter, sensitiveActionLimiter } from '../../configs/rateLimiter.config';
 import { requireParam } from '../../decorators/http.decorator';
 
 const mealRouter = Router({ mergeParams: true });
 const mealController = MealFactory.create();
 
+// ─── Daily Meal Schedule (दैनिक भोजन तालिका) ─────────────────────────────
+mealRouter.get(
+  '/daily',
+  optionalAuthenticate,
+  requireParam('hostelId'),
+  apiReadLimiter,
+  mealController.getDailySchedule,
+);
+
+mealRouter.post(
+  '/daily',
+  authenticate,
+  requireParam('hostelId'),
+  requireRoles(IROLES.OWNER, IROLES.ADMIN),
+  sensitiveActionLimiter,
+  validateDto(CreateDailyMealDto),
+  mealController.createDailyMeal,
+);
+
+mealRouter.put(
+  '/daily/:id',
+  authenticate,
+  requireParam('hostelId'),
+  requireParam('id'),
+  requireRoles(IROLES.OWNER, IROLES.ADMIN),
+  sensitiveActionLimiter,
+  validateDto(UpdateDailyMealDto),
+  mealController.updateDailyMeal,
+);
+
+mealRouter.delete(
+  '/daily/:id',
+  authenticate,
+  requireParam('hostelId'),
+  requireParam('id'),
+  requireRoles(IROLES.OWNER, IROLES.ADMIN),
+  sensitiveActionLimiter,
+  mealController.deleteDailyMeal,
+);
+
+mealRouter.put(
+  '/daily',
+  authenticate,
+  requireParam('hostelId'),
+  requireRoles(IROLES.OWNER, IROLES.ADMIN),
+  sensitiveActionLimiter,
+  validateDto(SaveDailyMealsDto),
+  mealController.saveDailySchedule,
+);
+
+mealRouter.delete(
+  '/daily',
+  authenticate,
+  requireParam('hostelId'),
+  requireRoles(IROLES.OWNER, IROLES.ADMIN),
+  sensitiveActionLimiter,
+  mealController.clearDailySchedule,
+);
+
+// ─── Weekly Meal Schedule (Existing Backward Compatible Endpoints) ────────
 // Public / Authenticated read
 mealRouter.get(
   '/',

@@ -133,6 +133,7 @@ export const resolveInvoiceSendMode = (dto: CreateInvoiceDto): 'DRAFT' | 'SEND_N
         'SEND_NOW',
         'SENDNOW',
         'SEND',
+        'SENT',
         'FINAL',
         'ISSUE',
         'ISSUED',

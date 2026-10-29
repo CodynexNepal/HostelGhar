@@ -65,9 +65,9 @@ class FeeService {
         const resolvedMonth = billingMonth ?? period.billingMonth;
         const resolvedYear = billingYear ?? period.billingYear;
         const dueDate = `${resolvedYear}-${String(resolvedMonth).padStart(2, '0')}-07`;
-        console.log(`🏦 [FeeService] Starting Nepali monthly fee automation for ${period.nepaliMonthLabel} (AD ${resolvedMonth}/${resolvedYear})...`);
+        console.log(`🏦 [FeeService] Starting Nepali monthly fee automation for ${period.nepaliMonthLabel} (AD ${resolvedMonth}/${resolvedYear})${options.hostelId ? ` for hostel ${options.hostelId}` : ''}...`);
         // Stream/batch active residents with user details and hostel owner details in a single query
-        const activeResidents = await this.feeRepository.findActiveResidents();
+        const activeResidents = await this.feeRepository.findActiveResidents(options.hostelId);
         if (activeResidents.length === 0) {
             return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel };
         }

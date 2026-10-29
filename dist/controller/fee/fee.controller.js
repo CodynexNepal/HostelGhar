@@ -8,11 +8,48 @@ const fee_enum_1 = require("../../enum/fee.enum");
 const queue_factory_1 = require("../../queue/queue.factory");
 const fee_scheduler_job_1 = require("../../jobs/fee-scheduler.job");
 const nepali_date_util_1 = require("../../utils/nepali-date.util");
+const roles_enum_1 = require("../../enum/roles.enum");
+const database_source_1 = require("../../database/database-source");
+const hostel_entity_1 = require("../../entities/hostel/hostel.entity");
 class FeeController {
     constructor(feeService) {
         this.feeService = feeService;
         this.generateMonthlyFees = async (req, res, next) => {
             try {
+                let hostelId = req.body?.hostelId || req.query?.hostelId || req.headers['x-hostel-id'];
+                if (typeof hostelId !== 'string' || !hostelId.trim()) {
+                    hostelId = undefined;
+                }
+                if (req.user?.role?.toLowerCase() === roles_enum_1.IROLES.OWNER.toLowerCase()) {
+                    const hostelRepo = database_source_1.AppDataSource.getRepository(hostel_entity_1.Hostel);
+                    if (!hostelId) {
+                        const ownerHostel = await hostelRepo.findOne({
+                            where: { ownerId: req.user.userId },
+                            select: { id: true },
+                        });
+                        if (!ownerHostel) {
+                            res.status(statusCode_interface_1.STATUS_CODE.FORBIDDEN).json({
+                                success: false,
+                                message: 'No hostel associated with this owner account',
+                            });
+                            return;
+                        }
+                        hostelId = ownerHostel.id;
+                    }
+                    else {
+                        const authorizedHostel = await hostelRepo.findOne({
+                            where: { id: hostelId, ownerId: req.user.userId },
+                            select: { id: true },
+                        });
+                        if (!authorizedHostel) {
+                            res.status(statusCode_interface_1.STATUS_CODE.FORBIDDEN).json({
+                                success: false,
+                                message: 'You are not authorized to generate fees for this hostel',
+                            });
+                            return;
+                        }
+                    }
+                }
                 const isAsync = req.query.async === 'true' || req.body?.async === true;
                 if (isAsync) {
                     const job = await queue_factory_1.systemEventQueue.add(fee_scheduler_job_1.TRIGGER_MONTHLY_FEES_JOB, {
@@ -20,6 +57,7 @@ class FeeController {
                         billingMonth: req.body?.billingMonth,
                         billingYear: req.body?.billingYear,
                         baseFee: req.body?.baseFee,
+                        hostelId,
                     }, {
                         removeOnComplete: 100,
                         removeOnFail: 500,
@@ -33,7 +71,7 @@ class FeeController {
                     });
                     return;
                 }
-                const result = await this.feeService.generateMonthlyFeesForAllHostels(req.body?.billingMonth, req.body?.billingYear, req.body?.baseFee);
+                const result = await this.feeService.generateMonthlyFeesForAllHostels(req.body?.billingMonth, req.body?.billingYear, req.body?.baseFee, { hostelId });
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({ success: true, result });
             }
             catch (error) {

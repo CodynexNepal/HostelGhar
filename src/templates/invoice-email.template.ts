@@ -56,6 +56,7 @@ export const renderManualInvoiceText = (input: ManualInvoiceEmailInput): EmailTe
     (input.roomNumber ? `Room: ${input.roomNumber}\n` : '') +
     (input.bedNumber ? `Bed: ${input.bedNumber}\n` : '') +
     `\nBilling Period: ${input.billingLabel}\n` +
+    `Payment Status: PENDING\n` +
     `Invoice Amount: ${nprInvoice(input.amount)}\n` +
     `Previous Outstanding Due: ${nprInvoice(input.outstandingDue)}\n` +
     `Total Amount Payable: ${nprInvoice(input.totalPayable)}\n` +
@@ -64,7 +65,7 @@ export const renderManualInvoiceText = (input: ManualInvoiceEmailInput): EmailTe
     (input.billNo ? `Invoice No: ${input.billNo}\n` : '') +
     (input.isDraftPreview
       ? `\nThis is a DRAFT preview — please wait for the final invoice before paying.\n\n`
-      : `\nPlease pay before the due date to avoid a late penalty.\n\n`) +
+      : `\nPlease pay before the due date to avoid a late penalty.\nPayment Instructions: Pay at hostel counter or transfer via eSewa / Khalti / Fonepay.\nView details on portal: ${process.env.FRONTEND_ORIGIN || 'https://hostelghar.com'}/resident/payments\n\n`) +
     `Warm regards,\n${input.ownerName}\n${input.hostelName} Management\n` +
     (input.hostelPhone ? `Phone: ${input.hostelPhone}\n` : '') +
     (input.hostelEmail ? `Email: ${input.hostelEmail}\n` : '');
@@ -101,6 +102,7 @@ export const renderManualInvoiceHtml = (input: ManualInvoiceEmailInput): string 
     (input.bedNumber ? invoiceRow('Bed', input.bedNumber) : '') +
     (input.billNo ? invoiceRow('Invoice No', input.billNo) : '') +
     invoiceRow('Billing Period', input.billingLabel) +
+    invoiceRow('Payment Status', input.isDraftPreview ? 'DRAFT' : 'PENDING (Unpaid)') +
     invoiceRow('Invoice Amount', nprInvoice(input.amount)) +
     invoiceRow('Previous Outstanding Due', nprInvoice(input.outstandingDue)) +
     invoiceRow('Total Amount Payable', nprInvoice(input.totalPayable), true) +
@@ -108,6 +110,9 @@ export const renderManualInvoiceHtml = (input: ManualInvoiceEmailInput): string 
     (input.dueDateBs ? invoiceRow('Due Date (BS)', input.dueDateBs) : '') +
     `</table>` +
     notice +
+    (!input.isDraftPreview
+      ? `<div style="text-align:center;margin:20px 0;"><a href="${escapeInvoiceHtml(process.env.FRONTEND_ORIGIN || 'https://hostelghar.com')}/resident/payments" style="display:inline-block;padding:12px 28px;background:#0ea5e9;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:8px;font-size:14px;">View &amp; Pay Invoice on HostelGhar</a></div>`
+      : '') +
     `<div style="color:#475569;font-size:13px;line-height:1.7;">Warm regards,<br><strong>${escapeInvoiceHtml(input.ownerName)}</strong><br>${escapeInvoiceHtml(input.hostelName)} Management` +
     (input.hostelPhone ? `<br>Phone: ${escapeInvoiceHtml(input.hostelPhone)}` : '') +
     (input.hostelEmail ? `<br>Email: ${escapeInvoiceHtml(input.hostelEmail)}` : '') +

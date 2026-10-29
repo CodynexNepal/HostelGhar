@@ -94,6 +94,7 @@ export class InvoiceService {
       dueDate,
       isDraftPreview: false,
       actorId,
+      residentEmail: dto.residentEmail,
     });
 
     return {

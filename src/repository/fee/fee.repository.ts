@@ -13,9 +13,13 @@ export class FeeRepository {
     this.residentRepo = AppDataSource.getRepository(Resident);
   }
 
-  public async findActiveResidents(): Promise<Resident[]> {
+  public async findActiveResidents(hostelId?: string): Promise<Resident[]> {
+    const where: any = { isActive: true };
+    if (hostelId) {
+      where.hostelId = hostelId;
+    }
     return this.residentRepo.find({
-      where: { isActive: true },
+      where,
       relations: { user: true, hostel: { owner: true } },
     });
   }
