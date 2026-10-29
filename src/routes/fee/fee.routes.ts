@@ -27,11 +27,7 @@ feeRouter.post(
   validateDto(CreateInvoiceDto),
   invoiceController.createInvoice,
 );
-feeRouter.post(
-  '/generate-monthly',
-  ...ownerOrAdmin,
-  feeController.generateMonthlyFees,
-);
+feeRouter.post('/generate-monthly', ...ownerOrAdmin, feeController.generateMonthlyFees);
 feeRouter.get('/jobs/:jobId', ...ownerOrAdmin, requireParam('jobId'), feeController.getJobStatus);
 feeRouter.get(
   '/hostels/:hostelId',
@@ -39,12 +35,7 @@ feeRouter.get(
   requireParam('hostelId'),
   feeController.listHostelFees,
 );
-feeRouter.patch(
-  '/:id/payment',
-  ...ownerOrAdmin,
-  requireParam('id'),
-  feeController.recordPayment,
-);
+feeRouter.patch('/:id/payment', ...ownerOrAdmin, requireParam('id'), feeController.recordPayment);
 feeRouter.patch(
   '/:id/status',
   ...ownerOrAdmin,

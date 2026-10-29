@@ -178,9 +178,7 @@ export const sensitiveActionLimiter: RateLimitRequestHandler = rateLimit({
     const ip = baseIpKey(req);
     return email ? `sensitive:${ip}_${email}` : `sensitive:${ip}`;
   },
-  handler: createRateLimitHandler(
-    'Too many sensitive action attempts. Please try again later.',
-  ),
+  handler: createRateLimitHandler('Too many sensitive action attempts. Please try again later.'),
 });
 
 /**
