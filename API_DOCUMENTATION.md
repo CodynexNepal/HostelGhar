@@ -11,7 +11,7 @@ All protected endpoints accept `Authorization: Bearer <accessToken>` or the conf
 - Global rate limiting applies before routes.
 - Auth routes use strict brute-force rate limiting.
 - Booking creation uses user-scoped rate limiting and idempotency.
-- Sensitive password and fee actions use the sensitive action limiter.
+- Sensitive password actions use the sensitive action limiter.
 
 ## Response Compression
 

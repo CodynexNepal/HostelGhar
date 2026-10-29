@@ -17,7 +17,7 @@ import {
 } from '../../dto/meal/daily-meal.dto';
 import { authenticate, optionalAuthenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
-import { apiReadLimiter, sensitiveActionLimiter } from '../../configs/rateLimiter.config';
+import { apiReadLimiter } from '../../configs/rateLimiter.config';
 import { requireParam } from '../../decorators/http.decorator';
 
 const mealRouter = Router({ mergeParams: true });
@@ -37,7 +37,6 @@ mealRouter.post(
   authenticate,
   requireParam('hostelId'),
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
-  sensitiveActionLimiter,
   validateDto(CreateDailyMealDto),
   mealController.createDailyMeal,
 );
@@ -48,7 +47,6 @@ mealRouter.put(
   requireParam('hostelId'),
   requireParam('id'),
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
-  sensitiveActionLimiter,
   validateDto(UpdateDailyMealDto),
   mealController.updateDailyMeal,
 );
@@ -59,7 +57,6 @@ mealRouter.delete(
   requireParam('hostelId'),
   requireParam('id'),
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
-  sensitiveActionLimiter,
   mealController.deleteDailyMeal,
 );
 
@@ -68,7 +65,6 @@ mealRouter.put(
   authenticate,
   requireParam('hostelId'),
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
-  sensitiveActionLimiter,
   validateDto(SaveDailyMealsDto),
   mealController.saveDailySchedule,
 );
@@ -78,7 +74,6 @@ mealRouter.delete(
   authenticate,
   requireParam('hostelId'),
   requireRoles(IROLES.OWNER, IROLES.ADMIN),
-  sensitiveActionLimiter,
   mealController.clearDailySchedule,
 );
 

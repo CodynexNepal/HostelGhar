@@ -103,11 +103,13 @@ const baseIpKey = (req: Request): string => ipKeyGenerator(getClientIp(req));
 /**
  * 1. Global Tier Rate Limiter:
  * Protects the entire application against scraping, distributed flooding, and volumetric attacks.
- * Default: 100 requests per 15 minutes per IP.
+ * Default: 500 requests per 15 minutes per IP in production (configurable via RATE_LIMIT_GLOBAL_MAX).
  */
 export const globalRateLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: dotEnvConfig.NODE_ENV === 'production' ? 100 : 1000,
+  limit:
+    Number(process.env.RATE_LIMIT_GLOBAL_MAX) ||
+    (dotEnvConfig.NODE_ENV === 'production' ? 500 : 1000),
   standardHeaders: 'draft-7', // draft-7: combined `RateLimit` header
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
   keyGenerator: baseIpKey,
@@ -143,18 +145,41 @@ export const authRateLimiter: RateLimitRequestHandler = rateLimit({
 
 /**
  * 3. Password Reset & Sensitive OTP Limiter:
- * Extremely strict rate limiter for forgot-password, OTP verification, and email triggers.
- * Default: 3 attempts per 1 hour.
+ * Rate limiter for forgot-password, OTP verification, and password change triggers.
+ * Production default: 15 attempts per 15 minutes window (customizable via RATE_LIMIT_SENSITIVE_MAX
+ * and RATE_LIMIT_SENSITIVE_WINDOW_MINUTES).
+ * Composite keying: Binds to authenticated userId or IP+email to prevent shared NAT/Wi-Fi lockouts.
  */
+const sensitiveActionWindowMs =
+  Number(process.env.RATE_LIMIT_SENSITIVE_WINDOW_MS) ||
+  (Number(process.env.RATE_LIMIT_SENSITIVE_WINDOW_MINUTES)
+    ? Number(process.env.RATE_LIMIT_SENSITIVE_WINDOW_MINUTES) * 60 * 1000
+    : 15 * 60 * 1000); // 15 minutes default
+
+const sensitiveActionLimit =
+  Number(process.env.RATE_LIMIT_SENSITIVE_MAX) ||
+  (dotEnvConfig.NODE_ENV === 'production' ? 15 : 100);
+
 export const sensitiveActionLimiter: RateLimitRequestHandler = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  limit: dotEnvConfig.NODE_ENV === 'production' ? 3 : 50,
+  windowMs: sensitiveActionWindowMs,
+  limit: sensitiveActionLimit,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   skip: skipPreflight,
-  keyGenerator: baseIpKey,
+  keyGenerator: (req: Request): string => {
+    // If authenticated (e.g. change-password), bind to userId to prevent NAT collateral lockout
+    const userId = req.user?.userId;
+    if (userId) {
+      return `sensitive:user:${userId}`;
+    }
+    // If body contains an email (e.g. forgot-password, reset-password), bind to IP + email
+    const email =
+      req.body && typeof req.body.email === 'string' ? req.body.email.toLowerCase().trim() : '';
+    const ip = baseIpKey(req);
+    return email ? `sensitive:${ip}_${email}` : `sensitive:${ip}`;
+  },
   handler: createRateLimitHandler(
-    'Too many sensitive action attempts. Please try again in an hour.',
+    'Too many sensitive action attempts. Please try again later.',
   ),
 });
 

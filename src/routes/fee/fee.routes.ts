@@ -3,7 +3,6 @@ import { FeeFactory } from '../../factory/fee/fee.factory';
 import { InvoiceController } from '../../controller/fee/invoice.controller';
 import { authenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
-import { sensitiveActionLimiter } from '../../configs/rateLimiter.config';
 import { requireParam } from '../../decorators/http.decorator';
 import { validateDto } from '../../middleware/validate-dto.middleware';
 import { UpdateFeeStatusDto } from '../../dto/fee/update-fee-status.dto';
@@ -24,7 +23,6 @@ feeRouter.get('/nepali-status', ...ownerOrAdmin, feeController.nepaliBillingStat
 feeRouter.post(
   '/invoices',
   ...ownerOrAdmin,
-  sensitiveActionLimiter,
   normalizeInvoiceFields,
   validateDto(CreateInvoiceDto),
   invoiceController.createInvoice,
@@ -32,7 +30,6 @@ feeRouter.post(
 feeRouter.post(
   '/generate-monthly',
   ...ownerOrAdmin,
-  sensitiveActionLimiter,
   feeController.generateMonthlyFees,
 );
 feeRouter.get('/jobs/:jobId', ...ownerOrAdmin, requireParam('jobId'), feeController.getJobStatus);
@@ -46,14 +43,12 @@ feeRouter.patch(
   '/:id/payment',
   ...ownerOrAdmin,
   requireParam('id'),
-  sensitiveActionLimiter,
   feeController.recordPayment,
 );
 feeRouter.patch(
   '/:id/status',
   ...ownerOrAdmin,
   requireParam('id'),
-  sensitiveActionLimiter,
   validateDto(UpdateFeeStatusDto),
   feeController.updateStatus,
 );
