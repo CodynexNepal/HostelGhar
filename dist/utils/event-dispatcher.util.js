@@ -267,7 +267,11 @@ class AppEventDispatcher extends events_1.EventEmitter {
                 body: job.data.body || '',
                 ...(job.data.html ? { html: job.data.html } : {}),
             }, { correlationId: job.data.context?.correlationId })));
-            return jobs.map((j, i) => ({ id: `direct-bulk-fallback-${i}`, name: j.name, data: j.data }));
+            return jobs.map((j, i) => ({
+                id: `direct-bulk-fallback-${i}`,
+                name: j.name,
+                data: j.data,
+            }));
         }
         const timeoutMs = options?.timeoutMs ?? 5000;
         try {
@@ -288,7 +292,11 @@ class AppEventDispatcher extends events_1.EventEmitter {
                 body: job.data.body || '',
                 ...(job.data.html ? { html: job.data.html } : {}),
             }, { correlationId: job.data.context?.correlationId })));
-            return jobs.map((j, i) => ({ id: `direct-bulk-err-fallback-${i}`, name: j.name, data: j.data }));
+            return jobs.map((j, i) => ({
+                id: `direct-bulk-err-fallback-${i}`,
+                name: j.name,
+                data: j.data,
+            }));
         }
     }
     /**

@@ -26,7 +26,7 @@ export class FeeController {
   ): Promise<void> => {
     try {
       let hostelId =
-        req.body?.hostelId || (req.query?.hostelId as string) || req.headers['x-hostel-id'];
+        req.body?.hostelId || (req.query?.hostelId as string) || req.headers?.['x-hostel-id'];
       if (typeof hostelId !== 'string' || !hostelId.trim()) {
         hostelId = undefined;
       }
