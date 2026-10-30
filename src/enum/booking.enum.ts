@@ -5,7 +5,7 @@
 
 export enum BookingStatus {
   PENDING = 'PENDING',
-  CONFIRMED = 'APPROVED',
+  APPROVED = 'APPROVED',
   CANCELLED = 'CANCELLED',
   REJECTED = 'REJECTED',
 }
