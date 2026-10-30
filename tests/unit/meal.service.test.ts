@@ -31,6 +31,9 @@ import { MealService } from '../../src/services/meal/meal.service';
 import { MealRepository } from '../../src/repository/meal/meal.repository';
 import { DayOfWeek } from '../../src/enum/meal.enum';
 import { STATUS_CODE } from '../../src/constant/statusCode.interface';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { SaveWeeklyMealsDto } from '../../src/dto/meal/meal.dto';
 
 describe('MealService', () => {
   const hostelId = 'a38bf07a-b7b1-49dc-85c8-dd5542a8e90a';
@@ -528,6 +531,65 @@ describe('MealService', () => {
       expect(getSunday.data?.schedule).toHaveLength(2);
       expect(getSunday.data?.schedule[1].menuDescription).toContain('Mutton Curry');
       expect(getSunday.data?.configuredDays).toContain('SUNDAY');
+    });
+  });
+
+  describe('SaveWeeklyMealsDto Validation Flexibility', () => {
+    it('accepts meals with GET response fields (id, hostelId, createdAt, updatedAt)', async () => {
+      const payload = {
+        meals: [
+          {
+            id: 'meal-uuid-1',
+            hostelId: hostelId,
+            dayOfWeek: 'SUNDAY',
+            breakfastDescription: 'Eggs and bread',
+            breakfastTime: '7:30 AM',
+            breakfastNotes: null,
+            mainMealDescription: 'Rice and curry',
+            mainMealTime: '7:30 PM',
+            mainMealNotes: null,
+            createdAt: '2026-10-29T10:00:00.000Z',
+            updatedAt: '2026-10-29T10:00:00.000Z',
+          },
+        ],
+      };
+
+      const dto = plainToInstance(SaveWeeklyMealsDto, payload);
+      const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
+      expect(errors).toHaveLength(0);
+    });
+
+    it('normalizes lowercase day names and alias day', async () => {
+      const payload = {
+        meals: [
+          {
+            dayOfWeek: 'monday',
+            breakfastDescription: 'Pancakes',
+          },
+        ],
+      };
+
+      const dto = plainToInstance(SaveWeeklyMealsDto, payload);
+      const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
+      expect(errors).toHaveLength(0);
+      expect(dto.meals[0].dayOfWeek).toBe(DayOfWeek.MONDAY);
+    });
+
+    it('accepts daily meal items passed to SaveWeeklyMealsDto', async () => {
+      const payload = {
+        meals: [
+          {
+            mealName: 'बिहानको नास्ता',
+            time: '7:00 AM–8:00 AM',
+            menuDescription: 'Tea and bread',
+            isActive: true,
+          },
+        ],
+      };
+
+      const dto = plainToInstance(SaveWeeklyMealsDto, payload);
+      const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
+      expect(errors).toHaveLength(0);
     });
   });
 });

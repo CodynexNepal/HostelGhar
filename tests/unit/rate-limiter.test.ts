@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Request } from 'express';
-import {
-  getClientIp,
-  sensitiveActionLimiter,
-  globalRateLimiter,
-} from '../../src/configs/rateLimiter.config';
+import { getClientIp, sensitiveActionLimiter } from '../../src/configs/rateLimiter.config';
 import { feeRouter } from '../../src/routes/fee/fee.routes';
 import { mealRouter } from '../../src/routes/meal/meal.routes';
 
@@ -12,7 +8,7 @@ interface RouteLayer {
   route?: {
     path: string;
     methods: Record<string, boolean>;
-    stack: Array<{ name: string; handle: Function }>;
+    stack: Array<{ name: string; handle: (...args: unknown[]) => unknown }>;
   };
 }
 

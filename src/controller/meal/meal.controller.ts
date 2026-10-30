@@ -45,8 +45,50 @@ export class MealController {
         role: req.user!.role ?? '',
       };
       const dto = req.body as SaveWeeklyMealsDto;
+      const rawMeals = Array.isArray(dto.meals) ? dto.meals : [];
 
-      const result = await this.mealService.saveWeeklySchedule(hostelId, user, dto.meals);
+      const isDailyMealPayload = rawMeals.some(
+        (m: any) => m && (m.mealName !== undefined || m.time !== undefined),
+      );
+
+      if (isDailyMealPayload) {
+        const dayOfWeek = (req.body?.dayOfWeek ||
+          req.query.dayOfWeek ||
+          req.query.day ||
+          'ALL') as string;
+        const result = await this.mealService.saveDailySchedule(
+          hostelId,
+          user,
+          rawMeals as any,
+          dayOfWeek,
+        );
+        if (result.error) {
+          res.status(result.error.status).json({ success: false, message: result.error.message });
+          return;
+        }
+
+        res.status(STATUS_CODE.OK).json({
+          success: true,
+          message: 'Daily meal schedule saved successfully',
+          data: result.data,
+        });
+        return;
+      }
+
+      // Filter to ensure only weekly items with a valid dayOfWeek are saved
+      const weeklyMeals = rawMeals
+        .filter((m: any) => m && m.dayOfWeek)
+        .map((m: any) => ({
+          dayOfWeek: m.dayOfWeek,
+          breakfastDescription: m.breakfastDescription ?? null,
+          breakfastTime: m.breakfastTime ?? null,
+          breakfastNotes: m.breakfastNotes ?? null,
+          mainMealDescription: m.mainMealDescription ?? null,
+          mainMealTime: m.mainMealTime ?? null,
+          mainMealNotes: m.mainMealNotes ?? null,
+        }));
+
+      const result = await this.mealService.saveWeeklySchedule(hostelId, user, weeklyMeals as any);
       if (result.error) {
         res.status(result.error.status).json({ success: false, message: result.error.message });
         return;
