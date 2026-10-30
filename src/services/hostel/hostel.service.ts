@@ -120,8 +120,8 @@ export class HostelService {
       return { data, isCached, cacheLevel, scope: 'self' as const };
     }
 
-    // v5: + hostel (id/name/type/city/address) + flat (alias of floor) — busts old v4 L1/L2 cache.
-    const cacheKey = cacheService.generateKey('hostel:residents', { hostelId: id, v: 5 });
+    // v6: + paymentStatus & feeStatus top-level fields — busts old v5 L1/L2 cache.
+    const cacheKey = cacheService.generateKey('hostel:residents', { hostelId: id, v: 6 });
 
     const {
       data: residents,
@@ -214,6 +214,9 @@ export class HostelService {
       floor,
       // `flat` = alias of `floor` (no separate flat column exists).
       flat: floor,
+      // Payment status requested by frontend
+      paymentStatus: latestFee ? latestFee.status : 'PENDING',
+      feeStatus: latestFee ? latestFee.status : 'PENDING',
       // Latest generated bill, null if no fee generated yet.
       fee: latestFee
         ? {

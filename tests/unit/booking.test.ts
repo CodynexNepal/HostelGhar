@@ -183,4 +183,66 @@ describe('Booking Entity & DTO & Service with student contact fields', () => {
       });
     });
   });
+
+  describe('BookingService updateBookingStatus & cancelBooking', () => {
+    it('approves booking with case-insensitive status and CONFIRMED alias', async () => {
+      const mockBooking = {
+        id: 'booking-1',
+        userId: 'user-1',
+        hostelId: 'hostel-1',
+        status: BookingStatus.PENDING,
+        hostel: { ownerId: 'owner-1' },
+      };
+
+      const mockRepo = {
+        findById: vi.fn().mockResolvedValue(mockBooking),
+        save: vi.fn().mockImplementation((b) => Promise.resolve(b)),
+      } as any;
+
+      const service = new BookingService(mockRepo);
+
+      // Testing lowercase 'approved'
+      const res1 = await service.updateBookingStatus('booking-1', 'approved', 'owner-1', 'owner');
+      expect(res1.data?.status).toBe(BookingStatus.APPROVED);
+
+      // Testing uppercase 'APPROVED'
+      const res2 = await service.updateBookingStatus('booking-1', 'APPROVED', 'owner-1', 'owner');
+      expect(res2.data?.status).toBe(BookingStatus.APPROVED);
+
+      // Testing legacy 'CONFIRMED'
+      const res3 = await service.updateBookingStatus('booking-1', 'CONFIRMED', 'owner-1', 'owner');
+      expect(res3.data?.status).toBe(BookingStatus.APPROVED);
+
+      // Testing invalid status returns 400
+      const res4 = await service.updateBookingStatus(
+        'booking-1',
+        'INVALID_STATUS',
+        'owner-1',
+        'owner',
+      );
+      expect(res4.error?.status).toBe(STATUS_CODE.BAD_REQUEST);
+    });
+
+    it('allows owner to delete booking from their hostel', async () => {
+      const mockBooking = {
+        id: 'booking-1',
+        userId: 'user-1',
+        hostelId: 'hostel-1',
+        status: BookingStatus.PENDING,
+        hostel: { ownerId: 'owner-1' },
+      };
+
+      const mockRepo = {
+        findById: vi.fn().mockResolvedValue(mockBooking),
+        delete: vi.fn().mockResolvedValue(undefined),
+      } as any;
+
+      const service = new BookingService(mockRepo);
+      const result = await service.cancelBooking('booking-1', 'owner-1', 'owner');
+
+      expect(result.data).toBeDefined();
+      expect(result.data?.success).toBe(true);
+      expect(mockRepo.delete).toHaveBeenCalledWith('booking-1');
+    });
+  });
 });

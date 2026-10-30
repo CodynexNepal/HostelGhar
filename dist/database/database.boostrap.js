@@ -39,11 +39,17 @@ const bootstrapDatabase = async () => {
             UPDATE "hostel_daily_meals" SET "dayOfWeek" = 'ALL' WHERE "dayOfWeek" IS NULL OR "dayOfWeek" = '';
             CREATE INDEX IF NOT EXISTS "idx_hostel_daily_meals_hostel_day_order" ON "hostel_daily_meals" ("hostelId", "dayOfWeek", "orderIndex");
           END IF;
+
+          -- Self-healing check for bookings status enum to support APPROVED and CONFIRMED
+          IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'bookings_status_enum') THEN
+            ALTER TYPE "bookings_status_enum" ADD VALUE IF NOT EXISTS 'APPROVED';
+            ALTER TYPE "bookings_status_enum" ADD VALUE IF NOT EXISTS 'CONFIRMED';
+          END IF;
         END $$;
       `);
         }
         catch (schemaErr) {
-            console.warn('⚠️ Non-blocking schema check notice for hostel_daily_meals:', schemaErr);
+            console.warn('⚠️ Non-blocking schema check notice for schema migrations:', schemaErr);
         }
         // Log success so operators can confirm the DB is connected in server logs.
         // In production, this could be replaced with a structured logger (winston/pino).

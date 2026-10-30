@@ -22,4 +22,4 @@ bookingRouter.post('/', (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.
 bookingRouter.get('/my-bookings', (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.USER), bookingController.getMyBookings);
 bookingRouter.get('/hostels/:hostelId', (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.OWNER, roles_enum_1.IROLES.ADMIN), (0, http_decorator_1.requireParam)('hostelId'), bookingController.getHostelBookings);
 bookingRouter.patch('/:id/status', (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.OWNER, roles_enum_1.IROLES.ADMIN), (0, http_decorator_1.requireParam)('id'), bookingController.updateStatus);
-bookingRouter.delete('/:id', (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.USER), (0, http_decorator_1.requireParam)('id'), bookingController.cancelBooking);
+bookingRouter.delete('/:id', (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.USER, roles_enum_1.IROLES.OWNER, roles_enum_1.IROLES.ADMIN), (0, http_decorator_1.requireParam)('id'), bookingController.cancelBooking);

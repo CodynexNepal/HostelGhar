@@ -10,6 +10,7 @@ import { User } from '../../entities/user.entity';
 import { Resident } from '../../entities/resident/resident.entity';
 import { LeaveType } from '../../entities/leave/leave-type.entity';
 import { Room } from '../../entities/room/room.entity';
+import { Fee } from '../../entities/fee/fee.entity';
 
 export class OwnerRepository {
   private hostelRepo: Repository<Hostel>;
@@ -17,6 +18,7 @@ export class OwnerRepository {
   private residentRepo: Repository<Resident>;
   private leaveTypeRepo: Repository<LeaveType>;
   private roomRepo: Repository<Room>;
+  private feeRepo: Repository<Fee>;
 
   constructor() {
     this.hostelRepo = AppDataSource.getRepository(Hostel);
@@ -24,6 +26,7 @@ export class OwnerRepository {
     this.residentRepo = AppDataSource.getRepository(Resident);
     this.leaveTypeRepo = AppDataSource.getRepository(LeaveType);
     this.roomRepo = AppDataSource.getRepository(Room);
+    this.feeRepo = AppDataSource.getRepository(Fee);
   }
 
   public async findHostelByIdAndOwner(hostelId: string, ownerId: string): Promise<Hostel | null> {
@@ -54,6 +57,46 @@ export class OwnerRepository {
 
   public async saveResident(resident: Resident): Promise<Resident> {
     return await this.residentRepo.save(resident);
+  }
+
+  public async saveUser(user: User): Promise<User> {
+    return await this.userRepo.save(user);
+  }
+
+  public async findResidentById(id: string): Promise<Resident | null> {
+    return await this.residentRepo.findOne({
+      where: { id },
+      relations: { user: true, hostel: true },
+    });
+  }
+
+  public async deleteResident(id: string): Promise<void> {
+    await this.residentRepo.delete(id);
+  }
+
+  public async findLatestFeesForResidents(residentIds: string[]): Promise<Map<string, Fee>> {
+    if (residentIds.length === 0) return new Map();
+    const fees = await this.feeRepo.find({
+      where: { residentId: In(residentIds) },
+      select: {
+        id: true,
+        residentId: true,
+        amount: true,
+        dueAmount: true,
+        totalPayable: true,
+        paidAmount: true,
+        billingMonth: true,
+        billingYear: true,
+        dueDate: true,
+        status: true,
+      },
+      order: { billingYear: 'DESC', billingMonth: 'DESC', createdAt: 'DESC' },
+    });
+    const latest = new Map<string, Fee>();
+    for (const fee of fees) {
+      if (!latest.has(fee.residentId)) latest.set(fee.residentId, fee);
+    }
+    return latest;
   }
 
   public async saveHostel(hostel: Hostel): Promise<Hostel> {

@@ -9,6 +9,7 @@ const express_1 = require("express");
 const owner_factory_1 = require("../../factory/owner/owner.factory");
 const validate_dto_middleware_1 = require("../../middleware/validate-dto.middleware");
 const create_resident_dto_1 = require("../../dto/resident/create-resident.dto");
+const update_resident_dto_1 = require("../../dto/resident/update-resident.dto");
 const create_leave_type_dto_1 = require("../../dto/leave/create-leave-type.dto");
 const auth_middleware_1 = require("../../middleware/auth.middleware");
 const roles_enum_1 = require("../../enum/roles.enum");
@@ -32,6 +33,9 @@ ownerRouter.get('/residents/form-options/rooms/detail', ownerController.getResid
 ownerRouter.get('/residents/form-options/rooms', ownerController.getResidentFormRooms);
 ownerRouter.get('/residents', ownerController.getResidents);
 ownerRouter.post('/residents', hostel_context_middleware_1.resolveHostelId, (0, validate_dto_middleware_1.validateDto)(create_resident_dto_1.CreateResidentDto), ownerController.createResident);
+ownerRouter.put('/residents/:id', (0, http_decorator_1.requireParam)('id'), (0, validate_dto_middleware_1.validateDto)(update_resident_dto_1.UpdateResidentDto), ownerController.updateResident);
+ownerRouter.patch('/residents/:id', (0, http_decorator_1.requireParam)('id'), (0, validate_dto_middleware_1.validateDto)(update_resident_dto_1.UpdateResidentDto), ownerController.updateResident);
+ownerRouter.delete('/residents/:id', (0, http_decorator_1.requireParam)('id'), ownerController.deleteResident);
 ownerRouter.post('/leave-types', (0, validate_dto_middleware_1.validateDto)(create_leave_type_dto_1.CreateLeaveTypeDto), ownerController.createLeaveType);
 ownerRouter.post('/fees/generate-now', ownerController.triggerMonthlyFees);
 // ─── Attendance ──────────────────────────────────────────────────────────────

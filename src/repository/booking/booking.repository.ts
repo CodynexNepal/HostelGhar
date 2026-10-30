@@ -74,4 +74,8 @@ export class BookingRepository {
   public async save(booking: Booking): Promise<Booking> {
     return this.bookingRepo.save(booking);
   }
+
+  public async delete(id: string): Promise<void> {
+    await this.bookingRepo.delete(id);
+  }
 }

@@ -53,5 +53,8 @@ class BookingRepository {
     async save(booking) {
         return this.bookingRepo.save(booking);
     }
+    async delete(id) {
+        await this.bookingRepo.delete(id);
+    }
 }
 exports.BookingRepository = BookingRepository;

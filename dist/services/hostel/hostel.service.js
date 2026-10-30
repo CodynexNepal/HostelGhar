@@ -82,8 +82,8 @@ class HostelService {
             const data = residents.list.map((resident) => this.toResidentRow(resident, id, feeByResident, roomByNumber));
             return { data, isCached, cacheLevel, scope: 'self' };
         }
-        // v5: + hostel (id/name/type/city/address) + flat (alias of floor) — busts old v4 L1/L2 cache.
-        const cacheKey = cache_util_1.cacheService.generateKey('hostel:residents', { hostelId: id, v: 5 });
+        // v6: + paymentStatus & feeStatus top-level fields — busts old v5 L1/L2 cache.
+        const cacheKey = cache_util_1.cacheService.generateKey('hostel:residents', { hostelId: id, v: 6 });
         const { data: residents, isCached, cacheLevel, } = await cache_util_1.cacheService.wrap(cacheKey, async () => {
             const list = await this.hostelRepository.findResidents(id);
             // One extra query for latest fee bills + one for room inventory
@@ -153,6 +153,9 @@ class HostelService {
             floor,
             // `flat` = alias of `floor` (no separate flat column exists).
             flat: floor,
+            // Payment status requested by frontend
+            paymentStatus: latestFee ? latestFee.status : 'PENDING',
+            feeStatus: latestFee ? latestFee.status : 'PENDING',
             // Latest generated bill, null if no fee generated yet.
             fee: latestFee
                 ? {

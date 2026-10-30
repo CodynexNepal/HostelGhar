@@ -93,10 +93,12 @@ export class BookingController {
   public updateStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const bookingId = getRequiredParam(req, 'id');
+      const status = req.body.status ?? req.body.bookingStatus;
       const result = await this.bookingService.updateBookingStatus(
         bookingId,
-        req.body.status,
+        status,
         req.user!.userId,
+        req.user!.role,
       );
       if (result.error) {
         res.status(result.error.status).json({ success: false, message: result.error.message });
@@ -111,7 +113,11 @@ export class BookingController {
   public cancelBooking = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const bookingId = getRequiredParam(req, 'id');
-      const result = await this.bookingService.cancelBooking(bookingId, req.user!.userId);
+      const result = await this.bookingService.cancelBooking(
+        bookingId,
+        req.user!.userId,
+        req.user!.role,
+      );
       if (result.error) {
         res.status(result.error.status).json({ success: false, message: result.error.message });
         return;

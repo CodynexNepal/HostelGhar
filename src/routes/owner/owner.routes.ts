@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { OwnerFactory } from '../../factory/owner/owner.factory';
 import { validateDto } from '../../middleware/validate-dto.middleware';
 import { CreateResidentDto } from '../../dto/resident/create-resident.dto';
+import { UpdateResidentDto } from '../../dto/resident/update-resident.dto';
 import { CreateLeaveTypeDto } from '../../dto/leave/create-leave-type.dto';
 import { authenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
@@ -41,6 +42,19 @@ ownerRouter.post(
   validateDto(CreateResidentDto),
   ownerController.createResident,
 );
+ownerRouter.put(
+  '/residents/:id',
+  requireParam('id'),
+  validateDto(UpdateResidentDto),
+  ownerController.updateResident,
+);
+ownerRouter.patch(
+  '/residents/:id',
+  requireParam('id'),
+  validateDto(UpdateResidentDto),
+  ownerController.updateResident,
+);
+ownerRouter.delete('/residents/:id', requireParam('id'), ownerController.deleteResident);
 ownerRouter.post('/leave-types', validateDto(CreateLeaveTypeDto), ownerController.createLeaveType);
 ownerRouter.post('/fees/generate-now', ownerController.triggerMonthlyFees);
 

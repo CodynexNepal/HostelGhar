@@ -389,7 +389,7 @@ Requires role: `owner` or `admin`. Updates booking status.
 
 ### DELETE `/bookings/:id`
 
-Requires role: `user`. Cancels the authenticated user's booking.
+Requires role: `user`, `owner`, or `admin`. Cancels the booking if invoked by the resident user, or permanently removes the booking request if deleted by the hostel owner or admin.
 
 ## Hostels
 
@@ -1164,6 +1164,14 @@ The form-options endpoints now ALSO return the owner's unlinked rooms
 (`hostelLinked: false`) so the dropdown shows every room the owner added.
 Assigning a resident to an unlinked room auto-links it (`rooms.hostelId` set);
 or link manually via `PATCH /rooms/:id { "hostelId": "<uuid>" }` (new field).
+
+### PUT/PATCH `/owner/residents/:id`
+
+Requires role: `owner` or `admin`. Updates resident details (name, phone, email, roomNumber, bedNumber, monthlyRent, isActive). Handles bed/room reallocation, validates room capacity, updates live occupancy counts, and clears resident/hostel caches.
+
+### DELETE `/owner/residents/:id`
+
+Requires role: `owner` or `admin`. Deletes a resident profile, decrements the room's occupied bed count (marking the room `AVAILABLE` if it was full), cascades related records, and flushes resident rosters from cache.
 
 ### GET `/owner/resident-imports/template`
 

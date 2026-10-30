@@ -41,7 +41,7 @@ bookingRouter.patch(
 );
 bookingRouter.delete(
   '/:id',
-  requireRoles(IROLES.USER),
+  requireRoles(IROLES.USER, IROLES.OWNER, IROLES.ADMIN),
   requireParam('id'),
   bookingController.cancelBooking,
 );

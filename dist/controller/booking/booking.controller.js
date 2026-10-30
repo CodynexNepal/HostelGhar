@@ -73,7 +73,8 @@ class BookingController {
         this.updateStatus = async (req, res, next) => {
             try {
                 const bookingId = (0, http_decorator_1.getRequiredParam)(req, 'id');
-                const result = await this.bookingService.updateBookingStatus(bookingId, req.body.status, req.user.userId);
+                const status = req.body.status ?? req.body.bookingStatus;
+                const result = await this.bookingService.updateBookingStatus(bookingId, status, req.user.userId, req.user.role);
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
                     return;
@@ -87,7 +88,7 @@ class BookingController {
         this.cancelBooking = async (req, res, next) => {
             try {
                 const bookingId = (0, http_decorator_1.getRequiredParam)(req, 'id');
-                const result = await this.bookingService.cancelBooking(bookingId, req.user.userId);
+                const result = await this.bookingService.cancelBooking(bookingId, req.user.userId, req.user.role);
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
                     return;

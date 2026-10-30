@@ -12,6 +12,7 @@ const user_entity_1 = require("../../entities/user.entity");
 const resident_entity_1 = require("../../entities/resident/resident.entity");
 const leave_type_entity_1 = require("../../entities/leave/leave-type.entity");
 const room_entity_1 = require("../../entities/room/room.entity");
+const fee_entity_1 = require("../../entities/fee/fee.entity");
 class OwnerRepository {
     constructor() {
         this.hostelRepo = database_source_1.AppDataSource.getRepository(hostel_entity_1.Hostel);
@@ -19,6 +20,7 @@ class OwnerRepository {
         this.residentRepo = database_source_1.AppDataSource.getRepository(resident_entity_1.Resident);
         this.leaveTypeRepo = database_source_1.AppDataSource.getRepository(leave_type_entity_1.LeaveType);
         this.roomRepo = database_source_1.AppDataSource.getRepository(room_entity_1.Room);
+        this.feeRepo = database_source_1.AppDataSource.getRepository(fee_entity_1.Fee);
     }
     async findHostelByIdAndOwner(hostelId, ownerId) {
         return await this.hostelRepo.findOne({
@@ -43,6 +45,44 @@ class OwnerRepository {
     }
     async saveResident(resident) {
         return await this.residentRepo.save(resident);
+    }
+    async saveUser(user) {
+        return await this.userRepo.save(user);
+    }
+    async findResidentById(id) {
+        return await this.residentRepo.findOne({
+            where: { id },
+            relations: { user: true, hostel: true },
+        });
+    }
+    async deleteResident(id) {
+        await this.residentRepo.delete(id);
+    }
+    async findLatestFeesForResidents(residentIds) {
+        if (residentIds.length === 0)
+            return new Map();
+        const fees = await this.feeRepo.find({
+            where: { residentId: (0, typeorm_1.In)(residentIds) },
+            select: {
+                id: true,
+                residentId: true,
+                amount: true,
+                dueAmount: true,
+                totalPayable: true,
+                paidAmount: true,
+                billingMonth: true,
+                billingYear: true,
+                dueDate: true,
+                status: true,
+            },
+            order: { billingYear: 'DESC', billingMonth: 'DESC', createdAt: 'DESC' },
+        });
+        const latest = new Map();
+        for (const fee of fees) {
+            if (!latest.has(fee.residentId))
+                latest.set(fee.residentId, fee);
+        }
+        return latest;
     }
     async saveHostel(hostel) {
         return await this.hostelRepo.save(hostel);

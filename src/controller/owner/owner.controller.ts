@@ -6,9 +6,11 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { CreateResidentDto } from '../../dto/resident/create-resident.dto';
+import { UpdateResidentDto } from '../../dto/resident/update-resident.dto';
 import { CreateLeaveTypeDto } from '../../dto/leave/create-leave-type.dto';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { IROLES } from '../../enum/roles.enum';
+import { FeeStatus } from '../../enum/fee.enum';
 
 import { PasswordHasher } from '../../utils/password-hasher.util';
 import { cacheService } from '../../utils/cache.util';
@@ -459,7 +461,7 @@ export class OwnerController {
         hostelId: hostelId ?? 'all',
         page,
         limit,
-        v: 1,
+        v: 2,
       });
 
       const { data, isCached, cacheLevel } = await cacheService.wrap(
@@ -471,20 +473,32 @@ export class OwnerController {
             page,
             limit,
           );
-          const rooms = await this.ownerRepository.findRoomsForResidents(list);
-          return { list, total, rooms: [...rooms.entries()] };
+          const [fees, rooms] = await Promise.all([
+            this.ownerRepository.findLatestFeesForResidents(list.map((r) => r.id)),
+            this.ownerRepository.findRoomsForResidents(list),
+          ]);
+          return {
+            list,
+            total,
+            rooms: [...rooms.entries()],
+            fees: [...fees.entries()],
+          };
         },
         { l1TtlSeconds: 30, l2TtlSeconds: 120 },
       );
 
       // Map<...> does not survive JSON (Redis L2) — revive from entries.
       const roomByKey = new Map<string, any>(data.rooms);
+      const feeByKey = new Map<string, any>(data.fees || []);
 
       const residents = data.list.map((resident) => {
         const firstName = resident.user?.firstName ?? '';
         const lastName = resident.user?.lastName ?? '';
         const room = roomByKey.get(`${resident.hostelId}::${resident.roomNumber?.trim()}`) ?? null;
         const floor = room?.floor ?? null;
+        const latestFee = feeByKey.get(resident.id) ?? null;
+        const paymentStatus = latestFee ? latestFee.status : FeeStatus.PENDING;
+
         return {
           id: resident.id,
           firstName,
@@ -513,6 +527,21 @@ export class OwnerController {
           floor,
           // `flat` = alias of `floor` (no separate flat column exists).
           flat: floor,
+          // Payment status & billing details
+          paymentStatus,
+          feeStatus: paymentStatus,
+          fee: latestFee
+            ? {
+                billingMonth: latestFee.billingMonth,
+                billingYear: latestFee.billingYear,
+                amount: Number(latestFee.amount),
+                dueAmount: Number(latestFee.dueAmount),
+                totalPayable: Number(latestFee.totalPayable),
+                paidAmount: Number(latestFee.paidAmount),
+                dueDate: latestFee.dueDate,
+                status: latestFee.status,
+              }
+            : null,
         };
       });
 
@@ -773,6 +802,291 @@ export class OwnerController {
           roomType: pickedRoom.type,
           roomStatus: pickedRoom.status,
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PUT / PATCH /owner/residents/:id
+   * Update resident details (contact info, room/bed assignment, monthly rent, status)
+   */
+  public updateResident = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const id = getRequiredParam(req, 'id');
+      const ownerId = req.user!.userId;
+      const role = req.user!.role?.toLowerCase();
+      const dto = req.body as UpdateResidentDto;
+
+      const resident = await this.ownerRepository.findResidentById(id);
+      if (!resident) {
+        res.status(STATUS_CODE.NOT_FOUND).json({
+          success: false,
+          message: 'Resident not found',
+        });
+        return;
+      }
+
+      // Authorization: owner must own the resident's hostel (or admin)
+      if (role !== IROLES.ADMIN) {
+        const hostel = await this.ownerRepository.findHostelByIdAndOwner(
+          resident.hostelId,
+          ownerId,
+        );
+        if (!hostel) {
+          res.status(STATUS_CODE.FORBIDDEN).json({
+            success: false,
+            message: 'You do not have permission to manage this resident',
+          });
+          return;
+        }
+      }
+
+      // 1. Update User contact fields
+      let userUpdated = false;
+      if (resident.user) {
+        if (dto.name) {
+          const parts = dto.name.trim().split(/\s+/);
+          resident.user.firstName = parts.shift() || dto.name.trim();
+          resident.user.lastName = parts.join(' ') || resident.user.firstName;
+          userUpdated = true;
+        } else {
+          if (dto.firstName !== undefined) {
+            resident.user.firstName = dto.firstName.trim();
+            userUpdated = true;
+          }
+          if (dto.lastName !== undefined) {
+            resident.user.lastName = dto.lastName.trim();
+            userUpdated = true;
+          }
+        }
+
+        if (dto.phone !== undefined) {
+          resident.user.phone = dto.phone.trim();
+          userUpdated = true;
+        }
+
+        if (
+          dto.email !== undefined &&
+          dto.email.trim().toLowerCase() !== resident.user.email?.toLowerCase()
+        ) {
+          const existingUser = await this.ownerRepository.findUserByEmail(dto.email.trim());
+          if (existingUser && existingUser.id !== resident.userId) {
+            res.status(STATUS_CODE.CONFLICT).json({
+              success: false,
+              message: 'Email is already in use by another account',
+            });
+            return;
+          }
+          resident.user.email = dto.email.trim();
+          userUpdated = true;
+        }
+
+        if (userUpdated) {
+          await this.ownerRepository.saveUser(resident.user);
+        }
+      }
+
+      // 2. Handle room / bed reallocation
+      const targetHostelId = dto.hostelId ? dto.hostelId.trim() : resident.hostelId;
+      const targetRoomNumber = dto.roomNumber ? dto.roomNumber.trim() : resident.roomNumber;
+      const targetBedNumber =
+        dto.bedNumber !== undefined ? dto.bedNumber.trim() : resident.bedNumber;
+
+      const roomChanged =
+        targetRoomNumber !== resident.roomNumber || targetHostelId !== resident.hostelId;
+      const bedChanged = targetBedNumber !== resident.bedNumber;
+
+      if (roomChanged) {
+        // Look up target room
+        let newRoom = await this.ownerRepository.findRoomByHostelAndNumber(
+          targetHostelId,
+          targetRoomNumber,
+        );
+        if (!newRoom) {
+          res.status(STATUS_CODE.BAD_REQUEST).json({
+            success: false,
+            message: `Room ${targetRoomNumber} does not exist in this hostel`,
+          });
+          return;
+        }
+
+        const pickedStatus = String(newRoom.status ?? 'AVAILABLE').toUpperCase();
+        if (pickedStatus === 'MAINTENANCE' || pickedStatus === 'RESERVED') {
+          res.status(STATUS_CODE.BAD_REQUEST).json({
+            success: false,
+            message: `Room ${newRoom.roomNumber} is currently ${pickedStatus.toLowerCase()} and cannot take residents`,
+          });
+          return;
+        }
+
+        const takenByRoom = await this.ownerRepository.findTakenBedsByHostel(targetHostelId, [
+          newRoom.roomNumber,
+        ]);
+        const takenBeds = takenByRoom.get(newRoom.roomNumber?.trim()) ?? [];
+        const occupiedCount = Math.max(takenBeds.length, Number(newRoom.occupied) || 0);
+        const capacity = Number(newRoom.capacity) || 0;
+
+        if (occupiedCount >= capacity) {
+          res.status(STATUS_CODE.CONFLICT).json({
+            success: false,
+            message: `Room ${newRoom.roomNumber} is full (${occupiedCount}/${capacity})`,
+          });
+          return;
+        }
+
+        if (targetBedNumber) {
+          const bedTaken = takenBeds.some((b) => b.toUpperCase() === targetBedNumber.toUpperCase());
+          if (bedTaken) {
+            res.status(STATUS_CODE.CONFLICT).json({
+              success: false,
+              message: `Bed ${targetBedNumber} in Room ${newRoom.roomNumber} is already taken`,
+            });
+            return;
+          }
+        }
+
+        // Decrement old room's occupied count
+        const oldRoom = await this.ownerRepository.findRoomByHostelAndNumber(
+          resident.hostelId,
+          resident.roomNumber,
+        );
+        if (oldRoom) {
+          const oldOccupied = Math.max((Number(oldRoom.occupied) || 1) - 1, 0);
+          oldRoom.occupied = oldOccupied;
+          if (oldRoom.status === 'OCCUPIED' && oldOccupied < Number(oldRoom.capacity)) {
+            oldRoom.status = 'AVAILABLE' as typeof oldRoom.status;
+          }
+          await this.ownerRepository.saveRoom(oldRoom);
+        }
+
+        // Increment new room's occupied count
+        const newOccupied = occupiedCount + 1;
+        newRoom.occupied = newOccupied;
+        if (newOccupied >= capacity && newRoom.status === 'AVAILABLE') {
+          newRoom.status = 'OCCUPIED' as typeof newRoom.status;
+        }
+        await this.ownerRepository.saveRoom(newRoom);
+
+        resident.hostelId = targetHostelId;
+        resident.roomNumber = targetRoomNumber;
+        resident.bedNumber = targetBedNumber;
+      } else if (bedChanged && targetBedNumber) {
+        // Same room, just different bed: check if target bed is taken
+        const takenByRoom = await this.ownerRepository.findTakenBedsByHostel(resident.hostelId, [
+          resident.roomNumber,
+        ]);
+        const takenBeds = takenByRoom.get(resident.roomNumber?.trim()) ?? [];
+        const bedTaken = takenBeds.some((b) => b.toUpperCase() === targetBedNumber.toUpperCase());
+        if (bedTaken) {
+          res.status(STATUS_CODE.CONFLICT).json({
+            success: false,
+            message: `Bed ${targetBedNumber} in Room ${resident.roomNumber} is already taken`,
+          });
+          return;
+        }
+        resident.bedNumber = targetBedNumber;
+      }
+
+      // 3. Update rent & active status
+      if (dto.monthlyRent !== undefined) {
+        resident.monthlyRent = dto.monthlyRent != null ? Number(dto.monthlyRent) : null;
+      }
+      if (dto.isActive !== undefined) {
+        resident.isActive = dto.isActive;
+      }
+
+      const saved = await this.ownerRepository.saveResident(resident);
+
+      // Invalidate caches
+      await cacheService.invalidatePattern(`owner:dashboard:${ownerId}`);
+      await cacheService.invalidatePattern(`owner:residents`);
+      await cacheService.invalidatePattern(`hostel:residents`);
+      await cacheService.invalidatePattern(`owner:form-options:rooms`);
+      await cacheService.invalidatePattern(`owner:form-options:flats`);
+      await cacheService.invalidatePattern(`resident:profile`);
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: 'Resident updated successfully',
+        data: saved,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * DELETE /owner/residents/:id
+   * Removes a resident and frees up their room bed.
+   */
+  public deleteResident = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const id = getRequiredParam(req, 'id');
+      const ownerId = req.user!.userId;
+      const role = req.user!.role?.toLowerCase();
+
+      const resident = await this.ownerRepository.findResidentById(id);
+      if (!resident) {
+        res.status(STATUS_CODE.NOT_FOUND).json({
+          success: false,
+          message: 'Resident not found',
+        });
+        return;
+      }
+
+      // Authorization: owner must own the resident's hostel (or admin)
+      if (role !== IROLES.ADMIN) {
+        const hostel = await this.ownerRepository.findHostelByIdAndOwner(
+          resident.hostelId,
+          ownerId,
+        );
+        if (!hostel) {
+          res.status(STATUS_CODE.FORBIDDEN).json({
+            success: false,
+            message: 'You do not have permission to delete this resident',
+          });
+          return;
+        }
+      }
+
+      // Free up bed in the room
+      const room = await this.ownerRepository.findRoomByHostelAndNumber(
+        resident.hostelId,
+        resident.roomNumber,
+      );
+      if (room) {
+        const occupied = Math.max((Number(room.occupied) || 1) - 1, 0);
+        room.occupied = occupied;
+        if (room.status === 'OCCUPIED' && occupied < Number(room.capacity)) {
+          room.status = 'AVAILABLE' as typeof room.status;
+        }
+        await this.ownerRepository.saveRoom(room);
+      }
+
+      // Delete resident record
+      await this.ownerRepository.deleteResident(resident.id);
+
+      // Invalidate caches
+      await cacheService.invalidatePattern(`owner:dashboard:${ownerId}`);
+      await cacheService.invalidatePattern(`owner:residents`);
+      await cacheService.invalidatePattern(`hostel:residents`);
+      await cacheService.invalidatePattern(`owner:form-options:rooms`);
+      await cacheService.invalidatePattern(`owner:form-options:flats`);
+      await cacheService.invalidatePattern(`resident:profile`);
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: 'Resident deleted successfully',
       });
     } catch (error) {
       next(error);
