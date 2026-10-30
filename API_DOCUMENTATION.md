@@ -350,9 +350,30 @@ Body:
 {
   "hostelId": "hostel-uuid",
   "checkInDate": "2026-09-01",
-  "remarks": "Need single room"
+  "remarks": "Need single room",
+  "studentName": "John Doe",
+  "phone": "+977-9800000000",
+  "email": "john.doe@example.com"
 }
 ```
+
+Fields:
+
+- `hostelId` (string, required): UUID of the hostel to book.
+- `checkInDate` (string, required): Desired check-in date in `YYYY-MM-DD` format.
+- `remarks` (string, optional): Additional requests or notes.
+- `studentName` (string, optional): Full name of the applicant/student.
+- `phone` (string, optional): Contact telephone number.
+- `email` (string, optional): Contact email address.
+
+Fields:
+
+- `hostelId` (string, required): UUID of the hostel to book.
+- `checkInDate` (string, required): Desired check-in date in `YYYY-MM-DD` format.
+- `remarks` (string, optional): Additional requests or notes.
+- `studentName` (string, optional): Full name of the applicant/student.
+- `phone` (string, optional): Contact telephone number.
+- `email` (string, optional): Contact email address.
 
 ### GET `/bookings/my-bookings`
 

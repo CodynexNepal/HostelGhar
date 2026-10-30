@@ -44,6 +44,15 @@ export class Booking {
   @Column({ type: 'text', nullable: true })
   remarks!: string | null;
 
+  @Column({ type: 'varchar', length: 150, nullable: true, default: null })
+  studentName!: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true, default: null })
+  phone!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  email!: string | null;
+
   @Column({ type: 'enum', enum: BookingStatus, default: BookingStatus.PENDING })
   status!: BookingStatus;
 

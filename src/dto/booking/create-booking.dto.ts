@@ -1,11 +1,29 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE: create-booking.dto.ts
-// PURPOSE: DTO for users with role 'USER' to book a hostel room.
+// PURPOSE: DTO and request interface for users with role 'USER' to book a hostel room.
 // ──────────────────────────────────────────────────────────────────────────────
 
-import { IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsDateString,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 
-export class CreateBookingDto {
+export interface CreateBookingRequest {
+  hostelId: string;
+  checkInDate: string; // ISO date format YYYY-MM-DD
+  remarks?: string;
+  studentName?: string;
+  phone?: string;
+  email?: string;
+}
+
+export class CreateBookingDto implements CreateBookingRequest {
   @IsUUID('4', { message: 'Hostel ID must be a valid UUID' })
   @IsNotEmpty({ message: 'Hostel ID is required' })
   hostelId!: string;
@@ -17,4 +35,22 @@ export class CreateBookingDto {
   @IsString()
   @IsOptional()
   remarks?: string;
+
+  @ValidateIf((_o, v) => v !== undefined && v !== null && v !== '')
+  @IsString()
+  @MaxLength(150, { message: 'Student name must be at most 150 characters' })
+  @IsOptional()
+  studentName?: string;
+
+  @ValidateIf((_o, v) => v !== undefined && v !== null && v !== '')
+  @IsString()
+  @MaxLength(20, { message: 'Phone number must be at most 20 characters' })
+  @IsOptional()
+  phone?: string;
+
+  @ValidateIf((_o, v) => v !== undefined && v !== null && v !== '')
+  @IsEmail({}, { message: 'Email must be valid' })
+  @MaxLength(255, { message: 'Email must be at most 255 characters' })
+  @IsOptional()
+  email?: string;
 }

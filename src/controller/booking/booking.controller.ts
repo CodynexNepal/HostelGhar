@@ -26,6 +26,9 @@ export class BookingController {
         dto.hostelId,
         dto.checkInDate,
         dto.remarks,
+        dto.studentName,
+        dto.phone,
+        dto.email,
       );
       if (result.error) {
         res.status(result.error.status).json({ success: false, message: result.error.message });

@@ -14,6 +14,9 @@ export class BookingService {
     hostelId: string,
     checkInDate: string,
     remarks?: string,
+    studentName?: string,
+    phone?: string,
+    email?: string,
   ) {
     const hostel = await this.bookingRepository.findHostelById(hostelId);
     if (!hostel) {
@@ -38,6 +41,9 @@ export class BookingService {
       hostelId,
       checkInDate,
       remarks: remarks || null,
+      studentName: studentName || null,
+      phone: phone || null,
+      email: email || null,
       status: BookingStatus.PENDING,
     });
 
