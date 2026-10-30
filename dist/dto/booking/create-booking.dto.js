@@ -1,7 +1,7 @@
 "use strict";
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE: create-booking.dto.ts
-// PURPOSE: DTO for users with role 'USER' to book a hostel room.
+// PURPOSE: DTO and request interface for users with role 'USER' to book a hostel room.
 // ──────────────────────────────────────────────────────────────────────────────
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
@@ -33,3 +33,24 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateBookingDto.prototype, "remarks", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((_o, v) => v !== undefined && v !== null && v !== ''),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(150, { message: 'Student name must be at most 150 characters' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateBookingDto.prototype, "studentName", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((_o, v) => v !== undefined && v !== null && v !== ''),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(20, { message: 'Phone number must be at most 20 characters' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateBookingDto.prototype, "phone", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((_o, v) => v !== undefined && v !== null && v !== ''),
+    (0, class_validator_1.IsEmail)({}, { message: 'Email must be valid' }),
+    (0, class_validator_1.MaxLength)(255, { message: 'Email must be at most 255 characters' }),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", String)
+], CreateBookingDto.prototype, "email", void 0);

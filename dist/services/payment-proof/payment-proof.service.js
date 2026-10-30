@@ -17,6 +17,7 @@ const event_dispatcher_util_1 = require("../../utils/event-dispatcher.util");
 const queue_constants_1 = require("../../constant/queue.constants");
 const pagination_util_1 = require("../../utils/pagination.util");
 const image_upload_service_1 = require("../upload/image-upload.service");
+const notification_service_1 = require("../notification/notification.service");
 const BILLING_MONTHS = [
     'January',
     'February',
@@ -125,6 +126,16 @@ class PaymentProofService {
         });
         const saved = await this.proofRepository.save(proof);
         const fresh = (await this.proofRepository.findById(saved.id)) ?? saved;
+        // Notify hostel owner of new payment proof
+        await notification_service_1.notificationService.notifyHostelOwner(fee.hostelId, {
+            type: 'PAYMENT_PROOF_SUBMITTED',
+            entityType: 'payment',
+            entityId: saved.id,
+            title: 'Payment Proof Submitted',
+            message: `A resident submitted a payment proof of Rs. ${amount} for Month ${fee.billingMonth}/${fee.billingYear}.`,
+            targetUrl: '/fees',
+            metadata: { feeId: fee.id, proofId: saved.id, amount },
+        });
         return this.serialize(fresh);
     }
     async listForResident(userId, role, options) {
@@ -186,6 +197,19 @@ class PaymentProofService {
         if (saved.status === payment_proof_enum_1.PaymentProofStatus.APPROVED) {
             await this.creditFeeForApprovedProof(saved.id, Number(saved.amount));
         }
+        else if (saved.status === payment_proof_enum_1.PaymentProofStatus.REJECTED && saved.resident?.userId) {
+            await notification_service_1.notificationService.createNotification({
+                userId: saved.resident.userId,
+                hostelId: saved.hostelId,
+                type: 'PAYMENT_FAILED',
+                entityType: 'payment',
+                entityId: saved.id,
+                title: 'Payment Proof Rejected',
+                message: `Your payment proof was rejected.${dto.note ? ` Reason: ${dto.note}` : ''}`,
+                targetUrl: '/resident/payments',
+                metadata: { proofId: saved.id },
+            });
+        }
         const fresh = (await this.proofRepository.findById(saved.id)) ?? saved;
         return this.serialize(fresh);
     }
@@ -218,6 +242,19 @@ class PaymentProofService {
             hostelId: fee.hostelId,
             metadata: { proofId, feeId: fee.id },
         });
+        if (fee.resident?.userId) {
+            await notification_service_1.notificationService.createNotification({
+                userId: fee.resident.userId,
+                hostelId: fee.hostelId,
+                type: 'PAYMENT_CONFIRMED',
+                entityType: 'payment',
+                entityId: fee.id,
+                title: 'Payment Confirmed',
+                message: `Your payment of Rs. ${amount} for Month ${fee.billingMonth}/${fee.billingYear} has been approved.`,
+                targetUrl: '/resident/payments',
+                metadata: { feeId: fee.id, amount, proofId },
+            });
+        }
         const email = fee.resident?.user?.email;
         if (email) {
             const name = `${fee.resident?.user?.firstName ?? ''} ${fee.resident?.user?.lastName ?? ''}`.trim() ||

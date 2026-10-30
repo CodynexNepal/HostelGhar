@@ -41,7 +41,38 @@ class MealController {
                     role: req.user.role ?? '',
                 };
                 const dto = req.body;
-                const result = await this.mealService.saveWeeklySchedule(hostelId, user, dto.meals);
+                const rawMeals = Array.isArray(dto.meals) ? dto.meals : [];
+                const isDailyMealPayload = rawMeals.some((m) => m && (m.mealName !== undefined || m.time !== undefined));
+                if (isDailyMealPayload) {
+                    const dayOfWeek = (req.body?.dayOfWeek ||
+                        req.query.dayOfWeek ||
+                        req.query.day ||
+                        'ALL');
+                    const result = await this.mealService.saveDailySchedule(hostelId, user, rawMeals, dayOfWeek);
+                    if (result.error) {
+                        res.status(result.error.status).json({ success: false, message: result.error.message });
+                        return;
+                    }
+                    res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                        success: true,
+                        message: 'Daily meal schedule saved successfully',
+                        data: result.data,
+                    });
+                    return;
+                }
+                // Filter to ensure only weekly items with a valid dayOfWeek are saved
+                const weeklyMeals = rawMeals
+                    .filter((m) => m && m.dayOfWeek)
+                    .map((m) => ({
+                    dayOfWeek: m.dayOfWeek,
+                    breakfastDescription: m.breakfastDescription ?? null,
+                    breakfastTime: m.breakfastTime ?? null,
+                    breakfastNotes: m.breakfastNotes ?? null,
+                    mainMealDescription: m.mainMealDescription ?? null,
+                    mainMealTime: m.mainMealTime ?? null,
+                    mainMealNotes: m.mainMealNotes ?? null,
+                }));
+                const result = await this.mealService.saveWeeklySchedule(hostelId, user, weeklyMeals);
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
                     return;

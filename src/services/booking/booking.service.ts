@@ -5,6 +5,7 @@ import { cacheService } from '../../utils/cache.util';
 import { eventDispatcher } from '../../utils/event-dispatcher.util';
 import { SocketEvent } from '../../constant/queue.constants';
 import { createPaginatedResponse } from '../../utils/pagination.util';
+import { notificationService } from '../notification/notification.service';
 
 export class BookingService {
   constructor(private readonly bookingRepository: BookingRepository) {}
@@ -57,6 +58,19 @@ export class BookingService {
         payload: booking,
         userId: hostel.ownerId,
         hostelId,
+      });
+
+      // Dispatch persistent notification with unread count updates
+      await notificationService.createNotification({
+        userId: hostel.ownerId,
+        hostelId,
+        type: 'BOOKING_NEW',
+        entityType: 'booking',
+        entityId: booking.id,
+        title: 'New Booking Request',
+        message: `New booking request from ${studentName || email || 'a resident'} for check-in on ${checkInDate}.`,
+        targetUrl: '/hostel/bookings',
+        metadata: { bookingId: booking.id, studentName, checkInDate },
       });
     }
 
@@ -135,6 +149,19 @@ export class BookingService {
       userId: booking.userId,
       hostelId: booking.hostelId,
       metadata: { actorId, bookingId },
+    });
+
+    // Notify resident of booking status change
+    await notificationService.createNotification({
+      userId: booking.userId,
+      hostelId: booking.hostelId,
+      type: 'BOOKING_STATUS',
+      entityType: 'booking',
+      entityId: booking.id,
+      title: `Booking ${status}`,
+      message: `Your hostel booking status has been updated to ${status}.`,
+      targetUrl: '/resident/bookings',
+      metadata: { bookingId: booking.id, status },
     });
 
     return { data: savedBooking };

@@ -28,6 +28,7 @@ import {
 } from '../../templates/email.template';
 import crypto from 'crypto';
 import { logger } from '../../observability/logger';
+import { notificationService } from '../notification/notification.service';
 
 const toSafeUserResponse = (user: {
   id: string;
@@ -125,6 +126,19 @@ export class AuthService {
           error: err?.message || String(err),
         });
       });
+
+    // Notify admins of new user registration
+    notificationService
+      .notifyAdmins({
+        type: 'USER_NEW',
+        entityType: 'user',
+        entityId: newUser.id,
+        title: 'New User Registered',
+        message: `${newUser.firstName} ${newUser.lastName} (${newUser.email}) has joined Hostel Ghar.`,
+        targetUrl: '/admin/owners',
+        metadata: { userId: newUser.id, email: newUser.email },
+      })
+      .catch(() => {});
 
     return this.issueTokensForUser(newUser);
   }

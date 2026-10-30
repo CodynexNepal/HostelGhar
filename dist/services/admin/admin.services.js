@@ -25,6 +25,7 @@ const smtp_config_1 = require("../../configs/smtp.config");
 const crypto_1 = __importDefault(require("crypto"));
 const createHttpError_1 = require("../../utils/createHttpError");
 const image_upload_service_1 = require("../../services/upload/image-upload.service");
+const notification_service_1 = require("../notification/notification.service");
 class AdminService {
     constructor(adminRepository, userRepository) {
         this.adminRepository = adminRepository;
@@ -118,6 +119,28 @@ class AdminService {
         await event_dispatcher_util_1.eventDispatcher.dispatch({
             type: queue_constants_1.SocketEvent.HOSTEL_UPDATED,
             payload: hostel,
+        });
+        // Notify hostel owner
+        await notification_service_1.notificationService.createNotification({
+            userId: owner.id,
+            hostelId: hostel.id,
+            type: 'HOSTEL_NEW',
+            entityType: 'hostel',
+            entityId: hostel.id,
+            title: 'Hostel Profile Created',
+            message: `Your hostel ${hostel.name} has been set up successfully.`,
+            targetUrl: '/hostel',
+            metadata: { hostelId: hostel.id },
+        });
+        // Notify all admins
+        await notification_service_1.notificationService.notifyAdmins({
+            type: 'HOSTEL_NEW',
+            entityType: 'hostel',
+            entityId: hostel.id,
+            title: 'New Hostel Registered',
+            message: `${hostel.name} was registered by admin.`,
+            targetUrl: '/admin/hostels',
+            metadata: { hostelId: hostel.id },
         });
         return {
             data: hostel,

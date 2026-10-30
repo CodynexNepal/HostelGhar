@@ -25,6 +25,7 @@ import { imageUploadService } from '../../services/upload/image-upload.service';
 import { createHttpError } from '../../utils/createHttpError';
 import { SubscriptionService } from '../../services/subscription/subscription.service';
 import { SubscriptionFactory } from '../../factory/subscription/subscription.factory';
+import { notificationService } from '../../services/notification/notification.service';
 
 export class OwnerController {
   private subscriptionService: SubscriptionService;
@@ -745,6 +746,19 @@ export class OwnerController {
         residentId: savedResident.id,
         name: `${user.firstName} ${user.lastName}`,
         room: dto.roomNumber,
+      });
+
+      // Dispatch persistent notification for owner
+      await notificationService.createNotification({
+        userId: ownerId,
+        hostelId: hostel.id,
+        type: 'RESIDENT_NEW',
+        entityType: 'resident',
+        entityId: savedResident.id,
+        title: 'New Resident Registered',
+        message: `${user.firstName} ${user.lastName} has been assigned to Room ${dto.roomNumber}.`,
+        targetUrl: '/residents',
+        metadata: { residentId: savedResident.id, roomNumber: dto.roomNumber },
       });
 
       res.status(STATUS_CODE.CREATED).json({

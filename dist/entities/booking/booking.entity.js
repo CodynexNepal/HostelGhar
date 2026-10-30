@@ -52,6 +52,18 @@ __decorate([
     __metadata("design:type", Object)
 ], Booking.prototype, "remarks", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 150, nullable: true, default: null }),
+    __metadata("design:type", Object)
+], Booking.prototype, "studentName", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 20, nullable: true, default: null }),
+    __metadata("design:type", Object)
+], Booking.prototype, "phone", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 255, nullable: true, default: null }),
+    __metadata("design:type", Object)
+], Booking.prototype, "email", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'enum', enum: booking_enum_1.BookingStatus, default: booking_enum_1.BookingStatus.PENDING }),
     __metadata("design:type", String)
 ], Booking.prototype, "status", void 0);

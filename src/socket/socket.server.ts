@@ -157,18 +157,22 @@ class SocketService {
    * Helper Methods for Scoped Emits Across the Application
    */
   public toUser(userId: string, event: string, data: any): void {
+    if (!this.io) return;
     this.getIO().to(`user:${userId}`).emit(event, data);
   }
 
   public toHostel(hostelId: string, event: string, data: any): void {
+    if (!this.io) return;
     this.getIO().to(`hostel:${hostelId}`).emit(event, data);
   }
 
   public toRole(role: string, event: string, data: any): void {
+    if (!this.io) return;
     this.getIO().to(`role:${role.toUpperCase()}`).emit(event, data);
   }
 
   public toRoom(room: string, event: string, data: any): void {
+    if (!this.io) return;
     this.getIO().to(room).emit(event, data);
   }
 
@@ -178,6 +182,7 @@ class SocketService {
    * instantly. Never throws — safe when io is not initialised (tests).
    */
   public async disconnectUser(userId: string): Promise<number> {
+    if (!this.io) return 0;
     try {
       const sockets = await this.getIO().in(`user:${userId}`).fetchSockets();
       let n = 0;
@@ -196,6 +201,7 @@ class SocketService {
   }
 
   public broadcast(event: string, data: any): void {
+    if (!this.io) return;
     this.getIO().emit(event, data);
   }
 

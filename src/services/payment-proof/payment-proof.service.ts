@@ -23,6 +23,7 @@ import { eventDispatcher } from '../../utils/event-dispatcher.util';
 import { JobType, SocketEvent } from '../../constant/queue.constants';
 import { createPaginatedResponse, PaginatedResponse } from '../../utils/pagination.util';
 import { imageUploadService } from '../upload/image-upload.service';
+import { notificationService } from '../notification/notification.service';
 
 const BILLING_MONTHS = [
   'January',
@@ -173,6 +174,18 @@ export class PaymentProofService {
     });
     const saved = await this.proofRepository.save(proof);
     const fresh = (await this.proofRepository.findById(saved.id)) ?? saved;
+
+    // Notify hostel owner of new payment proof
+    await notificationService.notifyHostelOwner(fee.hostelId, {
+      type: 'PAYMENT_PROOF_SUBMITTED',
+      entityType: 'payment',
+      entityId: saved.id,
+      title: 'Payment Proof Submitted',
+      message: `A resident submitted a payment proof of Rs. ${amount} for Month ${fee.billingMonth}/${fee.billingYear}.`,
+      targetUrl: '/fees',
+      metadata: { feeId: fee.id, proofId: saved.id, amount },
+    });
+
     return this.serialize(fresh);
   }
 
@@ -275,6 +288,18 @@ export class PaymentProofService {
 
     if (saved.status === PaymentProofStatus.APPROVED) {
       await this.creditFeeForApprovedProof(saved.id, Number(saved.amount));
+    } else if (saved.status === PaymentProofStatus.REJECTED && saved.resident?.userId) {
+      await notificationService.createNotification({
+        userId: saved.resident.userId,
+        hostelId: saved.hostelId,
+        type: 'PAYMENT_FAILED',
+        entityType: 'payment',
+        entityId: saved.id,
+        title: 'Payment Proof Rejected',
+        message: `Your payment proof was rejected.${dto.note ? ` Reason: ${dto.note}` : ''}`,
+        targetUrl: '/resident/payments',
+        metadata: { proofId: saved.id },
+      });
     }
     const fresh = (await this.proofRepository.findById(saved.id)) ?? saved;
     return this.serialize(fresh);
@@ -308,6 +333,20 @@ export class PaymentProofService {
       hostelId: fee.hostelId,
       metadata: { proofId, feeId: fee.id },
     });
+
+    if (fee.resident?.userId) {
+      await notificationService.createNotification({
+        userId: fee.resident.userId,
+        hostelId: fee.hostelId,
+        type: 'PAYMENT_CONFIRMED',
+        entityType: 'payment',
+        entityId: fee.id,
+        title: 'Payment Confirmed',
+        message: `Your payment of Rs. ${amount} for Month ${fee.billingMonth}/${fee.billingYear} has been approved.`,
+        targetUrl: '/resident/payments',
+        metadata: { feeId: fee.id, amount, proofId },
+      });
+    }
     const email = fee.resident?.user?.email;
     if (email) {
       const name =

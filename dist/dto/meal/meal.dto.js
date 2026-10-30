@@ -21,53 +21,147 @@ class MealDayItemDto {
 }
 exports.MealDayItemDto = MealDayItemDto;
 __decorate([
+    (0, class_transformer_1.Transform)(({ value, obj }) => {
+        const raw = value ?? obj?.day;
+        if (typeof raw === 'string') {
+            return raw.toUpperCase().trim();
+        }
+        return raw;
+    }),
+    (0, class_validator_1.ValidateIf)((o) => !o.mealName || o.dayOfWeek !== undefined),
     (0, class_validator_1.IsEnum)(meal_enum_1.DayOfWeek, {
         message: 'dayOfWeek must be one of: SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY',
     }),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], MealDayItemDto.prototype, "dayOfWeek", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], MealDayItemDto.prototype, "day", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], MealDayItemDto.prototype, "id", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], MealDayItemDto.prototype, "hostelId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", Object)
+], MealDayItemDto.prototype, "hostel_id", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'mealName must be a string' }),
+    (0, class_validator_1.MaxLength)(100),
+    __metadata("design:type", String)
+], MealDayItemDto.prototype, "mealName", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'mealNameEn must be a string' }),
+    (0, class_validator_1.MaxLength)(100),
+    __metadata("design:type", Object)
+], MealDayItemDto.prototype, "mealNameEn", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'time must be a string' }),
+    (0, class_validator_1.MaxLength)(100),
+    __metadata("design:type", String)
+], MealDayItemDto.prototype, "time", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)({ message: 'menuDescription must be a string' }),
+    (0, class_validator_1.MaxLength)(1000),
+    __metadata("design:type", Object)
+], MealDayItemDto.prototype, "menuDescription", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], MealDayItemDto.prototype, "isActive", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    __metadata("design:type", Number)
+], MealDayItemDto.prototype, "orderIndex", void 0);
+__decorate([
+    (0, class_validator_1.ValidateIf)((_o, v) => v !== undefined && v !== null && v !== ''),
+    (0, class_validator_1.IsString)(),
     (0, class_validator_1.MaxLength)(1000, { message: 'breakfastDescription cannot exceed 1000 characters' }),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
 ], MealDayItemDto.prototype, "breakfastDescription", void 0);
 __decorate([
-    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateIf)((_o, v) => v !== undefined && v !== null && v !== ''),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MaxLength)(50, { message: 'breakfastTime cannot exceed 50 characters' }),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
 ], MealDayItemDto.prototype, "breakfastTime", void 0);
 __decorate([
-    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateIf)((_o, v) => v !== undefined && v !== null && v !== ''),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MaxLength)(500, { message: 'breakfastNotes cannot exceed 500 characters' }),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
 ], MealDayItemDto.prototype, "breakfastNotes", void 0);
 __decorate([
-    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateIf)((_o, v) => v !== undefined && v !== null && v !== ''),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MaxLength)(1000, { message: 'mainMealDescription cannot exceed 1000 characters' }),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
 ], MealDayItemDto.prototype, "mainMealDescription", void 0);
 __decorate([
-    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateIf)((_o, v) => v !== undefined && v !== null && v !== ''),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MaxLength)(50, { message: 'mainMealTime cannot exceed 50 characters' }),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
 ], MealDayItemDto.prototype, "mainMealTime", void 0);
 __decorate([
-    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateIf)((_o, v) => v !== undefined && v !== null && v !== ''),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.MaxLength)(500, { message: 'mainMealNotes cannot exceed 500 characters' }),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Object)
 ], MealDayItemDto.prototype, "mainMealNotes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], MealDayItemDto.prototype, "createdAt", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], MealDayItemDto.prototype, "updatedAt", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], MealDayItemDto.prototype, "created_at", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], MealDayItemDto.prototype, "updated_at", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], MealDayItemDto.prototype, "isConfigured", void 0);
 class SaveWeeklyMealsDto {
 }
 exports.SaveWeeklyMealsDto = SaveWeeklyMealsDto;
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SaveWeeklyMealsDto.prototype, "dayOfWeek", void 0);
+__decorate([
     (0, class_validator_1.IsArray)({ message: 'meals must be an array' }),
-    (0, class_validator_1.ArrayMaxSize)(7, { message: 'meals cannot contain more than 7 days' }),
+    (0, class_validator_1.ArrayMaxSize)(20, { message: 'meals cannot contain more than 20 items' }),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => MealDayItemDto),
     __metadata("design:type", Array)

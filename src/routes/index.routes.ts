@@ -17,6 +17,8 @@ import { paymentProofRouter } from './payment-proof/payment-proof.routes';
 import { expenseRouter } from './expense/expense.routes';
 import { subscriptionRouter } from './subscription/subscription.routes';
 import { staffRouter } from './staff/staff.routes';
+import { notificationRouter } from './notification/notification.routes';
+import { searchRouter } from './search/search.routes';
 
 const routes = Router();
 
@@ -38,5 +40,7 @@ routes.use('/platform-qrs', platformQrPublicRouter);
 routes.use('/expenses', expenseRouter);
 routes.use('/subscriptions', subscriptionRouter);
 routes.use('/staff', staffRouter);
+routes.use('/notifications', notificationRouter);
+routes.use('/search', searchRouter);
 
 export default routes;

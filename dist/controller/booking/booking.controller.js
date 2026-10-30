@@ -18,7 +18,7 @@ class BookingController {
             try {
                 const userId = req.user.userId;
                 const dto = req.body;
-                const result = await this.bookingService.createBooking(userId, dto.hostelId, dto.checkInDate, dto.remarks);
+                const result = await this.bookingService.createBooking(userId, dto.hostelId, dto.checkInDate, dto.remarks, dto.studentName, dto.phone, dto.email);
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
                     return;

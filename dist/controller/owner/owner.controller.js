@@ -22,6 +22,7 @@ const http_decorator_1 = require("../../decorators/http.decorator");
 const image_upload_service_1 = require("../../services/upload/image-upload.service");
 const createHttpError_1 = require("../../utils/createHttpError");
 const subscription_factory_1 = require("../../factory/subscription/subscription.factory");
+const notification_service_1 = require("../../services/notification/notification.service");
 class OwnerController {
     constructor(ownerRepository, subscriptionService) {
         this.ownerRepository = ownerRepository;
@@ -571,6 +572,18 @@ class OwnerController {
                     residentId: savedResident.id,
                     name: `${user.firstName} ${user.lastName}`,
                     room: dto.roomNumber,
+                });
+                // Dispatch persistent notification for owner
+                await notification_service_1.notificationService.createNotification({
+                    userId: ownerId,
+                    hostelId: hostel.id,
+                    type: 'RESIDENT_NEW',
+                    entityType: 'resident',
+                    entityId: savedResident.id,
+                    title: 'New Resident Registered',
+                    message: `${user.firstName} ${user.lastName} has been assigned to Room ${dto.roomNumber}.`,
+                    targetUrl: '/residents',
+                    metadata: { residentId: savedResident.id, roomNumber: dto.roomNumber },
                 });
                 res.status(statusCode_interface_1.STATUS_CODE.CREATED).json({
                     success: true,

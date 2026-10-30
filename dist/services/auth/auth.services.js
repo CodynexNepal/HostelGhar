@@ -17,6 +17,7 @@ const queue_constants_1 = require("../../constant/queue.constants");
 const email_template_1 = require("../../templates/email.template");
 const crypto_1 = __importDefault(require("crypto"));
 const logger_1 = require("../../observability/logger");
+const notification_service_1 = require("../notification/notification.service");
 const toSafeUserResponse = (user) => ({
     id: user.id,
     email: user.email,
@@ -84,6 +85,16 @@ class AuthService {
                 error: err?.message || String(err),
             });
         });
+        // Notify admins of new user registration
+        notification_service_1.notificationService.notifyAdmins({
+            type: 'USER_NEW',
+            entityType: 'user',
+            entityId: newUser.id,
+            title: 'New User Registered',
+            message: `${newUser.firstName} ${newUser.lastName} (${newUser.email}) has joined Hostel Ghar.`,
+            targetUrl: '/admin/owners',
+            metadata: { userId: newUser.id, email: newUser.email },
+        }).catch(() => { });
         return this.issueTokensForUser(newUser);
     }
     async forgotPassword(dto, correlationId) {

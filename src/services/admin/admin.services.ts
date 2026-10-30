@@ -25,6 +25,7 @@ import { assertSmtpConfigured } from '../../configs/smtp.config';
 import crypto from 'crypto';
 import { createHttpError } from '../../utils/createHttpError';
 import { imageUploadService } from '../../services/upload/image-upload.service';
+import { notificationService } from '../notification/notification.service';
 
 export class AdminService {
   constructor(
@@ -141,6 +142,30 @@ export class AdminService {
     await eventDispatcher.dispatch({
       type: SocketEvent.HOSTEL_UPDATED,
       payload: hostel,
+    });
+
+    // Notify hostel owner
+    await notificationService.createNotification({
+      userId: owner.id,
+      hostelId: hostel.id,
+      type: 'HOSTEL_NEW',
+      entityType: 'hostel',
+      entityId: hostel.id,
+      title: 'Hostel Profile Created',
+      message: `Your hostel ${hostel.name} has been set up successfully.`,
+      targetUrl: '/hostel',
+      metadata: { hostelId: hostel.id },
+    });
+
+    // Notify all admins
+    await notificationService.notifyAdmins({
+      type: 'HOSTEL_NEW',
+      entityType: 'hostel',
+      entityId: hostel.id,
+      title: 'New Hostel Registered',
+      message: `${hostel.name} was registered by admin.`,
+      targetUrl: '/admin/hostels',
+      metadata: { hostelId: hostel.id },
     });
 
     return {

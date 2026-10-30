@@ -7,11 +7,12 @@ const cache_util_1 = require("../../utils/cache.util");
 const event_dispatcher_util_1 = require("../../utils/event-dispatcher.util");
 const queue_constants_1 = require("../../constant/queue.constants");
 const pagination_util_1 = require("../../utils/pagination.util");
+const notification_service_1 = require("../notification/notification.service");
 class BookingService {
     constructor(bookingRepository) {
         this.bookingRepository = bookingRepository;
     }
-    async createBooking(userId, hostelId, checkInDate, remarks) {
+    async createBooking(userId, hostelId, checkInDate, remarks, studentName, phone, email) {
         const hostel = await this.bookingRepository.findHostelById(hostelId);
         if (!hostel) {
             return { error: { status: statusCode_interface_1.STATUS_CODE.NOT_FOUND, message: 'Hostel not found' } };
@@ -30,6 +31,9 @@ class BookingService {
             hostelId,
             checkInDate,
             remarks: remarks || null,
+            studentName: studentName || null,
+            phone: phone || null,
+            email: email || null,
             status: booking_enum_1.BookingStatus.PENDING,
         });
         // Invalidate caches across all tiers
@@ -41,6 +45,18 @@ class BookingService {
                 payload: booking,
                 userId: hostel.ownerId,
                 hostelId,
+            });
+            // Dispatch persistent notification with unread count updates
+            await notification_service_1.notificationService.createNotification({
+                userId: hostel.ownerId,
+                hostelId,
+                type: 'BOOKING_NEW',
+                entityType: 'booking',
+                entityId: booking.id,
+                title: 'New Booking Request',
+                message: `New booking request from ${studentName || email || 'a resident'} for check-in on ${checkInDate}.`,
+                targetUrl: '/hostel/bookings',
+                metadata: { bookingId: booking.id, studentName, checkInDate },
             });
         }
         return { data: booking };
@@ -81,6 +97,18 @@ class BookingService {
             userId: booking.userId,
             hostelId: booking.hostelId,
             metadata: { actorId, bookingId },
+        });
+        // Notify resident of booking status change
+        await notification_service_1.notificationService.createNotification({
+            userId: booking.userId,
+            hostelId: booking.hostelId,
+            type: 'BOOKING_STATUS',
+            entityType: 'booking',
+            entityId: booking.id,
+            title: `Booking ${status}`,
+            message: `Your hostel booking status has been updated to ${status}.`,
+            targetUrl: '/resident/bookings',
+            metadata: { bookingId: booking.id, status },
         });
         return { data: savedBooking };
     }

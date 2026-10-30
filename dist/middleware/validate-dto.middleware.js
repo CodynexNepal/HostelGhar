@@ -45,6 +45,22 @@ const message_interface_1 = require("../constant/message.interface");
 // `new (...args: unknown[]) => T` is a TypeScript "constructor type" — it
 // means "any class that can be instantiated with `new`". This ensures we
 // can only pass actual classes (not interfaces or plain objects).
+// Helper function to extract human-readable error messages recursively from nested validation errors
+const extractValidationMessages = (error, prefix = '') => {
+    const msgs = [];
+    if (error.constraints) {
+        for (const msg of Object.values(error.constraints)) {
+            msgs.push(prefix ? `${prefix}: ${msg}` : msg);
+        }
+    }
+    if (error.children && error.children.length > 0) {
+        for (const child of error.children) {
+            const childPrefix = prefix ? `${prefix}.${child.property}` : child.property;
+            msgs.push(...extractValidationMessages(child, childPrefix));
+        }
+    }
+    return msgs;
+};
 // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
 const validateDto = (dtoClass) => {
     // Return the actual Express middleware function.
@@ -52,54 +68,33 @@ const validateDto = (dtoClass) => {
         // ── Step 1: Transform plain object → DTO class instance ───────
         // `plainToInstance` takes the raw `req.body` (a plain JS object
         // from the JSON parser) and creates an instance of `dtoClass`.
-        // Without this step, the class-validator decorators have nothing
-        // to validate against — they're attached to class properties,
-        // and a plain object has no class.
-        // Default to `{}` so empty-body POSTs (e.g. suspend with no reason)
-        // validate cleanly against all-optional DTOs instead of throwing.
-        const dtoInstance = (0, class_transformer_1.plainToInstance)(dtoClass, req.body ?? {});
+        // Default to `{}` so empty-body POSTs validate cleanly against all-optional DTOs.
+        // If client passes an array directly, wrap into { meals: [...] } for meal array DTOs.
+        const rawBody = req.body ?? {};
+        const payload = Array.isArray(rawBody) && dtoClass.name.toLowerCase().includes('meal')
+            ? { meals: rawBody }
+            : rawBody;
+        const dtoInstance = (0, class_transformer_1.plainToInstance)(dtoClass, payload);
         // ── Step 2: Run all validation decorators ─────────────────────
-        // `validate()` checks every @IsEmail, @MinLength, @IsNotEmpty, etc.
-        // decorator on the DTO instance. It returns an array of
-        // ValidationError objects — one for each failed rule.
-        //
-        // `whitelist: true` strips any properties NOT defined in the DTO.
-        // This prevents "mass assignment" attacks where an attacker sends
-        // `{ "email": "...", "password": "...", "role": "admin" }` to
-        // escalate privileges. The `role` field would be silently removed.
-        //
-        // `forbidNonWhitelisted: true` goes further — instead of silently
-        // stripping unknown properties, it REJECTS the request entirely.
-        // This makes the API strict and predictable.
         const errors = await (0, class_validator_1.validate)(dtoInstance, {
             whitelist: true,
             forbidNonWhitelisted: true,
         });
         // ── Step 3: Check for validation errors ───────────────────────
-        // If there are validation errors, return them immediately.
-        // Do NOT call `next()` — the request stops here.
         if (errors.length > 0) {
-            // Map each ValidationError to a human-readable error object.
-            // `constraints` is a Record<string, string> where the key is
-            // the validator name (e.g., 'isEmail') and the value is the
-            // error message (e.g., 'Please provide a valid email address').
-            const formattedErrors = errors.map((error) => ({
-                // The field name that failed validation (e.g., 'email').
-                field: error.property,
-                // All error messages for this field. A single field can have
-                // multiple violations (e.g., both @IsNotEmpty and @IsEmail fail
-                // for an empty email field).
-                messages: error.constraints ? Object.values(error.constraints) : [],
-            }));
-            // Return HTTP 422 Unprocessable Entity — the standard status code
-            // for "the server understands the content type and syntax, but
-            // the data is semantically invalid".
+            const formattedErrors = errors.map((error) => {
+                const directMessages = error.constraints ? Object.values(error.constraints) : [];
+                const messages = directMessages.length > 0 ? directMessages : extractValidationMessages(error);
+                return {
+                    field: error.property,
+                    messages: messages.length > 0 ? messages : ['Validation failed'],
+                };
+            });
             res.status(statusCode_interface_1.STATUS_CODE.VALIDATION_ERROR).json({
                 success: false,
                 message: message_interface_1.MESSAGES.VALIDATION_ERROR,
                 errors: formattedErrors,
             });
-            // Explicit return to prevent calling next() after sending response.
             return;
         }
         // ── Step 4: Validation passed — proceed to controller ─────────
