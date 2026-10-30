@@ -91,10 +91,7 @@ class NotificationService {
         try {
             const userRepo = database_source_1.AppDataSource.getRepository(user_entity_1.User);
             const admins = await userRepo.find({
-                where: [
-                    { role: enum_constant_1.IROLES.ADMIN },
-                    { role: 'SUPER_ADMIN' },
-                ],
+                where: [{ role: enum_constant_1.IROLES.ADMIN }, { role: 'SUPER_ADMIN' }],
                 select: ['id', 'email'],
             });
             for (const admin of admins) {

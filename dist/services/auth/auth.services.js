@@ -86,7 +86,8 @@ class AuthService {
             });
         });
         // Notify admins of new user registration
-        notification_service_1.notificationService.notifyAdmins({
+        notification_service_1.notificationService
+            .notifyAdmins({
             type: 'USER_NEW',
             entityType: 'user',
             entityId: newUser.id,
@@ -94,7 +95,8 @@ class AuthService {
             message: `${newUser.firstName} ${newUser.lastName} (${newUser.email}) has joined Hostel Ghar.`,
             targetUrl: '/admin/owners',
             metadata: { userId: newUser.id, email: newUser.email },
-        }).catch(() => { });
+        })
+            .catch(() => { });
         return this.issueTokensForUser(newUser);
     }
     async forgotPassword(dto, correlationId) {

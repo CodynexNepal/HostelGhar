@@ -31,9 +31,7 @@ class NotificationRepository {
         return await this.repo.findOne({ where: { id } });
     }
     async findByUser(userId, page = 1, limit = 20, isRead, entityType, hostelId) {
-        const query = this.repo
-            .createQueryBuilder('n')
-            .where('n.userId = :userId', { userId });
+        const query = this.repo.createQueryBuilder('n').where('n.userId = :userId', { userId });
         if (hostelId) {
             query.andWhere('(n.hostelId = :hostelId OR n.hostelId IS NULL)', { hostelId });
         }

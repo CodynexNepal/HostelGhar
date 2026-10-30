@@ -8,7 +8,7 @@ exports.BookingStatus = void 0;
 var BookingStatus;
 (function (BookingStatus) {
     BookingStatus["PENDING"] = "PENDING";
-    BookingStatus["CONFIRMED"] = "CONFIRMED";
+    BookingStatus["CONFIRMED"] = "APPROVED";
     BookingStatus["CANCELLED"] = "CANCELLED";
     BookingStatus["REJECTED"] = "REJECTED";
 })(BookingStatus || (exports.BookingStatus = BookingStatus = {}));
