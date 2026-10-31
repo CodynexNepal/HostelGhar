@@ -79,28 +79,24 @@ __decorate([
 ], Hostel.prototype, "suspendReason", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: 'numeric',
-        precision: 10,
-        scale: 7,
+        type: 'double precision',
         nullable: true,
         default: null,
         transformer: {
             to: (value) => value,
-            from: (value) => (value != null ? parseFloat(value) : null),
+            from: (value) => (value != null ? parseFloat(String(value)) : null),
         },
     }),
     __metadata("design:type", Object)
 ], Hostel.prototype, "latitude", void 0);
 __decorate([
     (0, typeorm_1.Column)({
-        type: 'numeric',
-        precision: 10,
-        scale: 7,
+        type: 'double precision',
         nullable: true,
         default: null,
         transformer: {
             to: (value) => value,
-            from: (value) => (value != null ? parseFloat(value) : null),
+            from: (value) => (value != null ? parseFloat(String(value)) : null),
         },
     }),
     __metadata("design:type", Object)

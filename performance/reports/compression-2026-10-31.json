@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-31T11:58:30.565Z",
+  "timestamp": "2026-10-31T16:44:49.895Z",
   "uncompressed_json_bytes": 11391,
   "brotli_bytes": 666,
   "gzip_bytes": 1519,
@@ -10,8 +10,8 @@
   "csv_brotli_bytes": 60,
   "tiny_stays_uncompressed": true,
   "avg_encode_ms": {
-    "br": 2.05,
-    "gzip": 1.23,
-    "deflate": 1.03
+    "br": 1.94,
+    "gzip": 1.17,
+    "deflate": 0.86
   }
 }

@@ -62,53 +62,45 @@ export class Attendance {
   checkOutAt!: Date | null;
 
   @Column({
-    type: 'numeric',
-    precision: 10,
-    scale: 7,
+    type: 'double precision',
     nullable: true,
     default: null,
     transformer: {
       to: (value?: number | null) => value,
-      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+      from: (value?: number | string | null) => (value != null ? parseFloat(String(value)) : null),
     },
   })
   checkInLatitude!: number | null;
 
   @Column({
-    type: 'numeric',
-    precision: 10,
-    scale: 7,
+    type: 'double precision',
     nullable: true,
     default: null,
     transformer: {
       to: (value?: number | null) => value,
-      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+      from: (value?: number | string | null) => (value != null ? parseFloat(String(value)) : null),
     },
   })
   checkInLongitude!: number | null;
 
   @Column({
-    type: 'numeric',
-    precision: 10,
-    scale: 7,
+    type: 'double precision',
     nullable: true,
     default: null,
     transformer: {
       to: (value?: number | null) => value,
-      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+      from: (value?: number | string | null) => (value != null ? parseFloat(String(value)) : null),
     },
   })
   checkOutLatitude!: number | null;
 
   @Column({
-    type: 'numeric',
-    precision: 10,
-    scale: 7,
+    type: 'double precision',
     nullable: true,
     default: null,
     transformer: {
       to: (value?: number | null) => value,
-      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+      from: (value?: number | string | null) => (value != null ? parseFloat(String(value)) : null),
     },
   })
   checkOutLongitude!: number | null;
