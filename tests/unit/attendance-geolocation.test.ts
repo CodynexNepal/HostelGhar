@@ -15,8 +15,8 @@ import { AttendanceStatus } from '../../src/enum/attendance.enum';
 import { Request } from 'express';
 
 describe('attendance geolocation utility', () => {
-  it('enforces 300 meters maximum radius constant', () => {
-    expect(ALLOWED_ATTENDANCE_RADIUS_METERS).toBe(300);
+  it('enforces 10 meters maximum radius constant', () => {
+    expect(ALLOWED_ATTENDANCE_RADIUS_METERS).toBe(10);
   });
 
   it('calculates 0 meters for identical coordinates', () => {
@@ -33,13 +33,13 @@ describe('attendance geolocation utility', () => {
     expect(distance).toBeGreaterThan(1200);
     expect(distance).toBeLessThan(1600);
 
-    // Very close coordinates (~50 meters)
-    const lat1 = 27.71724;
+    // Very close coordinates (~5 meters)
+    const lat1 = 27.7172;
     const lon1 = 85.324;
-    const lat2 = 27.71755;
+    const lat2 = 27.717245;
     const lon2 = 85.324;
     const closeDistance = calculateDistanceMeters(lat1, lon1, lat2, lon2);
-    expect(closeDistance).toBeLessThan(50);
+    expect(closeDistance).toBeLessThan(10);
     expect(closeDistance).toBeLessThanOrEqual(ALLOWED_ATTENDANCE_RADIUS_METERS);
   });
 

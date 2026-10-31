@@ -3,12 +3,21 @@
 // PURPOSE: Validation for a Resident self check-in / check-out.
 //          Residents may only mark themselves PRESENT or LATE — absence
 //          marking is an owner/admin action, not a self-service one.
-//          Allows optional hostelId and device GPS coordinates (latitude/longitude)
-//          for geofencing verification against the hostel's location.
+//          Allows optional hostelId, address, and device GPS coordinates
+//          for geofencing verification, with optional hostel location sync.
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { Transform, Type } from 'class-transformer';
-import { IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { AttendanceStatus } from '../../enum/attendance.enum';
 
 const normalizeEnumValue = (value: unknown): unknown => {
@@ -41,6 +50,19 @@ export class MarkAttendanceDto {
   @IsOptional()
   longitude?: number;
 
+  @IsString()
+  @MaxLength(255, { message: 'address must be at most 255 characters' })
+  @IsOptional()
+  address?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  syncHostelLocation?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  recordAsHostelLocation?: boolean;
+
   @Transform(({ value }) => normalizeEnumValue(value))
   @IsIn(RESIDENT_CHECK_IN_STATUSES, {
     message: 'status must be PRESENT or LATE for self check-in',
@@ -72,6 +94,11 @@ export class CheckOutAttendanceDto {
   @Max(180, { message: 'longitude must be <= 180' })
   @IsOptional()
   longitude?: number;
+
+  @IsString()
+  @MaxLength(255, { message: 'address must be at most 255 characters' })
+  @IsOptional()
+  address?: string;
 
   @IsString()
   @MaxLength(500, { message: 'note must be at most 500 characters' })

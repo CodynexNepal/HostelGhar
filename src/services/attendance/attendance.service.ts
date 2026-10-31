@@ -321,28 +321,46 @@ export class AttendanceService {
 
     const hostel = await AppDataSource.getRepository(Hostel).findOne({
       where: { id: resident.hostelId },
-      select: { id: true, name: true, latitude: true, longitude: true },
+      select: { id: true, name: true, address: true, latitude: true, longitude: true },
     });
 
     const hostelLat = hostel?.latitude != null ? Number(hostel.latitude) : null;
     const hostelLon = hostel?.longitude != null ? Number(hostel.longitude) : null;
 
-    if (hostelLat == null || hostelLon == null) {
-      throw createHttpError(
-        STATUS_CODE.BAD_REQUEST,
-        'Hostel location has not been registered yet. Please contact the hostel owner to set the hostel location pin.',
-      );
-    }
+    let distanceMeters: number | null = null;
 
-    // 2. Geofence verification against hostel location (300 meters radius)
-    const rawDistance = calculateDistanceMeters(hostelLat, hostelLon, residentLat, residentLon);
-    const distanceMeters = Math.round(rawDistance * 100) / 100;
+    // If requested, synchronize/record current device position as the official hostel location
+    if (dto.syncHostelLocation || dto.recordAsHostelLocation) {
+      if (hostel) {
+        hostel.latitude = residentLat;
+        hostel.longitude = residentLon;
+        if (dto.address?.trim()) {
+          hostel.address = dto.address.trim();
+        }
+        await AppDataSource.getRepository(Hostel).save(hostel);
+        await cacheService.invalidatePattern('hostel:location');
+        await cacheService.invalidatePattern('public:hostel');
+        await cacheService.invalidatePattern('hostels');
+      }
+      distanceMeters = 0;
+    } else {
+      if (hostelLat == null || hostelLon == null) {
+        throw createHttpError(
+          STATUS_CODE.BAD_REQUEST,
+          'Hostel location has not been registered yet. Please contact the hostel owner to set the hostel location pin.',
+        );
+      }
 
-    if (distanceMeters > ALLOWED_ATTENDANCE_RADIUS_METERS) {
-      throw createHttpError(
-        STATUS_CODE.BAD_REQUEST,
-        `Come closer to your hostel to checkin or checkout (you are ~${Math.round(distanceMeters)}m away, allowed within ${ALLOWED_ATTENDANCE_RADIUS_METERS}m of your hostel)`,
-      );
+      // 2. Geofence verification against hostel location
+      const rawDistance = calculateDistanceMeters(hostelLat, hostelLon, residentLat, residentLon);
+      distanceMeters = Math.round(rawDistance * 100) / 100;
+
+      if (distanceMeters > ALLOWED_ATTENDANCE_RADIUS_METERS) {
+        throw createHttpError(
+          STATUS_CODE.BAD_REQUEST,
+          `Come closer to your hostel to checkin or checkout (you are ~${Math.round(distanceMeters)}m away, allowed within ${ALLOWED_ATTENDANCE_RADIUS_METERS}m of your hostel)`,
+        );
+      }
     }
 
     const attendance = this.attendanceRepository.create({
@@ -353,6 +371,7 @@ export class AttendanceService {
       checkInAt: new Date(),
       checkInLatitude: residentLat ?? null,
       checkInLongitude: residentLon ?? null,
+      checkInAddress: dto.address?.trim() ?? null,
       checkInDistanceMeters: distanceMeters ?? null,
       checkInIp: clientIp ?? null,
       note: dto.note?.trim() ? dto.note.trim() : null,
@@ -435,6 +454,7 @@ export class AttendanceService {
     existing.checkOutAt = new Date();
     existing.checkOutLatitude = residentLat ?? null;
     existing.checkOutLongitude = residentLon ?? null;
+    existing.checkOutAddress = dto?.address?.trim() ?? null;
     existing.checkOutDistanceMeters = distanceMeters ?? null;
     existing.checkOutIp = clientIp ?? null;
 

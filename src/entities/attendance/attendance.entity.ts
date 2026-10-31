@@ -119,6 +119,12 @@ export class Attendance {
   @Column({ type: 'varchar', length: 45, nullable: true, default: null })
   checkOutIp!: string | null;
 
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  checkInAddress!: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, default: null })
+  checkOutAddress!: string | null;
+
   @Column({
     type: 'numeric',
     precision: 10,

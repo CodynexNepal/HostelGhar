@@ -7,8 +7,9 @@
 import { Request } from 'express';
 import geoip from 'geoip-lite';
 
-/** Maximum permitted distance (in meters) from hostel location for check-in/out. */
-export const ALLOWED_ATTENDANCE_RADIUS_METERS = 300;
+/** Maximum permitted distance (in meters) from hostel location for check-in/out.
+ * Set to 10 meters as strictly requested. */
+export const ALLOWED_ATTENDANCE_RADIUS_METERS = 10;
 
 export interface GeoCoordinates {
   latitude: number;
