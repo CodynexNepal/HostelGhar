@@ -4,7 +4,7 @@
 //          specified in the Hostel Ghar requirements.
 // ──────────────────────────────────────────────────────────────────────────────
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { FeeStatus } from '../../src/enum/fee.enum';
 import {
   applyPaymentToFeeAmounts,

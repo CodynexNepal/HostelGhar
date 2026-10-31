@@ -22,22 +22,30 @@ import { Room } from '../../src/entities/room/room.entity';
 import { Bed } from '../../src/entities/bed/bed.entity';
 import { User } from '../../src/entities/user.entity';
 import { Subscription } from '../../src/entities/subscription/subscription.entity';
+import { Payment } from '../../src/entities/payment/payment.entity';
 import { AnalyticsRepository } from '../../src/repository/analytics/analytics.repository';
 import { AnalyticsService } from '../../src/services/analytics/analytics.services';
+
+const CHAIN_METHODS = [
+  'select',
+  'addSelect',
+  'where',
+  'andWhere',
+  'orderBy',
+  'addOrderBy',
+  'groupBy',
+  'addGroupBy',
+  'leftJoin',
+  'innerJoin',
+  'take',
+  'skip',
+  'limit',
+];
 
 /** QueryBuilder stub that answers with a fixed raw row and swallows all chaining. */
 const rawOne = (row: unknown) => {
   const qb: Record<string, unknown> = {};
-  for (const method of [
-    'select',
-    'addSelect',
-    'where',
-    'andWhere',
-    'orderBy',
-    'addOrderBy',
-    'groupBy',
-    'addGroupBy',
-  ]) {
+  for (const method of CHAIN_METHODS) {
     qb[method] = () => qb;
   }
   qb.getRawOne = async () => row;
@@ -48,16 +56,7 @@ const rawOne = (row: unknown) => {
 /** QueryBuilder stub that answers with a fixed raw array and swallows all chaining. */
 const rawMany = (rows: unknown[]) => {
   const qb: Record<string, unknown> = {};
-  for (const method of [
-    'select',
-    'addSelect',
-    'where',
-    'andWhere',
-    'orderBy',
-    'addOrderBy',
-    'groupBy',
-    'addGroupBy',
-  ]) {
+  for (const method of CHAIN_METHODS) {
     qb[method] = () => qb;
   }
   qb.getRawOne = async () => null;
@@ -67,31 +66,48 @@ const rawMany = (rows: unknown[]) => {
 
 /**
  * Fee stub: the all-time aggregate uses getRawOne with no WHERE, the monthly one
- * filters on billingMonth/billingYear, and the two new GROUP BY queries use getRawMany.
- * Route by whether `.where` was ever called AND whether the caller used getRawMany.
+ * filters on billingMonth/billingYear, and the other queries route by clauses.
  */
 const feeRepoStub = (
   allTime: unknown,
   month: unknown,
   lifecycleRows: unknown[] = [],
   trendRows: unknown[] = [],
+  overdueAmount = '0',
+  hostelDuesRows: unknown[] = [],
+  hostelRevenueRows: unknown[] = [],
+  studentDuesCounts = { withDues: '0', withOverdue: '0' },
 ) => ({
   count: async () => 2,
   createQueryBuilder: () => {
     const qb: Record<string, unknown> = {};
-    let filtered = false;
-    for (const method of ['select', 'addSelect', 'orderBy', 'addOrderBy']) qb[method] = () => qb;
-    qb.groupBy = () => qb;
-    qb.addGroupBy = () => qb;
-    qb.where = () => {
-      filtered = true;
-      return qb;
+    const calls: Record<string, string[]> = {};
+    for (const method of CHAIN_METHODS) {
+      calls[method] = [];
+      qb[method] = (...args: unknown[]) => {
+        calls[method].push(args.map((a) => String(a)).join(' '));
+        return qb;
+      };
+    }
+    qb.getRawOne = async () => {
+      const selectText = calls['select']?.join(' ') ?? '';
+      const whereText = calls['where']?.join(' ') ?? '';
+      const andWhereText = calls['andWhere']?.join(' ') ?? '';
+      if (selectText.includes('withDues')) return studentDuesCounts;
+      if (andWhereText.includes('dueDate < CURRENT_DATE')) return { overdue: overdueAmount };
+      if (whereText.includes('billingMonth = :month')) return month;
+      return allTime;
     };
-    qb.andWhere = () => qb;
-    // getRawOne: all-time (no WHERE) vs this-month (WHERE billingMonth/Year).
-    qb.getRawOne = async () => (filtered ? month : allTime);
-    // getRawMany: lifecycle (groupBy status, no WHERE) vs trend (groupBy year+month, with WHERE).
-    qb.getRawMany = async () => (filtered ? trendRows : lifecycleRows);
+    qb.getRawMany = async () => {
+      const orderText =
+        (calls['orderBy']?.join(' ') ?? '') + ' ' + (calls['addOrderBy']?.join(' ') ?? '');
+      const groupText =
+        (calls['groupBy']?.join(' ') ?? '') + ' ' + (calls['addGroupBy']?.join(' ') ?? '');
+      if (orderText.includes('outstanding')) return hostelDuesRows;
+      if (orderText.includes('collected')) return hostelRevenueRows;
+      if (groupText.includes('fee.billingYear')) return trendRows;
+      return lifecycleRows;
+    };
     return qb;
   },
 });
@@ -107,6 +123,14 @@ const seed = (options: {
   lifecycleRows?: Array<{ status: string; count: string }>;
   trendRows?: Array<{ year: string; month: string; collected: string; billed: string }>;
   allHostels?: Array<{ id: string; name: string; city: string }>;
+  paymentMethodRows?: Array<{ method: string; count: string; amount: string }>;
+  dailyRevenueRows?: Array<{ date: string; amount: string }>;
+  hostelDuesRows?: Array<{ hostelId: string; name: string; outstanding: string; overdue: string }>;
+  hostelRevenueRows?: Array<{ hostelId: string; name: string; collected: string }>;
+  studentGrowthRows?: Array<{ period: string; count: string }>;
+  hostelRegistrationTrends?: Array<{ period: string; count: string }>;
+  studentDuesCounts?: { withDues: string; withOverdue: string };
+  overdueAmount?: string;
 }) => {
   repositoryMap.set(User, { count: async () => 5 });
   repositoryMap.set(Hostel, {
@@ -120,10 +144,30 @@ const seed = (options: {
       if (q?.relations) return options.hostels ?? [];
       return options.allHostels ?? [];
     },
+    createQueryBuilder: () => rawMany(options.hostelRegistrationTrends ?? []),
   });
   repositoryMap.set(Resident, {
     count: async () => 37,
-    createQueryBuilder: () => rawMany(options.hostelResidentRows ?? []),
+    createQueryBuilder: () => {
+      const qb: Record<string, unknown> = {};
+      let isStudentGrowth = false;
+      for (const method of CHAIN_METHODS) {
+        qb[method] = (...args: unknown[]) => {
+          if (
+            args.some(
+              (a) => typeof a === 'string' && (a.includes('createdAt') || a.includes('period')),
+            )
+          ) {
+            isStudentGrowth = true;
+          }
+          return qb;
+        };
+      }
+      qb.getRawOne = async () => null;
+      qb.getRawMany = async () =>
+        isStudentGrowth ? (options.studentGrowthRows ?? []) : (options.hostelResidentRows ?? []);
+      return qb;
+    },
   });
   repositoryMap.set(Booking, { count: async () => 1 });
   repositoryMap.set(LeaveRequest, { count: async () => 0 });
@@ -133,6 +177,10 @@ const seed = (options: {
       { paid: '12000', billed: '15000' },
       options.lifecycleRows ?? [],
       options.trendRows ?? [],
+      options.overdueAmount ?? '0',
+      options.hostelDuesRows ?? [],
+      options.hostelRevenueRows ?? [],
+      options.studentDuesCounts ?? { withDues: '0', withOverdue: '0' },
     ),
     count: async () => 2,
   });
@@ -145,16 +193,7 @@ const seed = (options: {
     // both hit the same repository — route by which terminal method is called.
     createQueryBuilder: () => {
       const qb: Record<string, unknown> = {};
-      for (const method of [
-        'select',
-        'addSelect',
-        'where',
-        'andWhere',
-        'orderBy',
-        'addOrderBy',
-        'groupBy',
-        'addGroupBy',
-      ]) {
+      for (const method of CHAIN_METHODS) {
         qb[method] = () => qb;
       }
       qb.getRawOne = async () => options.beds ?? { total: '0', occupied: '0' };
@@ -165,6 +204,26 @@ const seed = (options: {
   repositoryMap.set(Subscription, {
     count: async () => options.pendingRequests ?? 0,
     find: async () => options.activePlans ?? [],
+  });
+  repositoryMap.set(Payment, {
+    createQueryBuilder: () => {
+      const qb: Record<string, unknown> = {};
+      let isDailyRevenue = false;
+      for (const method of CHAIN_METHODS) {
+        qb[method] = (...args: unknown[]) => {
+          if (
+            args.some((a) => typeof a === 'string' && (a.includes('paidAt') || a.includes('date')))
+          ) {
+            isDailyRevenue = true;
+          }
+          return qb;
+        };
+      }
+      qb.getRawOne = async () => null;
+      qb.getRawMany = async () =>
+        isDailyRevenue ? (options.dailyRevenueRows ?? []) : (options.paymentMethodRows ?? []);
+      return qb;
+    },
   });
 };
 

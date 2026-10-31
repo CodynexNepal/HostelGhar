@@ -20,7 +20,7 @@ export class UpdateBookingStatusEnum1803100000000 implements MigrationInterface 
     `);
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
+  public async down(_queryRunner: QueryRunner): Promise<void> {
     // In PostgreSQL, enum values cannot be easily dropped without rebuilding the type.
   }
 }
