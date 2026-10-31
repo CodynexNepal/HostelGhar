@@ -3,6 +3,23 @@ import { AppDataSource } from '../../database/database-source';
 import { Fee } from '../../entities/fee/fee.entity';
 import { Resident } from '../../entities/resident/resident.entity';
 import { FeeStatus, FeeType } from '../../enum/fee.enum';
+import {
+  calculatePaymentStatus,
+  feeOutstandingAmount,
+  roundMoney,
+} from '../../utils/fee-credit.util';
+
+export interface HostelFeeFilters {
+  status?: string;
+  billingMonth?: number;
+  billingYear?: number;
+  search?: string;
+}
+
+export const generateInvoiceNumber = (month: number, year: number): string => {
+  const rand = Math.floor(100000 + Math.random() * 900000);
+  return `INV-${year}${String(month).padStart(2, '0')}-${rand}`;
+};
 
 export class FeeRepository {
   private readonly feeRepo: Repository<Fee>;
@@ -25,13 +42,17 @@ export class FeeRepository {
   }
 
   public async findPendingFeesByResident(residentId: string): Promise<Fee[]> {
-    // Outstanding = anything not fully PAID (PENDING + PARTIALLY_PAID + OVERDUE).
-    // Only querying PENDING drops partial remainders from next month's dueAmount.
-    return this.feeRepo.find({
+    const fees = await this.feeRepo.find({
       where: {
         residentId,
         status: In([FeeStatus.PENDING, FeeStatus.PARTIALLY_PAID, FeeStatus.OVERDUE]),
       },
+    });
+
+    return fees.map((fee) => {
+      fee.outstandingAmount = feeOutstandingAmount(fee);
+      fee.status = calculatePaymentStatus(fee);
+      return fee;
     });
   }
 
@@ -40,9 +61,15 @@ export class FeeRepository {
     billingMonth: number,
     billingYear: number,
   ): Promise<Fee | null> {
-    return this.feeRepo.findOne({
+    const fee = await this.feeRepo.findOne({
       where: { residentId, billingMonth, billingYear, feeType: FeeType.MONTHLY_HOSTEL_FEE },
+      relations: { payments: true },
     });
+    if (fee) {
+      fee.outstandingAmount = feeOutstandingAmount(fee);
+      fee.status = calculatePaymentStatus(fee);
+    }
+    return fee;
   }
 
   /**
@@ -69,8 +96,13 @@ export class FeeRepository {
         'billingYear',
         'totalPayable',
         'amount',
+        'discountAmount',
+        'outstandingAmount',
+        'paidAmount',
         'dueAmount',
         'dueDate',
+        'invoiceNumber',
+        'status',
       ],
     });
   }
@@ -86,7 +118,10 @@ export class FeeRepository {
     const rawTotals = await this.feeRepo
       .createQueryBuilder('fee')
       .select('fee.residentId', 'residentId')
-      .addSelect('SUM(fee.totalPayable - fee.paidAmount)', 'outstandingDue')
+      .addSelect(
+        'SUM(GREATEST(0, fee.totalPayable - fee.discountAmount - fee.paidAmount))',
+        'outstandingDue',
+      )
       .where('fee.residentId IN (:...residentIds)', { residentIds })
       .andWhere('fee.status IN (:...statuses)', {
         statuses: [FeeStatus.PENDING, FeeStatus.PARTIALLY_PAID, FeeStatus.OVERDUE],
@@ -105,12 +140,43 @@ export class FeeRepository {
    */
   public async createFeesBulk(feesData: Partial<Fee>[]): Promise<Fee[]> {
     if (feesData.length === 0) return [];
-    const entities = this.feeRepo.create(feesData);
+    const withInvoices = feesData.map((f) => {
+      const month = f.billingMonth ?? 1;
+      const year = f.billingYear ?? new Date().getFullYear();
+      const invoiceNumber = f.invoiceNumber || generateInvoiceNumber(month, year);
+      const totalPayable = roundMoney(f.totalPayable ?? 10500);
+      const discountAmount = roundMoney(f.discountAmount ?? 0);
+      const paidAmount = roundMoney(f.paidAmount ?? 0);
+      const outstandingAmount = roundMoney(Math.max(0, totalPayable - discountAmount - paidAmount));
+      return {
+        ...f,
+        invoiceNumber,
+        totalPayable,
+        discountAmount,
+        paidAmount,
+        outstandingAmount,
+      };
+    });
+    const entities = this.feeRepo.create(withInvoices);
     return this.feeRepo.save(entities, { chunk: 100 });
   }
 
   public async createFee(data: Partial<Fee>): Promise<Fee> {
-    const fee = this.feeRepo.create(data);
+    const month = data.billingMonth ?? 1;
+    const year = data.billingYear ?? new Date().getFullYear();
+    const invoiceNumber = data.invoiceNumber || generateInvoiceNumber(month, year);
+    const totalPayable = roundMoney(data.totalPayable ?? 10500);
+    const discountAmount = roundMoney(data.discountAmount ?? 0);
+    const paidAmount = roundMoney(data.paidAmount ?? 0);
+    const outstandingAmount = roundMoney(Math.max(0, totalPayable - discountAmount - paidAmount));
+    const fee = this.feeRepo.create({
+      ...data,
+      invoiceNumber,
+      totalPayable,
+      discountAmount,
+      paidAmount,
+      outstandingAmount,
+    });
     return this.feeRepo.save(fee);
   }
 
@@ -119,23 +185,81 @@ export class FeeRepository {
   }
 
   public async findById(id: string): Promise<Fee | null> {
-    return this.feeRepo.findOne({
+    const fee = await this.feeRepo.findOne({
       where: { id },
-      relations: { resident: { user: true }, hostel: true },
+      relations: {
+        resident: { user: true },
+        hostel: { owner: true },
+        payments: { receivedByUser: true },
+      },
     });
+    if (fee) {
+      fee.outstandingAmount = feeOutstandingAmount(fee);
+      fee.status = calculatePaymentStatus(fee);
+    }
+    return fee;
   }
 
   public async findByHostel(
     hostelId: string,
     page: number = 1,
     limit: number = 20,
+    filters: HostelFeeFilters = {},
   ): Promise<[Fee[], number]> {
-    return this.feeRepo.findAndCount({
-      where: { hostelId },
-      relations: { resident: { user: true } },
-      order: { billingYear: 'DESC', billingMonth: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+    const qb = this.feeRepo
+      .createQueryBuilder('f')
+      .leftJoinAndSelect('f.resident', 'resident')
+      .leftJoinAndSelect('resident.user', 'user')
+      .leftJoinAndSelect('f.payments', 'payments')
+      .where('f.hostelId = :hostelId', { hostelId });
+
+    if (filters.billingMonth) {
+      qb.andWhere('f.billingMonth = :month', { month: filters.billingMonth });
+    }
+
+    if (filters.billingYear) {
+      qb.andWhere('f.billingYear = :year', { year: filters.billingYear });
+    }
+
+    if (filters.status) {
+      const normalizedStatus = filters.status.toUpperCase().trim();
+      if (normalizedStatus === 'PARTIAL') {
+        qb.andWhere('f.status = :status', { status: FeeStatus.PARTIALLY_PAID });
+      } else if (normalizedStatus === FeeStatus.OVERDUE) {
+        // Outstanding > 0 and (status is OVERDUE OR dueDate < today)
+        qb.andWhere('GREATEST(0, f.totalPayable - f.discountAmount - f.paidAmount) > 0').andWhere(
+          '(f.status = :overdueStatus OR f.dueDate < CURRENT_DATE)',
+          {
+            overdueStatus: FeeStatus.OVERDUE,
+          },
+        );
+      } else if (Object.values(FeeStatus).includes(normalizedStatus as FeeStatus)) {
+        qb.andWhere('f.status = :status', { status: normalizedStatus });
+      }
+    }
+
+    if (filters.search?.trim()) {
+      const term = `%${filters.search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        '(LOWER(user.firstName) LIKE :term OR LOWER(user.lastName) LIKE :term OR LOWER(resident.roomNumber) LIKE :term OR LOWER(f.invoiceNumber) LIKE :term)',
+        { term },
+      );
+    }
+
+    qb.orderBy('f.billingYear', 'DESC')
+      .addOrderBy('f.billingMonth', 'DESC')
+      .addOrderBy('f.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [fees, total] = await qb.getManyAndCount();
+
+    const normalizedFees = fees.map((f) => {
+      f.outstandingAmount = feeOutstandingAmount(f);
+      f.status = calculatePaymentStatus(f);
+      return f;
     });
+
+    return [normalizedFees, total];
   }
 }

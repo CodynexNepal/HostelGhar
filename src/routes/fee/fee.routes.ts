@@ -7,7 +7,9 @@ import { requireParam } from '../../decorators/http.decorator';
 import { validateDto } from '../../middleware/validate-dto.middleware';
 import { UpdateFeeStatusDto } from '../../dto/fee/update-fee-status.dto';
 import { CreateInvoiceDto } from '../../dto/fee/create-invoice.dto';
+import { RecordPaymentDto } from '../../dto/payment/record-payment.dto';
 import { normalizeInvoiceFields } from '../../middleware/upload.middleware';
+import { paymentController } from '../../controller/payment/payment.controller';
 
 const feeRouter = Router();
 const feeController = FeeFactory.create();
@@ -34,6 +36,21 @@ feeRouter.get(
   ...ownerOrAdmin,
   requireParam('hostelId'),
   feeController.listHostelFees,
+);
+feeRouter.get(
+  '/hostels/:hostelId/payments',
+  ...ownerOrAdmin,
+  requireParam('hostelId'),
+  paymentController.getHostelPayments,
+);
+feeRouter.post('/sync-overdue', ...ownerOrAdmin, paymentController.syncOverdue);
+feeRouter.get('/:id', authenticate, requireParam('id'), paymentController.getInvoice);
+feeRouter.post(
+  '/:id/payments',
+  ...ownerOrAdmin,
+  requireParam('id'),
+  validateDto(RecordPaymentDto),
+  paymentController.recordPayment,
 );
 feeRouter.patch('/:id/payment', ...ownerOrAdmin, requireParam('id'), feeController.recordPayment);
 feeRouter.patch(

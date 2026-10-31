@@ -12,6 +12,7 @@ const leave_type_entity_1 = require("../../entities/leave/leave-type.entity");
 const fee_entity_1 = require("../../entities/fee/fee.entity");
 const room_entity_1 = require("../../entities/room/room.entity");
 const hostel_facility_entity_1 = require("../../entities/facility/hostel-facility.entity");
+const fee_credit_util_1 = require("../../utils/fee-credit.util");
 class ResidentRepository {
     constructor() {
         this.residentRepo = database_source_1.AppDataSource.getRepository(resident_entity_1.Resident);
@@ -47,9 +48,15 @@ class ResidentRepository {
         });
     }
     async findFeesByResident(residentId) {
-        return await this.feeRepo.find({
+        const fees = await this.feeRepo.find({
             where: { residentId },
+            relations: { payments: true },
             order: { billingYear: 'DESC', billingMonth: 'DESC' },
+        });
+        return fees.map((fee) => {
+            fee.outstandingAmount = (0, fee_credit_util_1.feeOutstandingAmount)(fee);
+            fee.status = (0, fee_credit_util_1.calculatePaymentStatus)(fee);
+            return fee;
         });
     }
     /**

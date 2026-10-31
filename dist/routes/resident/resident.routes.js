@@ -14,6 +14,9 @@ const roles_enum_1 = require("../../enum/roles.enum");
 const upload_middleware_1 = require("../../middleware/upload.middleware");
 const attendance_factory_1 = require("../../factory/attendance/attendance.factory");
 const mark_attendance_dto_1 = require("../../dto/attendance/mark-attendance.dto");
+const payment_controller_1 = require("../../controller/payment/payment.controller");
+const record_payment_dto_1 = require("../../dto/payment/record-payment.dto");
+const http_decorator_1 = require("../../decorators/http.decorator");
 const residentRouter = (0, express_1.Router)();
 exports.residentRouter = residentRouter;
 const residentController = resident_factory_1.ResidentFactory.create();
@@ -24,6 +27,9 @@ residentRouter.get('/me', residentController.getMyProfile);
 residentRouter.post('/leaves/apply', (0, validate_dto_middleware_1.validateDto)(apply_leave_dto_1.ApplyLeaveDto), residentController.applyForLeave);
 residentRouter.get('/leaves', residentController.getMyLeaves);
 residentRouter.get('/fees', residentController.getMyFees);
+residentRouter.get('/fees/:id', (0, http_decorator_1.requireParam)('id'), payment_controller_1.paymentController.getInvoice);
+residentRouter.post('/fees/:id/pay', (0, http_decorator_1.requireParam)('id'), (0, validate_dto_middleware_1.validateDto)(record_payment_dto_1.RecordPaymentDto), payment_controller_1.paymentController.residentPay);
+residentRouter.get('/payments', payment_controller_1.paymentController.getResidentPayments);
 residentRouter.get('/payment-qrs', residentController.getMyPaymentQrs);
 // ─── Attendance (self check-in) ──────────────────────────────────────────────
 // Resident marks self PRESENT/LATE for today (Nepal date). One record per

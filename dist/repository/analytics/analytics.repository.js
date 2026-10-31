@@ -16,6 +16,9 @@ const booking_enum_1 = require("../../enum/booking.enum");
 const bed_enum_1 = require("../../enum/bed.enum");
 const subscription_entity_1 = require("../../entities/subscription/subscription.entity");
 const subscription_enum_1 = require("../../enum/subscription.enum");
+const payment_entity_1 = require("../../entities/payment/payment.entity");
+const payment_enum_1 = require("../../enum/payment.enum");
+const roles_enum_1 = require("../../enum/roles.enum");
 const typeorm_1 = require("typeorm");
 class AnalyticsRepository {
     /**
@@ -37,23 +40,14 @@ class AnalyticsRepository {
         const roomRepo = database_source_1.AppDataSource.getRepository(room_entity_1.Room);
         const bedRepo = database_source_1.AppDataSource.getRepository(bed_entity_1.Bed);
         const subscriptionRepo = database_source_1.AppDataSource.getRepository(subscription_entity_1.Subscription);
+        const paymentRepo = database_source_1.AppDataSource.getRepository(payment_entity_1.Payment);
         const now = new Date();
         const currentMonth = now.getUTCMonth() + 1;
         const currentYear = now.getUTCFullYear();
         // The 12-month window start (inclusive): one year ago, month-aligned.
         const trendStartYear = currentMonth === 12 ? currentYear : currentYear - 1;
         const trendStartMonth = currentMonth === 12 ? 1 : currentMonth + 1;
-        const [users, hostels, activeResidents, pendingBookings, pendingLeaves, unpaidFees, pendingSubscriptionRequests, activePlanRows, revenue, monthRevenue, roomInventory, bedInventory, recentHostels, 
-        // ── NEW: per-hostel bed counts (GROUP BY hostelId) ───────────────────
-        hostelBedRows, 
-        // ── NEW: per-hostel active resident counts (GROUP BY hostelId) ───────
-        hostelResidentRows, 
-        // ── NEW: fee counts grouped by status (all-time) ─────────────────────
-        feeLifecycleRows, 
-        // ── NEW: 12-month revenue trend (one row per billing month) ──────────
-        revenueTrendRows, 
-        // ── NEW: all hostels (id, name, city) for the occupancy chart ────────
-        allHostels,] = await Promise.all([
+        const [users, hostels, activeResidents, pendingBookings, pendingLeaves, unpaidFees, pendingSubscriptionRequests, activePlanRows, revenue, monthRevenue, roomInventory, bedInventory, recentHostels, hostelBedRows, hostelResidentRows, feeLifecycleRows, revenueTrendRows, allHostels, totalOwners, totalStudents, overdueFeesRaw, paymentMethodRows, dailyRevenueRows, hostelDuesRows, hostelRevenueRows, studentGrowthRows, hostelRegistrationTrends, studentDuesCounts,] = await Promise.all([
             userRepo.count(),
             hostelRepo.count(),
             residentRepo.count({ where: { isActive: true } }),
@@ -69,7 +63,7 @@ class AnalyticsRepository {
             feeRepo
                 .createQueryBuilder('fee')
                 .select('COALESCE(SUM(fee.paidAmount), 0)', 'paid')
-                .addSelect('COALESCE(SUM(fee.totalPayable - fee.paidAmount), 0)', 'outstanding')
+                .addSelect('COALESCE(SUM(fee.totalPayable - fee.discountAmount - fee.paidAmount), 0)', 'outstanding')
                 .getRawOne(),
             feeRepo
                 .createQueryBuilder('fee')
@@ -148,6 +142,87 @@ class AnalyticsRepository {
                 select: { id: true, name: true, city: true },
                 order: { name: 'ASC' },
             }),
+            // 1. Total registered Owners
+            userRepo.count({ where: { role: roles_enum_1.IROLES.OWNER } }),
+            // 2. Total registered Students
+            residentRepo.count(),
+            // 3. Overdue Amount
+            feeRepo
+                .createQueryBuilder('fee')
+                .select('COALESCE(SUM(GREATEST(0, fee.totalPayable - fee.discountAmount - fee.paidAmount)), 0)', 'overdue')
+                .where("fee.status != 'CANCELLED'")
+                .andWhere('fee.dueDate < CURRENT_DATE')
+                .getRawOne(),
+            // 4. Payment Methods Distribution
+            paymentRepo
+                .createQueryBuilder('p')
+                .select('p.paymentMethod', 'method')
+                .addSelect('COUNT(*)', 'count')
+                .addSelect('COALESCE(SUM(p.amount), 0)', 'amount')
+                .where('p.paymentStatus = :status', { status: payment_enum_1.PaymentStatus.SUCCESS })
+                .groupBy('p.paymentMethod')
+                .getRawMany(),
+            // 5. Daily Revenue (last 30 days)
+            paymentRepo
+                .createQueryBuilder('p')
+                .select("TO_CHAR(p.paidAt, 'YYYY-MM-DD')", 'date')
+                .addSelect('COALESCE(SUM(p.amount), 0)', 'amount')
+                .where('p.paymentStatus = :status', { status: payment_enum_1.PaymentStatus.SUCCESS })
+                .andWhere("p.paidAt >= CURRENT_DATE - INTERVAL '30 days'")
+                .groupBy("TO_CHAR(p.paidAt, 'YYYY-MM-DD')")
+                .orderBy('date', 'ASC')
+                .getRawMany(),
+            // 6. Hostels with Highest Outstanding Dues
+            feeRepo
+                .createQueryBuilder('fee')
+                .leftJoin('fee.hostel', 'hostel')
+                .select('fee.hostelId', 'hostelId')
+                .addSelect('hostel.name', 'name')
+                .addSelect('COALESCE(SUM(GREATEST(0, fee.totalPayable - fee.discountAmount - fee.paidAmount)), 0)', 'outstanding')
+                .addSelect("COALESCE(SUM(CASE WHEN fee.dueDate < CURRENT_DATE THEN GREATEST(0, fee.totalPayable - fee.discountAmount - fee.paidAmount) ELSE 0 END), 0)", 'overdue')
+                .where("fee.status != 'CANCELLED'")
+                .groupBy('fee.hostelId')
+                .addGroupBy('hostel.name')
+                .orderBy('outstanding', 'DESC')
+                .take(10)
+                .getRawMany(),
+            // 7. Top Revenue Hostels
+            feeRepo
+                .createQueryBuilder('fee')
+                .leftJoin('fee.hostel', 'hostel')
+                .select('fee.hostelId', 'hostelId')
+                .addSelect('hostel.name', 'name')
+                .addSelect('COALESCE(SUM(fee.paidAmount), 0)', 'collected')
+                .groupBy('fee.hostelId')
+                .addGroupBy('hostel.name')
+                .orderBy('collected', 'DESC')
+                .take(10)
+                .getRawMany(),
+            // 8. Student Growth Trends (12 months)
+            residentRepo
+                .createQueryBuilder('resident')
+                .select("TO_CHAR(resident.createdAt, 'YYYY-MM')", 'period')
+                .addSelect('COUNT(*)', 'count')
+                .where("resident.createdAt >= CURRENT_DATE - INTERVAL '12 months'")
+                .groupBy("TO_CHAR(resident.createdAt, 'YYYY-MM')")
+                .orderBy('period', 'ASC')
+                .getRawMany(),
+            // 9. Hostel Registration Trends (12 months)
+            hostelRepo
+                .createQueryBuilder('hostel')
+                .select("TO_CHAR(hostel.createdAt, 'YYYY-MM')", 'period')
+                .addSelect('COUNT(*)', 'count')
+                .where("hostel.createdAt >= CURRENT_DATE - INTERVAL '12 months'")
+                .groupBy("TO_CHAR(hostel.createdAt, 'YYYY-MM')")
+                .orderBy('period', 'ASC')
+                .getRawMany(),
+            // 10. Students with Dues / Overdue Count
+            feeRepo
+                .createQueryBuilder('fee')
+                .select('COUNT(DISTINCT fee.residentId) FILTER (WHERE GREATEST(0, fee.totalPayable - fee.discountAmount - fee.paidAmount) > 0)', 'withDues')
+                .addSelect('COUNT(DISTINCT fee.residentId) FILTER (WHERE fee.dueDate < CURRENT_DATE AND GREATEST(0, fee.totalPayable - fee.discountAmount - fee.paidAmount) > 0)', 'withOverdue')
+                .where("fee.status != 'CANCELLED'")
+                .getRawOne(),
         ]);
         // ── MRR: yearly plans are billed up-front, so amortize them over 12 months
         // to keep the headline number a true *monthly* recurring revenue figure.
@@ -174,11 +249,23 @@ class AnalyticsRepository {
         const occupancyRate = totalBeds ? Number(((occupiedBeds / totalBeds) * 100).toFixed(1)) : 0;
         const totalRevenue = Number(revenue?.paid || 0);
         const pendingDues = Math.max(0, Number(revenue?.outstanding || 0));
+        const overdueDues = Math.max(0, Number(overdueFeesRaw?.overdue || 0));
         const monthlyRevenue = Number(monthRevenue?.paid || 0);
         const monthlyBilled = Number(monthRevenue?.billed || 0);
         const collectionRate = monthlyBilled
             ? Number(((monthlyRevenue / monthlyBilled) * 100).toFixed(1))
             : 0;
+        // Payment methods distribution
+        const paymentMethodsList = (paymentMethodRows || []).map((row) => ({
+            method: row.method,
+            count: Number(row.count || 0),
+            amount: Number(row.amount || 0),
+        }));
+        const cashMethod = paymentMethodsList.find((p) => p.method === 'CASH');
+        const cashAmount = cashMethod?.amount ?? 0;
+        const onlineAmount = paymentMethodsList
+            .filter((p) => p.method !== 'CASH')
+            .reduce((s, p) => s + p.amount, 0);
         // ── planMix: paid/free/lapsed percentages (same formula as owner analytics).
         const planMixTotal = activePlanRows.length;
         const pct = (n) => (planMixTotal ? Number(((n / planMixTotal) * 100).toFixed(1)) : 0);
@@ -234,6 +321,7 @@ class AnalyticsRepository {
             };
         })
             .sort((a, b) => b.residents - a.residents);
+        const activeHostelsCount = occupancyByHostel.filter((h) => h.residents > 0).length;
         const topHostelsByResidents = occupancyByHostel
             .slice(0, 5)
             .map(({ hostelId, hostelName: name, city, residents }) => ({
@@ -243,6 +331,20 @@ class AnalyticsRepository {
             residents,
         }));
         return {
+            // ── Main KPI Cards (Requirement 4.A)
+            totalHostels: hostels,
+            totalStudents: activeResidents,
+            totalRegisteredStudents: totalStudents,
+            totalOwners,
+            totalRevenueCollected: totalRevenue,
+            totalRevenue,
+            paidAmount: totalRevenue,
+            outstandingAmount: pendingDues,
+            pendingAmount: pendingDues,
+            overdueAmount: overdueDues,
+            overduePayments: overdueDues,
+            totalActiveResidents: activeResidents,
+            mrr: Number(mrr.toFixed(2)),
             // ── Legacy fields, unchanged shape, for clients already on this endpoint.
             users,
             hostels,
@@ -250,13 +352,17 @@ class AnalyticsRepository {
             pendingBookings,
             pendingLeaves,
             unpaidFees,
-            paidAmount: totalRevenue,
-            outstandingAmount: pendingDues,
             // ── Meta ─────────────────────────────────────────────────────────────
             generatedAt: now.toISOString(),
             // ── Headline stat cards ───────────────────────────────────────────────
             stats: {
                 totalHostels: hostels,
+                totalStudents: activeResidents,
+                totalRegisteredStudents: totalStudents,
+                totalOwners,
+                totalRevenueCollected: totalRevenue,
+                outstandingAmount: pendingDues,
+                overdueAmount: overdueDues,
                 totalResidents: activeResidents,
                 mrr: Number(mrr.toFixed(2)),
                 mrrBasis: 'activeSubscriptions',
@@ -265,6 +371,67 @@ class AnalyticsRepository {
                 mrrFreePlans: freePlans,
                 mrrLapsedPlans: lapsedPlans,
                 occupancy: { totalBeds, occupiedBeds, availableBeds, rate: occupancyRate },
+            },
+            // ── Daily Revenue & Payment Methods (Requirement 4.B)
+            dailyRevenue: (dailyRevenueRows || []).map((r) => ({
+                date: r.date,
+                amount: Number(r.amount || 0),
+            })),
+            revenueByHostel: (hostelRevenueRows || []).map((h) => ({
+                hostelId: h.hostelId,
+                name: h.name,
+                collected: Number(h.collected || 0),
+            })),
+            paymentMethods: {
+                breakdown: paymentMethodsList,
+                cashAmount,
+                onlineAmount,
+                cashCount: cashMethod?.count ?? 0,
+                onlineCount: paymentMethodsList
+                    .filter((p) => p.method !== 'CASH')
+                    .reduce((s, p) => s + p.count, 0),
+                cashPercent: totalRevenue ? Number(((cashAmount / totalRevenue) * 100).toFixed(1)) : 0,
+                onlinePercent: totalRevenue ? Number(((onlineAmount / totalRevenue) * 100).toFixed(1)) : 0,
+            },
+            // ── Hostel Analytics (Requirement 4.C)
+            hostelsAnalytics: {
+                topPerforming: (hostelRevenueRows || []).slice(0, 5).map((h) => ({
+                    hostelId: h.hostelId,
+                    name: h.name,
+                    collected: Number(h.collected || 0),
+                })),
+                highestOutstanding: (hostelDuesRows || []).slice(0, 5).map((h) => ({
+                    hostelId: h.hostelId,
+                    name: h.name,
+                    outstanding: Number(h.outstanding || 0),
+                    overdue: Number(h.overdue || 0),
+                })),
+                activeHostels: activeHostelsCount,
+                inactiveHostels: Math.max(0, hostels - activeHostelsCount),
+                studentDistribution: occupancyByHostel.map((h) => ({
+                    hostelId: h.hostelId,
+                    name: h.hostelName,
+                    city: h.city,
+                    residents: h.residents,
+                    percentage: activeResidents
+                        ? Number(((h.residents / activeResidents) * 100).toFixed(1))
+                        : 0,
+                })),
+                registrationTrends: (hostelRegistrationTrends || []).map((t) => ({
+                    period: t.period,
+                    count: Number(t.count || 0),
+                })),
+            },
+            // ── Student Analytics (Requirement 4.D)
+            studentAnalytics: {
+                totalActive: activeResidents,
+                totalRegistered: totalStudents,
+                withOutstandingBalance: Number(studentDuesCounts?.withDues || 0),
+                withOverdueBalance: Number(studentDuesCounts?.withOverdue || 0),
+                growthTrends: (studentGrowthRows || []).map((t) => ({
+                    period: t.period,
+                    count: Number(t.count || 0),
+                })),
             },
             // ── Finance: "Collected?" / "Outstanding?" / collection-rate badge ────
             finance: {

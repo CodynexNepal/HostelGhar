@@ -995,9 +995,7 @@ class OwnerController {
          */
         this.triggerMonthlyFees = async (req, res, next) => {
             try {
-                let hostelId = req.body?.hostelId ||
-                    req.query?.hostelId ||
-                    req.headers?.['x-hostel-id'];
+                let hostelId = req.body?.hostelId || req.query?.hostelId || req.headers?.['x-hostel-id'];
                 if (typeof hostelId !== 'string' || !hostelId.trim()) {
                     hostelId = undefined;
                 }

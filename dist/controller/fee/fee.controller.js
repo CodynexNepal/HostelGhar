@@ -140,7 +140,13 @@ class FeeController {
                     page: req.query.page,
                     limit: req.query.limit,
                 });
-                const result = await this.feeService.listHostelFees(hostelId, page, limit);
+                const filters = {
+                    status: req.query.status,
+                    billingMonth: req.query.month ? Number(req.query.month) : undefined,
+                    billingYear: req.query.year ? Number(req.query.year) : undefined,
+                    search: (req.query.search || req.query.q),
+                };
+                const result = await this.feeService.listHostelFees(hostelId, page, limit, filters);
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({ success: true, ...result });
             }
             catch (error) {

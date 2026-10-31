@@ -8,6 +8,7 @@ export enum FeeStatus {
   PAID = 'PAID',
   OVERDUE = 'OVERDUE',
   PARTIALLY_PAID = 'PARTIALLY_PAID',
+  CANCELLED = 'CANCELLED',
 }
 
 export enum FeeType {

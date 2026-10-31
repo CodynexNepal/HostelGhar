@@ -18,6 +18,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.TransactionPaymentMethod = exports.PaymentStatus = void 0;
 __exportStar(require("./roles.enum"), exports);
 __exportStar(require("./hostel.enum"), exports);
 __exportStar(require("./leave.enum"), exports);
@@ -28,6 +29,9 @@ __exportStar(require("./facility.enum"), exports);
 __exportStar(require("./payment-qr.enum"), exports);
 __exportStar(require("./platform-qr.enum"), exports);
 __exportStar(require("./payment-proof.enum"), exports);
+var payment_enum_1 = require("./payment.enum");
+Object.defineProperty(exports, "PaymentStatus", { enumerable: true, get: function () { return payment_enum_1.PaymentStatus; } });
+Object.defineProperty(exports, "TransactionPaymentMethod", { enumerable: true, get: function () { return payment_enum_1.PaymentMethod; } });
 __exportStar(require("./subscription.enum"), exports);
 __exportStar(require("./staff.enum"), exports);
 __exportStar(require("./meal.enum"), exports);

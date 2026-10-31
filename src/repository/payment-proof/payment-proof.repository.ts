@@ -6,10 +6,12 @@
 import { Repository } from 'typeorm';
 import { AppDataSource } from '../../database/database-source';
 import { PaymentProof } from '../../entities/payment-proof/payment-proof.entity';
-import { PaymentProofStatus } from '../../enum/payment-proof.enum';
+import { PaymentProofStatus, ProofPaymentMethod } from '../../enum/payment-proof.enum';
 import { Fee } from '../../entities/fee/fee.entity';
 import { Hostel } from '../../entities/hostel/hostel.entity';
 import { Resident } from '../../entities/resident/resident.entity';
+import { Payment } from '../../entities/payment/payment.entity';
+import { PaymentMethod, PaymentStatus } from '../../enum/payment.enum';
 import { applyPaymentToFeeAmounts } from '../../utils/fee-credit.util';
 
 /** Relations needed to serialize a proof (resident name, room, bill label). */
@@ -111,19 +113,49 @@ export class PaymentProofRepository {
         {
           totalPayable: Number(fee.totalPayable),
           paidAmount: Number(fee.paidAmount),
+          discountAmount: Number(fee.discountAmount ?? 0),
+          dueDate: fee.dueDate,
           status: fee.status,
         },
         Number(proof.amount) > 0 ? Number(proof.amount) : Number(amount),
       );
+
+      // Map ProofPaymentMethod to PaymentMethod
+      let paymentMethod = PaymentMethod.OTHER;
+      if (proof.method === ProofPaymentMethod.ESEWA) paymentMethod = PaymentMethod.ESEWA;
+      else if (proof.method === ProofPaymentMethod.KHALTI) paymentMethod = PaymentMethod.KHALTI;
+      else if (proof.method === ProofPaymentMethod.BANK)
+        paymentMethod = PaymentMethod.BANK_TRANSFER;
+      else if (proof.method === ProofPaymentMethod.CASH) paymentMethod = PaymentMethod.CASH;
+
+      // Create Payment audit record if not already recorded for this proof
+      const idempotencyKey = `PROOF-${proof.id}`;
+      const existingPayment = await manager.findOne(Payment, { where: { idempotencyKey } });
+      if (!existingPayment) {
+        const payment = manager.create(Payment, {
+          invoiceId: fee.id,
+          residentId: fee.residentId,
+          hostelId: fee.hostelId,
+          amount: Number(proof.amount) > 0 ? Number(proof.amount) : Number(amount),
+          paymentMethod,
+          paymentStatus: PaymentStatus.SUCCESS,
+          transactionReference: proof.transactionRef,
+          idempotencyKey,
+          receiptNumber: `REC-${fee.billingYear}${String(fee.billingMonth).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`,
+          receivedBy: proof.reviewedBy,
+          paidAt: proof.reviewedAt ?? new Date(),
+          remarks: proof.reviewNote ?? `Approved proof ${proof.id}`,
+        });
+        await manager.save(payment);
+      }
 
       // Keep the bill's own carried-forward due field in sync so the next
       // billing cycle never re-charges what has just been settled.
       const nextDue = Math.max(result.totalPayable - result.paidAmount, 0);
       if (Number(fee.dueAmount) > 0 && nextDue === 0) fee.dueAmount = 0;
 
-      if (!result.changed) return fee;
-
       fee.paidAmount = result.paidAmount;
+      fee.outstandingAmount = result.outstandingAmount;
       fee.status = result.status;
       return manager.save(fee);
     });

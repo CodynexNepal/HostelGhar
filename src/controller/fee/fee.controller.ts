@@ -175,7 +175,14 @@ export class FeeController {
         limit: req.query.limit as string,
       });
 
-      const result = await this.feeService.listHostelFees(hostelId, page, limit);
+      const filters = {
+        status: req.query.status as string | undefined,
+        billingMonth: req.query.month ? Number(req.query.month) : undefined,
+        billingYear: req.query.year ? Number(req.query.year) : undefined,
+        search: (req.query.search || req.query.q) as string | undefined,
+      };
+
+      const result = await this.feeService.listHostelFees(hostelId, page, limit, filters);
       res.status(STATUS_CODE.OK).json({ success: true, ...result });
     } catch (error) {
       next(error);

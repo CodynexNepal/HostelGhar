@@ -16,7 +16,7 @@ import { imageUploadService } from '../../services/upload/image-upload.service';
 import { createHttpError } from '../../utils/createHttpError';
 import { PaymentQrService } from '../../services/payment-qr/payment-qr.service';
 import { FeeStatus } from '../../enum/fee.enum';
-import { feeOutstandingAmount } from '../../utils/fee-credit.util';
+import { feeOutstandingAmount, calculatePaymentStatus } from '../../utils/fee-credit.util';
 
 export class ResidentController {
   constructor(private readonly residentRepository: ResidentRepository) {}
@@ -292,21 +292,28 @@ export class ResidentController {
           const ledger = fees.map((fee) => {
             const totalPayable = Number(fee.totalPayable);
             const paidAmount = Number(fee.paidAmount);
-            const outstanding = feeOutstandingAmount({ totalPayable, paidAmount });
-            const status = outstanding === 0 ? FeeStatus.PAID : fee.status;
+            const discountAmount = Number(fee.discountAmount ?? 0);
+            const outstanding = feeOutstandingAmount({ totalPayable, paidAmount, discountAmount });
+            const status = calculatePaymentStatus(fee);
             return {
               ...fee,
               totalPayable,
+              discountAmount,
               paidAmount,
               outstanding,
+              outstandingAmount: outstanding,
               status,
               isPaid: status === FeeStatus.PAID,
             };
           });
 
           const totalPendingDue = ledger.reduce((sum, fee) => sum + fee.outstanding, 0);
+          const totalOverdue = ledger
+            .filter((fee) => fee.status === FeeStatus.OVERDUE)
+            .reduce((sum, fee) => sum + fee.outstanding, 0);
+          const totalPaid = ledger.reduce((sum, fee) => sum + fee.paidAmount, 0);
 
-          return { fees: ledger, totalPendingDue };
+          return { fees: ledger, totalPendingDue, totalOverdue, totalPaid };
         },
         { l1TtlSeconds: 30, l2TtlSeconds: 120 },
       );

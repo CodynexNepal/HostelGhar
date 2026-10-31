@@ -11,6 +11,7 @@ import { LeaveType } from '../../entities/leave/leave-type.entity';
 import { Fee } from '../../entities/fee/fee.entity';
 import { Room } from '../../entities/room/room.entity';
 import { HostelFacility } from '../../entities/facility/hostel-facility.entity';
+import { calculatePaymentStatus, feeOutstandingAmount } from '../../utils/fee-credit.util';
 
 export class ResidentRepository {
   private residentRepo: Repository<Resident>;
@@ -64,9 +65,15 @@ export class ResidentRepository {
   }
 
   public async findFeesByResident(residentId: string): Promise<Fee[]> {
-    return await this.feeRepo.find({
+    const fees = await this.feeRepo.find({
       where: { residentId },
+      relations: { payments: true },
       order: { billingYear: 'DESC', billingMonth: 'DESC' },
+    });
+    return fees.map((fee) => {
+      fee.outstandingAmount = feeOutstandingAmount(fee);
+      fee.status = calculatePaymentStatus(fee);
+      return fee;
     });
   }
 

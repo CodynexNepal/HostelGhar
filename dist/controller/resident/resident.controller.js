@@ -242,19 +242,26 @@ class ResidentController {
                     const ledger = fees.map((fee) => {
                         const totalPayable = Number(fee.totalPayable);
                         const paidAmount = Number(fee.paidAmount);
-                        const outstanding = (0, fee_credit_util_1.feeOutstandingAmount)({ totalPayable, paidAmount });
-                        const status = outstanding === 0 ? fee_enum_1.FeeStatus.PAID : fee.status;
+                        const discountAmount = Number(fee.discountAmount ?? 0);
+                        const outstanding = (0, fee_credit_util_1.feeOutstandingAmount)({ totalPayable, paidAmount, discountAmount });
+                        const status = (0, fee_credit_util_1.calculatePaymentStatus)(fee);
                         return {
                             ...fee,
                             totalPayable,
+                            discountAmount,
                             paidAmount,
                             outstanding,
+                            outstandingAmount: outstanding,
                             status,
                             isPaid: status === fee_enum_1.FeeStatus.PAID,
                         };
                     });
                     const totalPendingDue = ledger.reduce((sum, fee) => sum + fee.outstanding, 0);
-                    return { fees: ledger, totalPendingDue };
+                    const totalOverdue = ledger
+                        .filter((fee) => fee.status === fee_enum_1.FeeStatus.OVERDUE)
+                        .reduce((sum, fee) => sum + fee.outstanding, 0);
+                    const totalPaid = ledger.reduce((sum, fee) => sum + fee.paidAmount, 0);
+                    return { fees: ledger, totalPendingDue, totalOverdue, totalPaid };
                 }, { l1TtlSeconds: 30, l2TtlSeconds: 120 });
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({
                     success: true,

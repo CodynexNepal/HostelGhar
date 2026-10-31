@@ -342,14 +342,19 @@ export class FeeService {
     return { generatedCount, errors, nepaliMonth: period.nepaliMonthLabel, emailsDispatched };
   }
 
-  public async listHostelFees(hostelId: string, page: number = 1, limit: number = 20) {
-    const cacheKey = cacheService.generateKey('hostel:fees', { hostelId, page, limit });
+  public async listHostelFees(
+    hostelId: string,
+    page: number = 1,
+    limit: number = 20,
+    filters: any = {},
+  ) {
+    const cacheKey = cacheService.generateKey('hostel:fees', { hostelId, page, limit, ...filters });
 
     // 3-Level Cache: L1 (LRU RAM) -> L2 (Redis) -> L3 (DB)
     const { data, isCached, cacheLevel } = await cacheService.wrap(
       cacheKey,
       async () => {
-        const [fees, total] = await this.feeRepository.findByHostel(hostelId, page, limit);
+        const [fees, total] = await this.feeRepository.findByHostel(hostelId, page, limit, filters);
         return { fees, total };
       },
       { l1TtlSeconds: 30, l2TtlSeconds: 120 },

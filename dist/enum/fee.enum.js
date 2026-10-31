@@ -11,6 +11,7 @@ var FeeStatus;
     FeeStatus["PAID"] = "PAID";
     FeeStatus["OVERDUE"] = "OVERDUE";
     FeeStatus["PARTIALLY_PAID"] = "PARTIALLY_PAID";
+    FeeStatus["CANCELLED"] = "CANCELLED";
 })(FeeStatus || (exports.FeeStatus = FeeStatus = {}));
 var FeeType;
 (function (FeeType) {

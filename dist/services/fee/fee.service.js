@@ -69,7 +69,12 @@ class FeeService {
         // Stream/batch active residents with user details and hostel owner details in a single query
         const activeResidents = await this.feeRepository.findActiveResidents(options.hostelId);
         if (activeResidents.length === 0) {
-            return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel, emailsDispatched: 0 };
+            return {
+                generatedCount: 0,
+                errors: 0,
+                nepaliMonth: period.nepaliMonthLabel,
+                emailsDispatched: 0,
+            };
         }
         const residentIds = activeResidents.map((r) => r.id);
         // 1. Single batch query for already-generated monthly fees in this period (prevents N lookups)
@@ -88,7 +93,8 @@ class FeeService {
                         continue;
                     const ownerName = `${resident.hostel?.owner?.firstName || ''} ${resident.hostel?.owner?.lastName || ''}`.trim() ||
                         'Hostel Owner';
-                    const studentName = `${resident.user?.firstName || ''} ${resident.user?.lastName || ''}`.trim() || 'Student';
+                    const studentName = `${resident.user?.firstName || ''} ${resident.user?.lastName || ''}`.trim() ||
+                        'Student';
                     const bill = (0, email_template_1.renderMonthlyFeeBillEmail)({
                         studentName,
                         studentEmail: resident.user?.email,
@@ -133,7 +139,12 @@ class FeeService {
                     message: `All active residents were already billed. Resent ${resendJobs.length} bill email(s).`,
                 };
             }
-            return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel, emailsDispatched: 0 };
+            return {
+                generatedCount: 0,
+                errors: 0,
+                nepaliMonth: period.nepaliMonthLabel,
+                emailsDispatched: 0,
+            };
         }
         // 3. Single aggregate query for all pending/unpaid balances (eliminates N balance queries)
         const unbilledResidentIds = unbilledResidents.map((r) => r.id);
@@ -243,11 +254,11 @@ class FeeService {
         console.log(`✅ [FeeService] Fee automation completed for ${period.nepaliMonthLabel}. Generated: ${generatedCount}, Errors: ${errors}, Emails: ${emailsDispatched}`);
         return { generatedCount, errors, nepaliMonth: period.nepaliMonthLabel, emailsDispatched };
     }
-    async listHostelFees(hostelId, page = 1, limit = 20) {
-        const cacheKey = cache_util_1.cacheService.generateKey('hostel:fees', { hostelId, page, limit });
+    async listHostelFees(hostelId, page = 1, limit = 20, filters = {}) {
+        const cacheKey = cache_util_1.cacheService.generateKey('hostel:fees', { hostelId, page, limit, ...filters });
         // 3-Level Cache: L1 (LRU RAM) -> L2 (Redis) -> L3 (DB)
         const { data, isCached, cacheLevel } = await cache_util_1.cacheService.wrap(cacheKey, async () => {
-            const [fees, total] = await this.feeRepository.findByHostel(hostelId, page, limit);
+            const [fees, total] = await this.feeRepository.findByHostel(hostelId, page, limit, filters);
             return { fees, total };
         }, { l1TtlSeconds: 30, l2TtlSeconds: 120 });
         return (0, pagination_util_1.createPaginatedResponse)(data.fees, data.total, { page, limit }, { isCached, cacheLevel });

@@ -12,6 +12,9 @@ import { IROLES } from '../../enum/roles.enum';
 import { uploadStudentPhoto, uploadStudentDocument } from '../../middleware/upload.middleware';
 import { AttendanceFactory } from '../../factory/attendance/attendance.factory';
 import { MarkAttendanceDto } from '../../dto/attendance/mark-attendance.dto';
+import { paymentController } from '../../controller/payment/payment.controller';
+import { RecordPaymentDto } from '../../dto/payment/record-payment.dto';
+import { requireParam } from '../../decorators/http.decorator';
 
 const residentRouter: Router = Router();
 const residentController = ResidentFactory.create();
@@ -24,6 +27,14 @@ residentRouter.get('/me', residentController.getMyProfile);
 residentRouter.post('/leaves/apply', validateDto(ApplyLeaveDto), residentController.applyForLeave);
 residentRouter.get('/leaves', residentController.getMyLeaves);
 residentRouter.get('/fees', residentController.getMyFees);
+residentRouter.get('/fees/:id', requireParam('id'), paymentController.getInvoice);
+residentRouter.post(
+  '/fees/:id/pay',
+  requireParam('id'),
+  validateDto(RecordPaymentDto),
+  paymentController.residentPay,
+);
+residentRouter.get('/payments', paymentController.getResidentPayments);
 residentRouter.get('/payment-qrs', residentController.getMyPaymentQrs);
 
 // ─── Attendance (self check-in) ──────────────────────────────────────────────

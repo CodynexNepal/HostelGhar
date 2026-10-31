@@ -7,9 +7,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentProofRepository = void 0;
 const database_source_1 = require("../../database/database-source");
 const payment_proof_entity_1 = require("../../entities/payment-proof/payment-proof.entity");
+const payment_proof_enum_1 = require("../../enum/payment-proof.enum");
 const fee_entity_1 = require("../../entities/fee/fee.entity");
 const hostel_entity_1 = require("../../entities/hostel/hostel.entity");
 const resident_entity_1 = require("../../entities/resident/resident.entity");
+const payment_entity_1 = require("../../entities/payment/payment.entity");
+const payment_enum_1 = require("../../enum/payment.enum");
 const fee_credit_util_1 = require("../../utils/fee-credit.util");
 /** Relations needed to serialize a proof (resident name, room, bill label). */
 const PROOF_RELATIONS = {
@@ -83,16 +86,47 @@ class PaymentProofRepository {
             const result = (0, fee_credit_util_1.applyPaymentToFeeAmounts)({
                 totalPayable: Number(fee.totalPayable),
                 paidAmount: Number(fee.paidAmount),
+                discountAmount: Number(fee.discountAmount ?? 0),
+                dueDate: fee.dueDate,
                 status: fee.status,
             }, Number(proof.amount) > 0 ? Number(proof.amount) : Number(amount));
+            // Map ProofPaymentMethod to PaymentMethod
+            let paymentMethod = payment_enum_1.PaymentMethod.OTHER;
+            if (proof.method === payment_proof_enum_1.ProofPaymentMethod.ESEWA)
+                paymentMethod = payment_enum_1.PaymentMethod.ESEWA;
+            else if (proof.method === payment_proof_enum_1.ProofPaymentMethod.KHALTI)
+                paymentMethod = payment_enum_1.PaymentMethod.KHALTI;
+            else if (proof.method === payment_proof_enum_1.ProofPaymentMethod.BANK)
+                paymentMethod = payment_enum_1.PaymentMethod.BANK_TRANSFER;
+            else if (proof.method === payment_proof_enum_1.ProofPaymentMethod.CASH)
+                paymentMethod = payment_enum_1.PaymentMethod.CASH;
+            // Create Payment audit record if not already recorded for this proof
+            const idempotencyKey = `PROOF-${proof.id}`;
+            const existingPayment = await manager.findOne(payment_entity_1.Payment, { where: { idempotencyKey } });
+            if (!existingPayment) {
+                const payment = manager.create(payment_entity_1.Payment, {
+                    invoiceId: fee.id,
+                    residentId: fee.residentId,
+                    hostelId: fee.hostelId,
+                    amount: Number(proof.amount) > 0 ? Number(proof.amount) : Number(amount),
+                    paymentMethod,
+                    paymentStatus: payment_enum_1.PaymentStatus.SUCCESS,
+                    transactionReference: proof.transactionRef,
+                    idempotencyKey,
+                    receiptNumber: `REC-${fee.billingYear}${String(fee.billingMonth).padStart(2, '0')}-${Math.floor(100000 + Math.random() * 900000)}`,
+                    receivedBy: proof.reviewedBy,
+                    paidAt: proof.reviewedAt ?? new Date(),
+                    remarks: proof.reviewNote ?? `Approved proof ${proof.id}`,
+                });
+                await manager.save(payment);
+            }
             // Keep the bill's own carried-forward due field in sync so the next
             // billing cycle never re-charges what has just been settled.
             const nextDue = Math.max(result.totalPayable - result.paidAmount, 0);
             if (Number(fee.dueAmount) > 0 && nextDue === 0)
                 fee.dueAmount = 0;
-            if (!result.changed)
-                return fee;
             fee.paidAmount = result.paidAmount;
+            fee.outstandingAmount = result.outstandingAmount;
             fee.status = result.status;
             return manager.save(fee);
         });

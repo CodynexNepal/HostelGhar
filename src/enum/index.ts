@@ -13,6 +13,7 @@ export * from './facility.enum';
 export * from './payment-qr.enum';
 export * from './platform-qr.enum';
 export * from './payment-proof.enum';
+export { PaymentStatus, PaymentMethod as TransactionPaymentMethod } from './payment.enum';
 export * from './subscription.enum';
 export * from './staff.enum';
 export * from './meal.enum';
