@@ -15,8 +15,8 @@ import { AttendanceStatus } from '../../src/enum/attendance.enum';
 import { Request } from 'express';
 
 describe('attendance geolocation utility', () => {
-  it('enforces 10 meters maximum radius constant', () => {
-    expect(ALLOWED_ATTENDANCE_RADIUS_METERS).toBe(10);
+  it('enforces 750 meters maximum radius constant', () => {
+    expect(ALLOWED_ATTENDANCE_RADIUS_METERS).toBe(750);
   });
 
   it('calculates 0 meters for identical coordinates', () => {

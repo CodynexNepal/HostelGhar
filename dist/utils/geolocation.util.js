@@ -11,8 +11,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.formatDuration = exports.calculateDistanceMeters = exports.lookupIpCoordinates = exports.extractClientIp = exports.ALLOWED_ATTENDANCE_RADIUS_METERS = void 0;
 const geoip_lite_1 = __importDefault(require("geoip-lite"));
 /** Maximum permitted distance (in meters) from hostel location for check-in/out.
- * Set to 10 meters as strictly requested. */
-exports.ALLOWED_ATTENDANCE_RADIUS_METERS = 10;
+ * Set to 750 meters to comfortably allow residents within 700M of the hostel. */
+exports.ALLOWED_ATTENDANCE_RADIUS_METERS = 750;
 /**
  * Normalizes client IP address from Express Request headers or socket,
  * stripping IPv6 mapped prefixes (e.g., ::ffff:192.168.1.1).
