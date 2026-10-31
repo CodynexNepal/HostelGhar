@@ -128,7 +128,8 @@ class BookingService {
             // Self-healing fallback: If PostgreSQL enum type doesn't have 'APPROVED' yet,
             // fallback to 'CONFIRMED' so the operation succeeds without 500 crash.
             if (targetStatus === booking_enum_1.BookingStatus.APPROVED &&
-                (dbErr?.message?.includes('bookings_status_enum') || dbErr?.message?.includes('invalid input value for enum'))) {
+                (dbErr?.message?.includes('bookings_status_enum') ||
+                    dbErr?.message?.includes('invalid input value for enum'))) {
                 booking.status = booking_enum_1.BookingStatus.CONFIRMED;
                 savedBooking = await this.bookingRepository.save(booking);
             }

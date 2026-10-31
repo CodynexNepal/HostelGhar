@@ -382,7 +382,27 @@ class AppEventDispatcher extends EventEmitter {
     type: string;
     data?: Record<string, any>;
   }) {
-    return await notificationQueue.add(JobType.SEND_IN_APP_NOTIFICATION, data);
+    try {
+      if (redisClient.status !== 'ready' && !dotEnvConfig.ENABLE_REDIS) {
+        if (data.userId) {
+          socketServer.toUser(data.userId, data.type, data);
+        } else if (data.hostelId) {
+          socketServer.toHostel(data.hostelId, data.type, data);
+        }
+        return { id: 'direct-socket-fallback' } as any;
+      }
+      return await notificationQueue.add(JobType.SEND_IN_APP_NOTIFICATION, data);
+    } catch (err: any) {
+      logger.warn('[EventDispatcher] Notification queue failed; falling back to direct socket', {
+        error: err?.message || String(err),
+      });
+      if (data.userId) {
+        socketServer.toUser(data.userId, data.type, data);
+      } else if (data.hostelId) {
+        socketServer.toHostel(data.hostelId, data.type, data);
+      }
+      return { id: 'direct-socket-fallback' } as any;
+    }
   }
 
   private broadcastRealtime(event: AppDomainEvent): void {

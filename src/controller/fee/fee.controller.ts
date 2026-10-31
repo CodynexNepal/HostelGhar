@@ -61,6 +61,11 @@ export class FeeController {
         }
       }
 
+      const resendEmails =
+        req.body?.resendEmails === true ||
+        req.query?.resend === 'true' ||
+        req.body?.resend === true;
+
       const isAsync = req.query.async === 'true' || req.body?.async === true;
       if (isAsync) {
         const job = await systemEventQueue.add(
@@ -71,6 +76,7 @@ export class FeeController {
             billingYear: req.body?.billingYear,
             baseFee: req.body?.baseFee,
             hostelId,
+            resendEmails,
           },
           {
             removeOnComplete: 100,
@@ -92,7 +98,7 @@ export class FeeController {
         req.body?.billingMonth,
         req.body?.billingYear,
         req.body?.baseFee,
-        { hostelId },
+        { hostelId, resendEmails },
       );
       res.status(STATUS_CODE.OK).json({ success: true, result });
     } catch (error) {

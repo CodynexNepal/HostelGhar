@@ -50,7 +50,16 @@ class FeeRepository {
                 billingYear,
                 feeType: fee_enum_1.FeeType.MONTHLY_HOSTEL_FEE,
             },
-            select: ['id', 'residentId', 'billingMonth', 'billingYear', 'totalPayable'],
+            select: [
+                'id',
+                'residentId',
+                'billingMonth',
+                'billingYear',
+                'totalPayable',
+                'amount',
+                'dueAmount',
+                'dueDate',
+            ],
         });
     }
     /**

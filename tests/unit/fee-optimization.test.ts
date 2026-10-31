@@ -123,6 +123,53 @@ describe('FeeService and FeeController Optimization & Scalability', () => {
     expect(mockFeeRepo.findPendingBalancesByResidents).not.toHaveBeenCalled();
   });
 
+  it('resends invoice emails to already billed residents when resendEmails is requested', async () => {
+    const residents = [
+      {
+        id: 'res-1',
+        hostelId: 'hostel-1',
+        userId: 'user-1',
+        roomNumber: '101',
+        user: { email: 'res1@hostel.com', firstName: 'Res', lastName: 'One' },
+        hostel: {
+          name: 'Hostel A',
+          address: 'Kathmandu',
+          phone: '9800000000',
+          email: 'a@hostel.com',
+          owner: { firstName: 'Owner', lastName: 'A' },
+        },
+      },
+    ];
+
+    (mockFeeRepo.findActiveResidents as any).mockResolvedValue(residents);
+    (mockFeeRepo.findExistingMonthlyFees as any).mockResolvedValue([
+      {
+        id: 'fee-1',
+        residentId: 'res-1',
+        amount: 10500,
+        dueAmount: 0,
+        totalPayable: 10500,
+        billingMonth: 10,
+        billingYear: 2026,
+        dueDate: '2026-10-07',
+      },
+    ]);
+
+    const bulkEmailSpy = vi.spyOn(eventDispatcher, 'queueEmailsBulk').mockResolvedValue([] as any);
+
+    const result = await feeService.generateMonthlyFeesForAllHostels(10, 2026, 10500, {
+      enforceNepaliFirstDay: false,
+      resendEmails: true,
+    });
+
+    expect(result.generatedCount).toBe(0);
+    expect(result.emailsDispatched).toBe(1);
+    expect(bulkEmailSpy).toHaveBeenCalledTimes(1);
+    const queuedJobs = (bulkEmailSpy as any).mock.calls[0][0];
+    expect(queuedJobs).toHaveLength(1);
+    expect(queuedJobs[0].data.to).toBe('res1@hostel.com');
+  });
+
   it('supports asynchronous fee generation returning HTTP 202 with jobId and statusUrl', async () => {
     const req = {
       query: { async: 'true' },

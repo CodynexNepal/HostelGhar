@@ -20,6 +20,8 @@ import {
   ResidentImportCsvRow,
 } from '../../utils/resident-import.util';
 import { normalizePagination, createPaginatedResponse } from '../../utils/pagination.util';
+import { logger } from '../../observability/logger';
+import { ResidentImportWorker } from '../../workers/resident-import.worker';
 
 export const RESIDENT_IMPORT_MAX_ROWS = 2000;
 export const RESIDENT_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
@@ -175,10 +177,30 @@ export class ResidentImportService {
       hostelName: hostel.name,
     });
 
-    await residentImportQueue.add(JobType.RESIDENT_CSV_IMPORT, payload, {
-      jobId: `resident-import-${saved.id}`,
-      attempts: 3,
-    });
+    try {
+      await residentImportQueue.add(JobType.RESIDENT_CSV_IMPORT, payload, {
+        jobId: `resident-import-${saved.id}`,
+        attempts: 3,
+      });
+    } catch (queueErr: any) {
+      logger.warn(
+        '[ResidentImportService] BullMQ enqueue failed, executing direct background fallback',
+        {
+          importId: saved.id,
+          error: queueErr?.message || String(queueErr),
+        },
+      );
+      setImmediate(async () => {
+        try {
+          await ResidentImportWorker.executeImport(payload);
+        } catch (directErr: any) {
+          logger.error('[ResidentImportService] Direct import execution failed', {
+            importId: saved.id,
+            error: directErr?.message || String(directErr),
+          });
+        }
+      });
+    }
 
     await eventDispatcher
       .queueNotification({

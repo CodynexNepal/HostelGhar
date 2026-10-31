@@ -69,7 +69,7 @@ class FeeService {
         // Stream/batch active residents with user details and hostel owner details in a single query
         const activeResidents = await this.feeRepository.findActiveResidents(options.hostelId);
         if (activeResidents.length === 0) {
-            return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel };
+            return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel, emailsDispatched: 0 };
         }
         const residentIds = activeResidents.map((r) => r.id);
         // 1. Single batch query for already-generated monthly fees in this period (prevents N lookups)
@@ -79,7 +79,61 @@ class FeeService {
         const unbilledResidents = activeResidents.filter((r) => !alreadyBilledSet.has(r.id));
         if (unbilledResidents.length === 0) {
             console.log(`🏦 [FeeService] All active residents already billed for ${period.nepaliMonthLabel}.`);
-            return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel };
+            if (options.resendEmails) {
+                const existingMap = new Map(existingFees.map((f) => [f.residentId, f]));
+                const resendJobs = [];
+                for (const resident of activeResidents) {
+                    const fee = existingMap.get(resident.id);
+                    if (!fee || !resident.user?.email)
+                        continue;
+                    const ownerName = `${resident.hostel?.owner?.firstName || ''} ${resident.hostel?.owner?.lastName || ''}`.trim() ||
+                        'Hostel Owner';
+                    const studentName = `${resident.user?.firstName || ''} ${resident.user?.lastName || ''}`.trim() || 'Student';
+                    const bill = (0, email_template_1.renderMonthlyFeeBillEmail)({
+                        studentName,
+                        studentEmail: resident.user?.email,
+                        hostelName: resident.hostel?.name || 'Hostel',
+                        ownerName,
+                        hostelAddress: resident.hostel?.address || '',
+                        hostelPhone: resident.hostel?.phone || '',
+                        hostelEmail: resident.hostel?.email || '',
+                        roomNumber: resident.roomNumber,
+                        nepaliMonthLabel: period.nepaliMonthLabel,
+                        nepaliDateLabel: period.nepaliDateLabel,
+                        baseFee: Number(fee.amount ?? baseFee),
+                        outstandingDue: Number(fee.dueAmount ?? 0),
+                        totalPayable: Number(fee.totalPayable ?? baseFee),
+                        dueDateAd: fee.dueDate || dueDate,
+                        dueDateBs: period.dueDateBs,
+                        billNo: `FEE-${resolvedYear}${String(resolvedMonth).padStart(2, '0')}`,
+                    });
+                    resendJobs.push({
+                        name: queue_constants_1.JobType.SEND_INVOICE_EMAIL,
+                        data: {
+                            to: resident.user.email,
+                            subject: bill.subject,
+                            body: bill.body,
+                            html: bill.html,
+                        },
+                    });
+                }
+                if (resendJobs.length > 0) {
+                    try {
+                        await event_dispatcher_util_1.eventDispatcher.queueEmailsBulk(resendJobs, { timeoutMs: 10000 });
+                    }
+                    catch (err) {
+                        console.warn('⚠️ [FeeService] Resend bulk email dispatch warning:', err.message);
+                    }
+                }
+                return {
+                    generatedCount: 0,
+                    errors: 0,
+                    nepaliMonth: period.nepaliMonthLabel,
+                    emailsDispatched: resendJobs.length,
+                    message: `All active residents were already billed. Resent ${resendJobs.length} bill email(s).`,
+                };
+            }
+            return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel, emailsDispatched: 0 };
         }
         // 3. Single aggregate query for all pending/unpaid balances (eliminates N balance queries)
         const unbilledResidentIds = unbilledResidents.map((r) => r.id);
@@ -162,11 +216,16 @@ class FeeService {
             cache_util_1.cacheService.invalidatePattern('owner:dashboard'),
             cache_util_1.cacheService.invalidatePattern('owner:residents'),
         ]);
-        // 6. Bulk dispatch email jobs in a single Redis transaction
+        // 6. Bulk dispatch email jobs in a single Redis transaction / direct SMTP
+        let emailsDispatched = 0;
         if (emailJobs.length > 0) {
-            event_dispatcher_util_1.eventDispatcher.queueEmailsBulk(emailJobs, { timeoutMs: 3500 }).catch((err) => {
+            try {
+                await event_dispatcher_util_1.eventDispatcher.queueEmailsBulk(emailJobs, { timeoutMs: 10000 });
+                emailsDispatched = emailJobs.length;
+            }
+            catch (err) {
                 console.warn('⚠️ [FeeService] Bulk email dispatch warning:', err.message);
-            });
+            }
         }
         // 7. Dispatch real-time push notifications
         for (const notif of socketNotifications) {
@@ -181,8 +240,8 @@ class FeeService {
                 // Non-blocking
             }
         }
-        console.log(`✅ [FeeService] Fee automation completed for ${period.nepaliMonthLabel}. Generated: ${generatedCount}, Errors: ${errors}`);
-        return { generatedCount, errors, nepaliMonth: period.nepaliMonthLabel };
+        console.log(`✅ [FeeService] Fee automation completed for ${period.nepaliMonthLabel}. Generated: ${generatedCount}, Errors: ${errors}, Emails: ${emailsDispatched}`);
+        return { generatedCount, errors, nepaliMonth: period.nepaliMonthLabel, emailsDispatched };
     }
     async listHostelFees(hostelId, page = 1, limit = 20) {
         const cacheKey = cache_util_1.cacheService.generateKey('hostel:fees', { hostelId, page, limit });

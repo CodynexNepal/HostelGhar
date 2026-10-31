@@ -50,6 +50,9 @@ class FeeController {
                         }
                     }
                 }
+                const resendEmails = req.body?.resendEmails === true ||
+                    req.query?.resend === 'true' ||
+                    req.body?.resend === true;
                 const isAsync = req.query.async === 'true' || req.body?.async === true;
                 if (isAsync) {
                     const job = await queue_factory_1.systemEventQueue.add(fee_scheduler_job_1.TRIGGER_MONTHLY_FEES_JOB, {
@@ -58,6 +61,7 @@ class FeeController {
                         billingYear: req.body?.billingYear,
                         baseFee: req.body?.baseFee,
                         hostelId,
+                        resendEmails,
                     }, {
                         removeOnComplete: 100,
                         removeOnFail: 500,
@@ -71,7 +75,7 @@ class FeeController {
                     });
                     return;
                 }
-                const result = await this.feeService.generateMonthlyFeesForAllHostels(req.body?.billingMonth, req.body?.billingYear, req.body?.baseFee, { hostelId });
+                const result = await this.feeService.generateMonthlyFeesForAllHostels(req.body?.billingMonth, req.body?.billingYear, req.body?.baseFee, { hostelId, resendEmails });
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({ success: true, result });
             }
             catch (error) {

@@ -303,7 +303,30 @@ class AppEventDispatcher extends events_1.EventEmitter {
      * Helper to dispatch push/in-app notification to BullMQ queue
      */
     async queueNotification(data) {
-        return await queue_factory_1.notificationQueue.add(queue_constants_1.JobType.SEND_IN_APP_NOTIFICATION, data);
+        try {
+            if (redis_config_1.redisClient.status !== 'ready' && !envConfig_1.dotEnvConfig.ENABLE_REDIS) {
+                if (data.userId) {
+                    socket_server_1.socketServer.toUser(data.userId, data.type, data);
+                }
+                else if (data.hostelId) {
+                    socket_server_1.socketServer.toHostel(data.hostelId, data.type, data);
+                }
+                return { id: 'direct-socket-fallback' };
+            }
+            return await queue_factory_1.notificationQueue.add(queue_constants_1.JobType.SEND_IN_APP_NOTIFICATION, data);
+        }
+        catch (err) {
+            logger_1.logger.warn('[EventDispatcher] Notification queue failed; falling back to direct socket', {
+                error: err?.message || String(err),
+            });
+            if (data.userId) {
+                socket_server_1.socketServer.toUser(data.userId, data.type, data);
+            }
+            else if (data.hostelId) {
+                socket_server_1.socketServer.toHostel(data.hostelId, data.type, data);
+            }
+            return { id: 'direct-socket-fallback' };
+        }
     }
     broadcastRealtime(event) {
         try {

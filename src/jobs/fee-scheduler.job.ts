@@ -52,7 +52,11 @@ export class FeeAutomationWorker extends BaseWorker {
         job.data?.billingMonth,
         job.data?.billingYear,
         job.data?.baseFee,
-        { enforceNepaliFirstDay: false, hostelId: job.data?.hostelId },
+        {
+          enforceNepaliFirstDay: false,
+          hostelId: job.data?.hostelId,
+          resendEmails: job.data?.resendEmails,
+        },
       );
       return result;
     }

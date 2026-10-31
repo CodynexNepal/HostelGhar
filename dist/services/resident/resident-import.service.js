@@ -23,6 +23,8 @@ const event_dispatcher_util_1 = require("../../utils/event-dispatcher.util");
 const resident_import_util_1 = require("../../utils/resident-import.util");
 const pagination_util_1 = require("../../utils/pagination.util");
 const resident_import_util_2 = require("../../utils/resident-import.util");
+const logger_1 = require("../../observability/logger");
+const resident_import_worker_1 = require("../../workers/resident-import.worker");
 exports.RESIDENT_IMPORT_MAX_ROWS = 2000;
 exports.RESIDENT_IMPORT_MAX_BYTES = 5242880;
 exports.RESIDENT_IMPORT_MAX_ACTIVE = 3;
@@ -125,10 +127,30 @@ class ResidentImportService {
             rows: parsed.rows,
             hostelName: hostel.name,
         });
-        await queue_factory_1.residentImportQueue.add(queue_constants_1.JobType.RESIDENT_CSV_IMPORT, payload, {
-            jobId: `resident-import-${saved.id}`,
-            attempts: 3,
-        });
+        try {
+            await queue_factory_1.residentImportQueue.add(queue_constants_1.JobType.RESIDENT_CSV_IMPORT, payload, {
+                jobId: `resident-import-${saved.id}`,
+                attempts: 3,
+            });
+        }
+        catch (queueErr) {
+            logger_1.logger.warn('[ResidentImportService] BullMQ enqueue failed, executing direct background fallback', {
+                importId: saved.id,
+                error: queueErr?.message || String(queueErr),
+            });
+            // Fallback: execute directly in the background without Redis
+            setImmediate(async () => {
+                try {
+                    await resident_import_worker_1.ResidentImportWorker.executeImport(payload);
+                }
+                catch (directErr) {
+                    logger_1.logger.error('[ResidentImportService] Direct import execution failed', {
+                        importId: saved.id,
+                        error: directErr?.message || String(directErr),
+                    });
+                }
+            });
+        }
         await event_dispatcher_util_1.eventDispatcher
             .queueNotification({
             userId: input.ownerId,

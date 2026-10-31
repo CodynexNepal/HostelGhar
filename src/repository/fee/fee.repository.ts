@@ -62,7 +62,16 @@ export class FeeRepository {
         billingYear,
         feeType: FeeType.MONTHLY_HOSTEL_FEE,
       },
-      select: ['id', 'residentId', 'billingMonth', 'billingYear', 'totalPayable'],
+      select: [
+        'id',
+        'residentId',
+        'billingMonth',
+        'billingYear',
+        'totalPayable',
+        'amount',
+        'dueAmount',
+        'dueDate',
+      ],
     });
   }
 

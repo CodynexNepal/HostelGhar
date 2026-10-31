@@ -995,6 +995,39 @@ class OwnerController {
          */
         this.triggerMonthlyFees = async (req, res, next) => {
             try {
+                let hostelId = req.body?.hostelId ||
+                    req.query?.hostelId ||
+                    req.headers?.['x-hostel-id'];
+                if (typeof hostelId !== 'string' || !hostelId.trim()) {
+                    hostelId = undefined;
+                }
+                if (req.user?.role?.toLowerCase() === roles_enum_1.IROLES.OWNER.toLowerCase()) {
+                    if (!hostelId) {
+                        const ownerHostels = await this.ownerRepository.findHostelOptionsByOwner(req.user.userId);
+                        const firstHostel = ownerHostels?.[0];
+                        if (!firstHostel) {
+                            res.status(statusCode_interface_1.STATUS_CODE.FORBIDDEN).json({
+                                success: false,
+                                message: 'No hostel associated with this owner account',
+                            });
+                            return;
+                        }
+                        hostelId = firstHostel.id;
+                    }
+                    else {
+                        const authorizedHostel = await this.ownerRepository.findHostelByIdAndOwner(hostelId, req.user.userId);
+                        if (!authorizedHostel) {
+                            res.status(statusCode_interface_1.STATUS_CODE.FORBIDDEN).json({
+                                success: false,
+                                message: 'You are not authorized to generate fees for this hostel',
+                            });
+                            return;
+                        }
+                    }
+                }
+                const resendEmails = req.body?.resendEmails === true ||
+                    req.query?.resend === 'true' ||
+                    req.body?.resend === true;
                 const isAsync = req.query.async === 'true' || req.body?.async === true;
                 if (isAsync) {
                     const job = await queue_factory_1.systemEventQueue.add(fee_scheduler_job_1.TRIGGER_MONTHLY_FEES_JOB, {
@@ -1002,6 +1035,8 @@ class OwnerController {
                         billingMonth: req.body?.billingMonth,
                         billingYear: req.body?.billingYear,
                         baseFee: req.body?.baseFee,
+                        hostelId,
+                        resendEmails,
                     }, {
                         removeOnComplete: 100,
                         removeOnFail: 500,
@@ -1015,7 +1050,7 @@ class OwnerController {
                     });
                     return;
                 }
-                const result = await fee_service_1.feeService.generateMonthlyFeesForAllHostels(req.body?.billingMonth, req.body?.billingYear, req.body?.baseFee);
+                const result = await fee_service_1.feeService.generateMonthlyFeesForAllHostels(req.body?.billingMonth, req.body?.billingYear, req.body?.baseFee, { hostelId, resendEmails });
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({
                     success: true,
                     message: 'Monthly fees generated and dispatched to residents',

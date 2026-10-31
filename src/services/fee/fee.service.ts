@@ -76,8 +76,20 @@ export class FeeService {
     billingMonth?: number,
     billingYear?: number,
     baseFee: number = 10500.0,
-    options: { enforceNepaliFirstDay?: boolean; now?: Date; hostelId?: string } = {},
-  ): Promise<{ generatedCount: number; errors: number; skipped?: boolean; nepaliMonth?: string }> {
+    options: {
+      enforceNepaliFirstDay?: boolean;
+      now?: Date;
+      hostelId?: string;
+      resendEmails?: boolean;
+    } = {},
+  ): Promise<{
+    generatedCount: number;
+    errors: number;
+    skipped?: boolean;
+    nepaliMonth?: string;
+    emailsDispatched?: number;
+    message?: string;
+  }> {
     const now = options.now ?? new Date();
     if (options.enforceNepaliFirstDay && !isFirstDayOfNepaliMonth(now)) {
       return { generatedCount: 0, errors: 0, skipped: true };
@@ -94,7 +106,12 @@ export class FeeService {
     // Stream/batch active residents with user details and hostel owner details in a single query
     const activeResidents = await this.feeRepository.findActiveResidents(options.hostelId);
     if (activeResidents.length === 0) {
-      return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel };
+      return {
+        generatedCount: 0,
+        errors: 0,
+        nepaliMonth: period.nepaliMonthLabel,
+        emailsDispatched: 0,
+      };
     }
 
     const residentIds = activeResidents.map((r) => r.id);
@@ -113,7 +130,82 @@ export class FeeService {
       console.log(
         `🏦 [FeeService] All active residents already billed for ${period.nepaliMonthLabel}.`,
       );
-      return { generatedCount: 0, errors: 0, nepaliMonth: period.nepaliMonthLabel };
+
+      if (options.resendEmails) {
+        const existingMap = new Map(existingFees.map((f) => [f.residentId, f]));
+        const resendJobs: Array<{
+          name: JobType;
+          data: {
+            to: string;
+            subject: string;
+            body?: string;
+            html?: string;
+          };
+        }> = [];
+
+        for (const resident of activeResidents) {
+          const fee = existingMap.get(resident.id);
+          if (!fee || !resident.user?.email) continue;
+          const ownerName =
+            `${resident.hostel?.owner?.firstName || ''} ${resident.hostel?.owner?.lastName || ''}`.trim() ||
+            'Hostel Owner';
+          const studentName =
+            `${resident.user?.firstName || ''} ${resident.user?.lastName || ''}`.trim() ||
+            'Student';
+
+          const bill = renderMonthlyFeeBillEmail({
+            studentName,
+            studentEmail: resident.user?.email,
+            hostelName: resident.hostel?.name || 'Hostel',
+            ownerName,
+            hostelAddress: resident.hostel?.address || '',
+            hostelPhone: resident.hostel?.phone || '',
+            hostelEmail: resident.hostel?.email || '',
+            roomNumber: resident.roomNumber,
+            nepaliMonthLabel: period.nepaliMonthLabel,
+            nepaliDateLabel: period.nepaliDateLabel,
+            baseFee: Number(fee.amount ?? baseFee),
+            outstandingDue: Number(fee.dueAmount ?? 0),
+            totalPayable: Number(fee.totalPayable ?? baseFee),
+            dueDateAd: fee.dueDate || dueDate,
+            dueDateBs: period.dueDateBs,
+            billNo: `FEE-${resolvedYear}${String(resolvedMonth).padStart(2, '0')}`,
+          });
+
+          resendJobs.push({
+            name: JobType.SEND_INVOICE_EMAIL,
+            data: {
+              to: resident.user.email,
+              subject: bill.subject,
+              body: bill.body,
+              html: bill.html,
+            },
+          });
+        }
+
+        if (resendJobs.length > 0) {
+          try {
+            await eventDispatcher.queueEmailsBulk(resendJobs, { timeoutMs: 10000 });
+          } catch (err: any) {
+            console.warn('⚠️ [FeeService] Resend bulk email dispatch warning:', err.message);
+          }
+        }
+
+        return {
+          generatedCount: 0,
+          errors: 0,
+          nepaliMonth: period.nepaliMonthLabel,
+          emailsDispatched: resendJobs.length,
+          message: `All active residents were already billed. Resent ${resendJobs.length} bill email(s).`,
+        };
+      }
+
+      return {
+        generatedCount: 0,
+        errors: 0,
+        nepaliMonth: period.nepaliMonthLabel,
+        emailsDispatched: 0,
+      };
     }
 
     // 3. Single aggregate query for all pending/unpaid balances (eliminates N balance queries)
@@ -220,11 +312,15 @@ export class FeeService {
       cacheService.invalidatePattern('owner:residents'),
     ]);
 
-    // 6. Bulk dispatch email jobs in a single Redis transaction
+    // 6. Bulk dispatch email jobs in a single Redis transaction / direct SMTP
+    let emailsDispatched = 0;
     if (emailJobs.length > 0) {
-      eventDispatcher.queueEmailsBulk(emailJobs, { timeoutMs: 3500 }).catch((err) => {
+      try {
+        await eventDispatcher.queueEmailsBulk(emailJobs, { timeoutMs: 10000 });
+        emailsDispatched = emailJobs.length;
+      } catch (err: any) {
         console.warn('⚠️ [FeeService] Bulk email dispatch warning:', err.message);
-      });
+      }
     }
 
     // 7. Dispatch real-time push notifications
@@ -241,9 +337,9 @@ export class FeeService {
     }
 
     console.log(
-      `✅ [FeeService] Fee automation completed for ${period.nepaliMonthLabel}. Generated: ${generatedCount}, Errors: ${errors}`,
+      `✅ [FeeService] Fee automation completed for ${period.nepaliMonthLabel}. Generated: ${generatedCount}, Errors: ${errors}, Emails: ${emailsDispatched}`,
     );
-    return { generatedCount, errors, nepaliMonth: period.nepaliMonthLabel };
+    return { generatedCount, errors, nepaliMonth: period.nepaliMonthLabel, emailsDispatched };
   }
 
   public async listHostelFees(hostelId: string, page: number = 1, limit: number = 20) {

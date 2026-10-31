@@ -24,8 +24,13 @@ class ResidentImportWorker extends base_worker_1.BaseWorker {
     async process(job) {
         if (job.name !== queue_constants_1.JobType.RESIDENT_CSV_IMPORT)
             return { skipped: true };
+        return await ResidentImportWorker.executeImport(job.data, async (percent) => {
+            await job.updateProgress(percent);
+        });
+    }
+    static async executeImport(payload, onProgress) {
         // Jobs enqueued before Brotli carry plain `rows`; newer ones carry `rowsBr`.
-        const { importId, hostelId, ownerId, rows } = (0, brotli_util_1.unpackQueueRows)(job.data);
+        const { importId, hostelId, ownerId, rows } = (0, brotli_util_1.unpackQueueRows)(payload);
         const importRepo = database_source_1.AppDataSource.getRepository(resident_import_entity_1.ResidentImport);
         const record = await importRepo.findOne({ where: { id: importId } });
         if (!record)
@@ -34,7 +39,7 @@ class ResidentImportWorker extends base_worker_1.BaseWorker {
             return { alreadyDone: true };
         record.status = resident_import_entity_1.ResidentImportStatus.PROCESSING;
         await importRepo.save(record);
-        await this.emitProgress(hostelId, ownerId, record, 0);
+        await ResidentImportWorker.emitProgressSafe(hostelId, ownerId, record, 0);
         const errors = [
             ...(record.rowErrors ?? []),
         ];
@@ -43,7 +48,7 @@ class ResidentImportWorker extends base_worker_1.BaseWorker {
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             try {
-                await this.importSingleRow(hostelId, ownerId, row);
+                await ResidentImportWorker.importSingleRowDirect(hostelId, ownerId, row);
                 success += 1;
             }
             catch (err) {
@@ -55,8 +60,15 @@ class ResidentImportWorker extends base_worker_1.BaseWorker {
                 record.failedCount = failed;
                 record.rowErrors = errors.slice(0, 100);
                 await importRepo.save(record);
-                await job.updateProgress(Math.round(((i + 1) / rows.length) * 100));
-                await this.emitProgress(hostelId, ownerId, record, (i + 1) / rows.length);
+                if (onProgress) {
+                    try {
+                        await onProgress(Math.round(((i + 1) / rows.length) * 100));
+                    }
+                    catch {
+                        // Ignore progress reporting errors in direct mode
+                    }
+                }
+                await ResidentImportWorker.emitProgressSafe(hostelId, ownerId, record, (i + 1) / rows.length);
             }
         }
         record.successCount = success;
@@ -110,7 +122,7 @@ class ResidentImportWorker extends base_worker_1.BaseWorker {
         logger_1.logger.info('Resident CSV import completed', { importId, success, failed });
         return { importId, success, failed };
     }
-    async emitProgress(hostelId, ownerId, record, fraction) {
+    static async emitProgressSafe(hostelId, ownerId, record, fraction) {
         try {
             socket_server_1.socketServer.toUser(ownerId, queue_constants_1.SocketEvent.RESIDENT_IMPORT_PROGRESS, {
                 importId: record.id,
@@ -126,7 +138,7 @@ class ResidentImportWorker extends base_worker_1.BaseWorker {
             void 0;
         }
     }
-    async importSingleRow(hostelId, ownerId, row) {
+    static async importSingleRowDirect(hostelId, ownerId, row) {
         const email = (0, normalize_util_1.normalizeEmail)(row.email);
         await database_source_1.AppDataSource.transaction(async (manager) => {
             const userRepo = manager.getRepository(user_entity_1.User);
