@@ -20,7 +20,7 @@ class UpdateBookingStatusEnum1803100000000 {
       END $$;
     `);
     }
-    async down(queryRunner) {
+    async down(_queryRunner) {
         // In PostgreSQL, enum values cannot be easily dropped without rebuilding the type.
     }
 }

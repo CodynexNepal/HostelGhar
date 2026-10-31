@@ -11,7 +11,7 @@ import { authenticate, requireRoles } from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { uploadStudentPhoto, uploadStudentDocument } from '../../middleware/upload.middleware';
 import { AttendanceFactory } from '../../factory/attendance/attendance.factory';
-import { MarkAttendanceDto } from '../../dto/attendance/mark-attendance.dto';
+import { CheckOutAttendanceDto, MarkAttendanceDto } from '../../dto/attendance/mark-attendance.dto';
 import { paymentController } from '../../controller/payment/payment.controller';
 import { RecordPaymentDto } from '../../dto/payment/record-payment.dto';
 import { requireParam } from '../../decorators/http.decorator';
@@ -45,7 +45,11 @@ residentRouter.post(
   validateDto(MarkAttendanceDto),
   attendanceController.checkIn,
 );
-residentRouter.post('/attendance/check-out', attendanceController.checkOut);
+residentRouter.post(
+  '/attendance/check-out',
+  validateDto(CheckOutAttendanceDto),
+  attendanceController.checkOut,
+);
 residentRouter.get('/attendance', attendanceController.getMyAttendance);
 
 // ─── Student Self-Service Media Upload Routes ────────────────────────────────

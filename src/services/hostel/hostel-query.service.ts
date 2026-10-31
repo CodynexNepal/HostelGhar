@@ -11,9 +11,11 @@ import { LeaveRequest } from '../../entities/leave/leave-request.entity';
 import { Resident } from '../../entities/resident/resident.entity';
 import { Room } from '../../entities/room/room.entity';
 import { Fee } from '../../entities/fee/fee.entity';
+import { Attendance } from '../../entities/attendance/attendance.entity';
 import { LeaveStatus } from '../../enum/leave.enum';
 import { FeeStatus } from '../../enum/fee.enum';
 import { RoomStatus } from '../../enum/room.enum';
+import { todayAttendanceDate } from '../attendance/attendance.service';
 
 export interface OwnerDashboardHostelRow {
   hostelId: string;
@@ -78,6 +80,14 @@ export interface OwnerDashboardRecentPayment {
  * `hostels` keeps the LEGACY flat array shape so existing clients that treat
  * `data` as an array keep working; every other block is additive.
  */
+export interface OwnerDashboardAttendanceOverview {
+  todayDate: string;
+  todayCheckedIn: number;
+  todayCheckedOut: number;
+  currentlyInside: number;
+  currentlyOutside: number;
+}
+
 export interface OwnerDashboardResponse {
   hostels: OwnerDashboardHostelRow[];
   summary: OwnerDashboardSummary;
@@ -85,6 +95,7 @@ export interface OwnerDashboardResponse {
   roomMix: OwnerDashboardRoomMixRow[];
   revenueTrend: OwnerDashboardRevenuePoint[];
   recentPayments: OwnerDashboardRecentPayment[];
+  attendanceOverview?: OwnerDashboardAttendanceOverview | undefined;
 }
 
 const MONTH_SHORT = [
@@ -332,7 +343,44 @@ export class OptimizedHostelQueryService {
       totalHostels: hostels.length,
     };
 
-    return { hostels, summary, floorOverview, roomMix, revenueTrend, recentPayments };
+    let attendanceOverview: OwnerDashboardAttendanceOverview | undefined;
+    if (hostelIds.length > 0) {
+      try {
+        const today = todayAttendanceDate();
+        const todayAttendances = await AppDataSource.getRepository(Attendance).find({
+          where: { hostelId: In(hostelIds), date: today },
+          select: { id: true, checkInAt: true, checkOutAt: true, status: true },
+        });
+
+        const todayCheckedIn = todayAttendances.filter((a) => a.checkInAt != null).length;
+        const todayCheckedOut = todayAttendances.filter((a) => a.checkOutAt != null).length;
+        const currentlyInside = todayAttendances.filter(
+          (a) => a.checkInAt != null && a.checkOutAt == null,
+        ).length;
+        const totalResidents = summary.totalResidents;
+        const currentlyOutside = Math.max(0, totalResidents - currentlyInside);
+
+        attendanceOverview = {
+          todayDate: today,
+          todayCheckedIn,
+          todayCheckedOut,
+          currentlyInside,
+          currentlyOutside,
+        };
+      } catch {
+        attendanceOverview = undefined;
+      }
+    }
+
+    return {
+      hostels,
+      summary,
+      floorOverview,
+      roomMix,
+      revenueTrend,
+      recentPayments,
+      attendanceOverview,
+    };
   }
 
   /**

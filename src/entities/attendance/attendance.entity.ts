@@ -61,6 +61,90 @@ export class Attendance {
   @Column({ type: 'timestamptz', nullable: true, default: null })
   checkOutAt!: Date | null;
 
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    default: null,
+    transformer: {
+      to: (value?: number | null) => value,
+      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+    },
+  })
+  checkInLatitude!: number | null;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    default: null,
+    transformer: {
+      to: (value?: number | null) => value,
+      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+    },
+  })
+  checkInLongitude!: number | null;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    default: null,
+    transformer: {
+      to: (value?: number | null) => value,
+      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+    },
+  })
+  checkOutLatitude!: number | null;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 7,
+    nullable: true,
+    default: null,
+    transformer: {
+      to: (value?: number | null) => value,
+      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+    },
+  })
+  checkOutLongitude!: number | null;
+
+  @Column({ type: 'varchar', length: 45, nullable: true, default: null })
+  checkInIp!: string | null;
+
+  @Column({ type: 'varchar', length: 45, nullable: true, default: null })
+  checkOutIp!: string | null;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    default: null,
+    transformer: {
+      to: (value?: number | null) => value,
+      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+    },
+  })
+  checkInDistanceMeters!: number | null;
+
+  @Column({
+    type: 'numeric',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    default: null,
+    transformer: {
+      to: (value?: number | null) => value,
+      from: (value?: string | null) => (value != null ? parseFloat(value) : null),
+    },
+  })
+  checkOutDistanceMeters!: number | null;
+
   @Column({ type: 'varchar', length: 500, nullable: true, default: null })
   note!: string | null;
 

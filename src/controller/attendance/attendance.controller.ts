@@ -1,23 +1,24 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE: attendance.controller.ts
 // PURPOSE: HTTP layer for attendance — owner/admin listing and resident
-//          self check-in / history. Thin: parsing + status codes only.
+//          self check-in / check-out / history with geofencing & IP geolocation.
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { NextFunction, Request, Response } from 'express';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
-import { MarkAttendanceDto } from '../../dto/attendance/mark-attendance.dto';
+import { CheckOutAttendanceDto, MarkAttendanceDto } from '../../dto/attendance/mark-attendance.dto';
 import { AttendanceStatus } from '../../enum/attendance.enum';
 import { AttendanceService } from '../../services/attendance/attendance.service';
 import { createHttpError } from '../../utils/createHttpError';
 import { normalizePagination } from '../../utils/pagination.util';
+import { extractClientIp } from '../../utils/geolocation.util';
 
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
   /**
    * GET /owner/attendance?hostelId=&residentId=&date=&status=&page=&limit=
-   * Owner/Admin: attendance records for a hostel (or all owned hostels).
+   * Owner/Admin: attendance records for a hostel (or all owned hostels) with summary.
    */
   public list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -50,9 +51,11 @@ export class AttendanceController {
    */
   public checkIn = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      const clientIp = extractClientIp(req);
       const data = await this.attendanceService.checkIn(
         req.user!.userId,
         req.body as MarkAttendanceDto,
+        clientIp,
       );
       res
         .status(STATUS_CODE.CREATED)
@@ -68,7 +71,12 @@ export class AttendanceController {
    */
   public checkOut = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const data = await this.attendanceService.checkOut(req.user!.userId);
+      const clientIp = extractClientIp(req);
+      const data = await this.attendanceService.checkOut(
+        req.user!.userId,
+        req.body as CheckOutAttendanceDto,
+        clientIp,
+      );
       res.status(STATUS_CODE.OK).json({ success: true, message: 'Checked out successfully', data });
     } catch (error) {
       next(error);

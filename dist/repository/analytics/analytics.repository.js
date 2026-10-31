@@ -179,7 +179,7 @@ class AnalyticsRepository {
                 .select('fee.hostelId', 'hostelId')
                 .addSelect('hostel.name', 'name')
                 .addSelect('COALESCE(SUM(GREATEST(0, fee.totalPayable - fee.discountAmount - fee.paidAmount)), 0)', 'outstanding')
-                .addSelect("COALESCE(SUM(CASE WHEN fee.dueDate < CURRENT_DATE THEN GREATEST(0, fee.totalPayable - fee.discountAmount - fee.paidAmount) ELSE 0 END), 0)", 'overdue')
+                .addSelect('COALESCE(SUM(CASE WHEN fee.dueDate < CURRENT_DATE THEN GREATEST(0, fee.totalPayable - fee.discountAmount - fee.paidAmount) ELSE 0 END), 0)', 'overdue')
                 .where("fee.status != 'CANCELLED'")
                 .groupBy('fee.hostelId')
                 .addGroupBy('hostel.name')

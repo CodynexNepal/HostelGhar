@@ -67,6 +67,98 @@ __decorate([
     __metadata("design:type", Object)
 ], Attendance.prototype, "checkOutAt", void 0);
 __decorate([
+    (0, typeorm_1.Column)({
+        type: 'numeric',
+        precision: 10,
+        scale: 7,
+        nullable: true,
+        default: null,
+        transformer: {
+            to: (value) => value,
+            from: (value) => (value != null ? parseFloat(value) : null),
+        },
+    }),
+    __metadata("design:type", Object)
+], Attendance.prototype, "checkInLatitude", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'numeric',
+        precision: 10,
+        scale: 7,
+        nullable: true,
+        default: null,
+        transformer: {
+            to: (value) => value,
+            from: (value) => (value != null ? parseFloat(value) : null),
+        },
+    }),
+    __metadata("design:type", Object)
+], Attendance.prototype, "checkInLongitude", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'numeric',
+        precision: 10,
+        scale: 7,
+        nullable: true,
+        default: null,
+        transformer: {
+            to: (value) => value,
+            from: (value) => (value != null ? parseFloat(value) : null),
+        },
+    }),
+    __metadata("design:type", Object)
+], Attendance.prototype, "checkOutLatitude", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'numeric',
+        precision: 10,
+        scale: 7,
+        nullable: true,
+        default: null,
+        transformer: {
+            to: (value) => value,
+            from: (value) => (value != null ? parseFloat(value) : null),
+        },
+    }),
+    __metadata("design:type", Object)
+], Attendance.prototype, "checkOutLongitude", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 45, nullable: true, default: null }),
+    __metadata("design:type", Object)
+], Attendance.prototype, "checkInIp", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', length: 45, nullable: true, default: null }),
+    __metadata("design:type", Object)
+], Attendance.prototype, "checkOutIp", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'numeric',
+        precision: 10,
+        scale: 2,
+        nullable: true,
+        default: null,
+        transformer: {
+            to: (value) => value,
+            from: (value) => (value != null ? parseFloat(value) : null),
+        },
+    }),
+    __metadata("design:type", Object)
+], Attendance.prototype, "checkInDistanceMeters", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'numeric',
+        precision: 10,
+        scale: 2,
+        nullable: true,
+        default: null,
+        transformer: {
+            to: (value) => value,
+            from: (value) => (value != null ? parseFloat(value) : null),
+        },
+    }),
+    __metadata("design:type", Object)
+], Attendance.prototype, "checkOutDistanceMeters", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'varchar', length: 500, nullable: true, default: null }),
     __metadata("design:type", Object)
 ], Attendance.prototype, "note", void 0);

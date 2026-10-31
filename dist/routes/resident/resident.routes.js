@@ -35,7 +35,7 @@ residentRouter.get('/payment-qrs', residentController.getMyPaymentQrs);
 // Resident marks self PRESENT/LATE for today (Nepal date). One record per
 // resident per day — repeat check-ins return 409.
 residentRouter.post('/attendance/check-in', (0, validate_dto_middleware_1.validateDto)(mark_attendance_dto_1.MarkAttendanceDto), attendanceController.checkIn);
-residentRouter.post('/attendance/check-out', attendanceController.checkOut);
+residentRouter.post('/attendance/check-out', (0, validate_dto_middleware_1.validateDto)(mark_attendance_dto_1.CheckOutAttendanceDto), attendanceController.checkOut);
 residentRouter.get('/attendance', attendanceController.getMyAttendance);
 // ─── Student Self-Service Media Upload Routes ────────────────────────────────
 // 1. Upload/Update own student photo

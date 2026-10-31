@@ -187,8 +187,7 @@ class FeeRepository {
             }
             else if (normalizedStatus === fee_enum_1.FeeStatus.OVERDUE) {
                 // Outstanding > 0 and (status is OVERDUE OR dueDate < today)
-                qb.andWhere('GREATEST(0, f.totalPayable - f.discountAmount - f.paidAmount) > 0')
-                    .andWhere('(f.status = :overdueStatus OR f.dueDate < CURRENT_DATE)', {
+                qb.andWhere('GREATEST(0, f.totalPayable - f.discountAmount - f.paidAmount) > 0').andWhere('(f.status = :overdueStatus OR f.dueDate < CURRENT_DATE)', {
                     overdueStatus: fee_enum_1.FeeStatus.OVERDUE,
                 });
             }

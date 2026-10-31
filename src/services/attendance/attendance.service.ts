@@ -1,11 +1,12 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE: attendance.service.ts
 // PURPOSE: Hostel-scoped attendance listing for Owner/Admin dashboards plus
-//          Resident self check-in (one record per resident per Nepal day).
+//          Resident self check-in / check-out with 300-meter geofencing & GeoIP,
+//          history tracking, and time spent inside/outside metrics.
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { STATUS_CODE } from '../../constant/statusCode.interface';
-import { MarkAttendanceDto } from '../../dto/attendance/mark-attendance.dto';
+import { CheckOutAttendanceDto, MarkAttendanceDto } from '../../dto/attendance/mark-attendance.dto';
 import { Attendance } from '../../entities/attendance/attendance.entity';
 import { Hostel } from '../../entities/hostel/hostel.entity';
 import { Resident } from '../../entities/resident/resident.entity';
@@ -19,6 +20,12 @@ import { AppDataSource } from '../../database/database-source';
 import { createHttpError } from '../../utils/createHttpError';
 import { cacheService } from '../../utils/cache.util';
 import { createPaginatedResponse, PaginatedResponse } from '../../utils/pagination.util';
+import {
+  ALLOWED_ATTENDANCE_RADIUS_METERS,
+  calculateDistanceMeters,
+  formatDuration,
+  lookupIpCoordinates,
+} from '../../utils/geolocation.util';
 
 export interface AttendanceListOptions {
   page: number;
@@ -27,6 +34,37 @@ export interface AttendanceListOptions {
   residentId?: string | undefined;
   date?: string | undefined;
   status?: AttendanceStatus | undefined;
+}
+
+export interface EnrichedAttendanceRecord extends Attendance {
+  lastInTime: Date | null;
+  lastOutTime: Date | null;
+  timeSpentInHostelMinutes: number;
+  timeSpentInHostelFormatted: string;
+  timeSpentOutsideMinutes: number;
+  timeSpentOutsideFormatted: string;
+  isCurrentlyInside: boolean;
+}
+
+export interface AttendanceListSummary {
+  totalRecords: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  currentlyInside: number;
+  currentlyOutside: number;
+  totalTimeInHostelMinutes: number;
+  totalTimeInHostelFormatted: string;
+  totalTimeOutsideMinutes: number;
+  totalTimeOutsideFormatted: string;
+  averageTimeInHostelMinutes: number;
+  averageTimeInHostelFormatted: string;
+  averageTimeOutsideMinutes: number;
+  averageTimeOutsideFormatted: string;
+}
+
+export interface AttendanceListResponse extends PaginatedResponse<EnrichedAttendanceRecord> {
+  summary: AttendanceListSummary;
 }
 
 // HostelGhar operates on Nepal time (platform timezone Asia/Kathmandu) —
@@ -43,6 +81,109 @@ export const todayAttendanceDate = (now: Date = new Date()): string =>
     month: '2-digit',
     day: '2-digit',
   }).format(now);
+
+/**
+ * Enriches an Attendance record with calculated stay and outside metrics,
+ * last in/out timestamps, and current residency location state.
+ */
+export const enrichAttendanceRecord = (
+  record: Attendance,
+  now: Date = new Date(),
+): EnrichedAttendanceRecord => {
+  const checkIn = record.checkInAt ? new Date(record.checkInAt) : null;
+  const checkOut = record.checkOutAt ? new Date(record.checkOutAt) : null;
+
+  let timeSpentInHostelMinutes = 0;
+  let timeSpentOutsideMinutes = 0;
+  const isCurrentlyInside = Boolean(checkIn && !checkOut);
+
+  if (checkIn) {
+    if (checkOut) {
+      // Completed stay inside hostel
+      timeSpentInHostelMinutes = Math.max(
+        0,
+        Math.round((checkOut.getTime() - checkIn.getTime()) / 60000),
+      );
+      // Outside duration since checked out
+      timeSpentOutsideMinutes = Math.max(
+        0,
+        Math.round((now.getTime() - checkOut.getTime()) / 60000),
+      );
+    } else {
+      // Still currently inside hostel
+      timeSpentInHostelMinutes = Math.max(
+        0,
+        Math.round((now.getTime() - checkIn.getTime()) / 60000),
+      );
+      timeSpentOutsideMinutes = 0;
+    }
+  } else {
+    // Absent or not checked in
+    timeSpentInHostelMinutes = 0;
+    timeSpentOutsideMinutes = 1440; // 24 hours outside
+  }
+
+  return {
+    ...record,
+    lastInTime: record.checkInAt,
+    lastOutTime: record.checkOutAt,
+    timeSpentInHostelMinutes,
+    timeSpentInHostelFormatted: formatDuration(timeSpentInHostelMinutes),
+    timeSpentOutsideMinutes,
+    timeSpentOutsideFormatted: formatDuration(timeSpentOutsideMinutes),
+    isCurrentlyInside,
+  };
+};
+
+/**
+ * Aggregates summary statistics for attendance records (time inside/outside, headcounts).
+ */
+export const calculateAttendanceSummary = (
+  records: EnrichedAttendanceRecord[],
+): AttendanceListSummary => {
+  const totalRecords = records.length;
+  let presentCount = 0;
+  let absentCount = 0;
+  let lateCount = 0;
+  let currentlyInside = 0;
+  let currentlyOutside = 0;
+  let totalTimeInHostelMinutes = 0;
+  let totalTimeOutsideMinutes = 0;
+
+  for (const r of records) {
+    if (r.status === AttendanceStatus.PRESENT) presentCount++;
+    else if (r.status === AttendanceStatus.LATE) lateCount++;
+    else if (r.status === AttendanceStatus.ABSENT) absentCount++;
+
+    if (r.isCurrentlyInside) currentlyInside++;
+    else currentlyOutside++;
+
+    totalTimeInHostelMinutes += r.timeSpentInHostelMinutes;
+    totalTimeOutsideMinutes += r.timeSpentOutsideMinutes;
+  }
+
+  const averageTimeInHostelMinutes =
+    totalRecords > 0 ? Math.round(totalTimeInHostelMinutes / totalRecords) : 0;
+  const averageTimeOutsideMinutes =
+    totalRecords > 0 ? Math.round(totalTimeOutsideMinutes / totalRecords) : 0;
+
+  return {
+    totalRecords,
+    presentCount,
+    absentCount,
+    lateCount,
+    currentlyInside,
+    currentlyOutside,
+    totalTimeInHostelMinutes,
+    totalTimeInHostelFormatted: formatDuration(totalTimeInHostelMinutes),
+    totalTimeOutsideMinutes,
+    totalTimeOutsideFormatted: formatDuration(totalTimeOutsideMinutes),
+    averageTimeInHostelMinutes,
+    averageTimeInHostelFormatted: formatDuration(averageTimeInHostelMinutes),
+    averageTimeOutsideMinutes,
+    averageTimeOutsideFormatted: formatDuration(averageTimeOutsideMinutes),
+  };
+};
 
 export class AttendanceService {
   constructor(private readonly attendanceRepository = new AttendanceRepository()) {}
@@ -73,14 +214,13 @@ export class AttendanceService {
   }
 
   /**
-   * Owner/Admin list. hostelId narrows to one hostel (ownership-checked);
-   * omitting it spans all the owner's hostels (admins see everything).
+   * Owner/Admin list with full time inside/outside analytics and history.
    */
   public async list(
     actorId: string,
     role: string,
     options: AttendanceListOptions,
-  ): Promise<PaginatedResponse<Attendance>> {
+  ): Promise<AttendanceListResponse> {
     if (options.hostelId) await this.authorizeHostel(actorId, role, options.hostelId);
     if (options.date && !DATE_ONLY.test(options.date)) {
       throw createHttpError(STATUS_CODE.BAD_REQUEST, 'date must be YYYY-MM-DD');
@@ -119,20 +259,33 @@ export class AttendanceService {
         );
         return { rows, total };
       },
-      { l1TtlSeconds: 30, l2TtlSeconds: 120 },
+      { l1TtlSeconds: 15, l2TtlSeconds: 60 },
     );
 
-    return createPaginatedResponse(wrapped.data.rows, wrapped.data.total, options, {
+    const enrichedRows = wrapped.data.rows.map((row) => enrichAttendanceRecord(row));
+    const summary = calculateAttendanceSummary(enrichedRows);
+
+    const paginated = createPaginatedResponse(enrichedRows, wrapped.data.total, options, {
       isCached: wrapped.isCached,
       cacheLevel: wrapped.cacheLevel,
     });
+
+    return {
+      ...paginated,
+      summary,
+    };
   }
 
   /**
-   * Resident self check-in for today (Nepal date). One row per resident per
-   * day — a second check-in returns 409 with the existing record.
+   * Resident self check-in for today (Nepal date).
+   * Geofences resident within 300 meters of the hostel coordinates.
+   * If GPS coordinates are not sent in request body, resolves coordinates via GeoIP.
    */
-  public async checkIn(userId: string, dto: MarkAttendanceDto): Promise<Attendance> {
+  public async checkIn(
+    userId: string,
+    dto: MarkAttendanceDto,
+    clientIp?: string,
+  ): Promise<EnrichedAttendanceRecord> {
     const resident = await AppDataSource.getRepository(Resident).findOne({
       where: { userId, isActive: true },
     });
@@ -149,12 +302,57 @@ export class AttendanceService {
       throw createHttpError(STATUS_CODE.CONFLICT, `You have already checked in for ${date}`);
     }
 
+    const hostel = await AppDataSource.getRepository(Hostel).findOne({
+      where: { id: resident.hostelId },
+      select: { id: true, name: true, latitude: true, longitude: true },
+    });
+
+    // 1. Resolve resident coordinates from payload or GeoIP
+    let residentLat = dto.latitude != null ? Number(dto.latitude) : null;
+    let residentLon = dto.longitude != null ? Number(dto.longitude) : null;
+
+    if ((residentLat == null || residentLon == null) && clientIp) {
+      const geo = lookupIpCoordinates(clientIp);
+      if (geo) {
+        residentLat = geo.latitude;
+        residentLon = geo.longitude;
+      }
+    }
+
+    // 2. Geofence verification against hostel recorded area (300 meters radius)
+    let distanceMeters: number | null = null;
+    const hostelLat = hostel?.latitude != null ? Number(hostel.latitude) : null;
+    const hostelLon = hostel?.longitude != null ? Number(hostel.longitude) : null;
+
+    if (hostelLat != null && hostelLon != null) {
+      if (residentLat != null && residentLon != null) {
+        const rawDistance = calculateDistanceMeters(hostelLat, hostelLon, residentLat, residentLon);
+        distanceMeters = Math.round(rawDistance * 100) / 100;
+
+        if (distanceMeters > ALLOWED_ATTENDANCE_RADIUS_METERS) {
+          throw createHttpError(
+            STATUS_CODE.BAD_REQUEST,
+            'Come closer to your hostel to checkin or checkout',
+          );
+        }
+      } else {
+        throw createHttpError(
+          STATUS_CODE.BAD_REQUEST,
+          'Come closer to your hostel to checkin or checkout (location coordinates required)',
+        );
+      }
+    }
+
     const attendance = this.attendanceRepository.create({
       hostelId: resident.hostelId,
       residentId: resident.id,
       date,
       status: dto.status ?? AttendanceStatus.PRESENT,
       checkInAt: new Date(),
+      checkInLatitude: residentLat ?? null,
+      checkInLongitude: residentLon ?? null,
+      checkInDistanceMeters: distanceMeters ?? null,
+      checkInIp: clientIp ?? null,
       note: dto.note?.trim() ? dto.note.trim() : null,
       recordedById: userId,
     });
@@ -164,13 +362,18 @@ export class AttendanceService {
     await cacheService.invalidatePattern('attendance:list');
     await cacheService.invalidatePattern('attendance:resident');
 
-    return saved;
+    return enrichAttendanceRecord(saved);
   }
 
   /**
-   * Resident self check-out for today (Nepal date). Closes today's check-in.
+   * Resident self check-out for today (Nepal date).
+   * Geofences resident within 300 meters of the hostel coordinates.
    */
-  public async checkOut(userId: string): Promise<Attendance> {
+  public async checkOut(
+    userId: string,
+    dto?: CheckOutAttendanceDto,
+    clientIp?: string,
+  ): Promise<EnrichedAttendanceRecord> {
     const resident = await AppDataSource.getRepository(Resident).findOne({
       where: { userId, isActive: true },
     });
@@ -190,21 +393,71 @@ export class AttendanceService {
       throw createHttpError(STATUS_CODE.CONFLICT, `You have already checked out for ${date}`);
     }
 
+    const hostel = await AppDataSource.getRepository(Hostel).findOne({
+      where: { id: resident.hostelId },
+      select: { id: true, name: true, latitude: true, longitude: true },
+    });
+
+    let residentLat = dto?.latitude != null ? Number(dto.latitude) : null;
+    let residentLon = dto?.longitude != null ? Number(dto.longitude) : null;
+
+    if ((residentLat == null || residentLon == null) && clientIp) {
+      const geo = lookupIpCoordinates(clientIp);
+      if (geo) {
+        residentLat = geo.latitude;
+        residentLon = geo.longitude;
+      }
+    }
+
+    let distanceMeters: number | null = null;
+    const hostelLat = hostel?.latitude != null ? Number(hostel.latitude) : null;
+    const hostelLon = hostel?.longitude != null ? Number(hostel.longitude) : null;
+
+    if (hostelLat != null && hostelLon != null) {
+      if (residentLat != null && residentLon != null) {
+        const rawDistance = calculateDistanceMeters(hostelLat, hostelLon, residentLat, residentLon);
+        distanceMeters = Math.round(rawDistance * 100) / 100;
+
+        if (distanceMeters > ALLOWED_ATTENDANCE_RADIUS_METERS) {
+          throw createHttpError(
+            STATUS_CODE.BAD_REQUEST,
+            'Come closer to your hostel to checkin or checkout',
+          );
+        }
+      } else {
+        throw createHttpError(
+          STATUS_CODE.BAD_REQUEST,
+          'Come closer to your hostel to checkin or checkout (location coordinates required)',
+        );
+      }
+    }
+
     existing.checkOutAt = new Date();
+    existing.checkOutLatitude = residentLat ?? null;
+    existing.checkOutLongitude = residentLon ?? null;
+    existing.checkOutDistanceMeters = distanceMeters ?? null;
+    existing.checkOutIp = clientIp ?? null;
+
+    if (dto?.note?.trim()) {
+      existing.note = existing.note
+        ? `${existing.note} | Check-out: ${dto.note.trim()}`
+        : `Check-out: ${dto.note.trim()}`;
+    }
+
     const saved = await this.attendanceRepository.save(existing);
 
     await cacheService.invalidatePattern('attendance:list');
     await cacheService.invalidatePattern('attendance:resident');
 
-    return saved;
+    return enrichAttendanceRecord(saved);
   }
 
-  /** Resident's own attendance history, newest first. */
+  /** Resident's own attendance history, newest first, with inside/outside durations. */
   public async getMyAttendance(
     userId: string,
     page: number,
     limit: number,
-  ): Promise<PaginatedResponse<Attendance>> {
+  ): Promise<AttendanceListResponse> {
     const resident = await AppDataSource.getRepository(Resident).findOne({
       where: { userId, isActive: true },
     });
@@ -230,14 +483,22 @@ export class AttendanceService {
         );
         return { rows, total };
       },
-      { l1TtlSeconds: 30, l2TtlSeconds: 120 },
+      { l1TtlSeconds: 15, l2TtlSeconds: 60 },
     );
 
-    return createPaginatedResponse(
-      wrapped.data.rows,
+    const enrichedRows = wrapped.data.rows.map((row) => enrichAttendanceRecord(row));
+    const summary = calculateAttendanceSummary(enrichedRows);
+
+    const paginated = createPaginatedResponse(
+      enrichedRows,
       wrapped.data.total,
       { page, limit },
       { isCached: wrapped.isCached, cacheLevel: wrapped.cacheLevel },
     );
+
+    return {
+      ...paginated,
+      summary,
+    };
   }
 }

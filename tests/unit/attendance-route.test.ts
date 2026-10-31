@@ -147,7 +147,33 @@ describe('POST /resident/attendance/check-in (resident self check-in)', () => {
     const { status } = await request('/api/v1/hostel-ghar/resident/attendance/check-in', {
       token: residentToken,
       method: 'POST',
-      body: { status: 'PRESENT', hostelId: 'sneaky' },
+      body: { status: 'PRESENT', unknownField: 'sneaky' },
+    });
+    expect(status).toBe(422);
+  });
+
+  it('accepts hostelId, latitude, and longitude for geofencing (not 422)', async () => {
+    const { status } = await request('/api/v1/hostel-ghar/resident/attendance/check-in', {
+      token: residentToken,
+      method: 'POST',
+      body: {
+        hostelId: HOSTEL_ID,
+        latitude: 27.7172,
+        longitude: 85.324,
+        status: 'PRESENT',
+      },
+    });
+    expect(status).not.toBe(422);
+  });
+
+  it('rejects out-of-range coordinates (422)', async () => {
+    const { status } = await request('/api/v1/hostel-ghar/resident/attendance/check-in', {
+      token: residentToken,
+      method: 'POST',
+      body: {
+        latitude: 195,
+        longitude: 85.324,
+      },
     });
     expect(status).toBe(422);
   });
@@ -159,6 +185,38 @@ describe('POST /resident/attendance/check-in (resident self check-in)', () => {
       body: { note: 'x'.repeat(501) },
     });
     expect(status).toBe(422);
+  });
+});
+
+describe('POST /resident/attendance/check-out (resident self check-out)', () => {
+  it('requires authentication', async () => {
+    const { status } = await request('/api/v1/hostel-ghar/resident/attendance/check-out', {
+      method: 'POST',
+      body: {},
+    });
+    expect(status).toBe(401);
+  });
+
+  it('forbids owners', async () => {
+    const { status } = await request('/api/v1/hostel-ghar/resident/attendance/check-out', {
+      token: ownerToken,
+      method: 'POST',
+      body: {},
+    });
+    expect(status).toBe(403);
+  });
+
+  it('accepts valid check-out payload with coordinates (not 422)', async () => {
+    const { status } = await request('/api/v1/hostel-ghar/resident/attendance/check-out', {
+      token: residentToken,
+      method: 'POST',
+      body: {
+        hostelId: HOSTEL_ID,
+        latitude: 27.7172,
+        longitude: 85.324,
+      },
+    });
+    expect(status).not.toBe(422);
   });
 });
 

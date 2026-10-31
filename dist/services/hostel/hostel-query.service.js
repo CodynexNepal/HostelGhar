@@ -13,9 +13,11 @@ const leave_request_entity_1 = require("../../entities/leave/leave-request.entit
 const resident_entity_1 = require("../../entities/resident/resident.entity");
 const room_entity_1 = require("../../entities/room/room.entity");
 const fee_entity_1 = require("../../entities/fee/fee.entity");
+const attendance_entity_1 = require("../../entities/attendance/attendance.entity");
 const leave_enum_1 = require("../../enum/leave.enum");
 const fee_enum_1 = require("../../enum/fee.enum");
 const room_enum_1 = require("../../enum/room.enum");
+const attendance_service_1 = require("../attendance/attendance.service");
 const MONTH_SHORT = [
     'Jan',
     'Feb',
@@ -227,7 +229,40 @@ class OptimizedHostelQueryService {
             pendingCount,
             totalHostels: hostels.length,
         };
-        return { hostels, summary, floorOverview, roomMix, revenueTrend, recentPayments };
+        let attendanceOverview;
+        if (hostelIds.length > 0) {
+            try {
+                const today = (0, attendance_service_1.todayAttendanceDate)();
+                const todayAttendances = await database_source_1.AppDataSource.getRepository(attendance_entity_1.Attendance).find({
+                    where: { hostelId: (0, typeorm_1.In)(hostelIds), date: today },
+                    select: { id: true, checkInAt: true, checkOutAt: true, status: true },
+                });
+                const todayCheckedIn = todayAttendances.filter((a) => a.checkInAt != null).length;
+                const todayCheckedOut = todayAttendances.filter((a) => a.checkOutAt != null).length;
+                const currentlyInside = todayAttendances.filter((a) => a.checkInAt != null && a.checkOutAt == null).length;
+                const totalResidents = summary.totalResidents;
+                const currentlyOutside = Math.max(0, totalResidents - currentlyInside);
+                attendanceOverview = {
+                    todayDate: today,
+                    todayCheckedIn,
+                    todayCheckedOut,
+                    currentlyInside,
+                    currentlyOutside,
+                };
+            }
+            catch {
+                attendanceOverview = undefined;
+            }
+        }
+        return {
+            hostels,
+            summary,
+            floorOverview,
+            roomMix,
+            revenueTrend,
+            recentPayments,
+            attendanceOverview,
+        };
     }
     /**
      * Fetch paginated leaves for a specific resident using composite index.

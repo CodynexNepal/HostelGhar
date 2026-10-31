@@ -2,7 +2,7 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // FILE: attendance.controller.ts
 // PURPOSE: HTTP layer for attendance — owner/admin listing and resident
-//          self check-in / history. Thin: parsing + status codes only.
+//          self check-in / check-out / history with geofencing & IP geolocation.
 // ──────────────────────────────────────────────────────────────────────────────
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AttendanceController = void 0;
@@ -10,12 +10,13 @@ const statusCode_interface_1 = require("../../constant/statusCode.interface");
 const attendance_enum_1 = require("../../enum/attendance.enum");
 const createHttpError_1 = require("../../utils/createHttpError");
 const pagination_util_1 = require("../../utils/pagination.util");
+const geolocation_util_1 = require("../../utils/geolocation.util");
 class AttendanceController {
     constructor(attendanceService) {
         this.attendanceService = attendanceService;
         /**
          * GET /owner/attendance?hostelId=&residentId=&date=&status=&page=&limit=
-         * Owner/Admin: attendance records for a hostel (or all owned hostels).
+         * Owner/Admin: attendance records for a hostel (or all owned hostels) with summary.
          */
         this.list = async (req, res, next) => {
             try {
@@ -45,7 +46,8 @@ class AttendanceController {
          */
         this.checkIn = async (req, res, next) => {
             try {
-                const data = await this.attendanceService.checkIn(req.user.userId, req.body);
+                const clientIp = (0, geolocation_util_1.extractClientIp)(req);
+                const data = await this.attendanceService.checkIn(req.user.userId, req.body, clientIp);
                 res
                     .status(statusCode_interface_1.STATUS_CODE.CREATED)
                     .json({ success: true, message: 'Checked in successfully', data });
@@ -60,7 +62,8 @@ class AttendanceController {
          */
         this.checkOut = async (req, res, next) => {
             try {
-                const data = await this.attendanceService.checkOut(req.user.userId);
+                const clientIp = (0, geolocation_util_1.extractClientIp)(req);
+                const data = await this.attendanceService.checkOut(req.user.userId, req.body, clientIp);
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({ success: true, message: 'Checked out successfully', data });
             }
             catch (error) {
