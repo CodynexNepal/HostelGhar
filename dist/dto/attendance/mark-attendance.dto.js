@@ -4,8 +4,8 @@
 // PURPOSE: Validation for a Resident self check-in / check-out.
 //          Residents may only mark themselves PRESENT or LATE — absence
 //          marking is an owner/admin action, not a self-service one.
-//          Allows optional hostelId and device GPS coordinates (latitude/longitude)
-//          for geofencing verification against the hostel's location.
+//          Allows optional hostelId, address, and device GPS coordinates
+//          for geofencing verification, with optional hostel location sync.
 // ──────────────────────────────────────────────────────────────────────────────
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
@@ -56,6 +56,16 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Number)
 ], MarkAttendanceDto.prototype, "longitude", void 0);
+__decorate([
+    (0, class_validator_1.IsBoolean)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], MarkAttendanceDto.prototype, "syncHostelLocation", void 0);
+__decorate([
+    (0, class_validator_1.IsBoolean)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], MarkAttendanceDto.prototype, "recordAsHostelLocation", void 0);
 __decorate([
     (0, class_transformer_1.Transform)(({ value }) => normalizeEnumValue(value)),
     (0, class_validator_1.IsIn)(RESIDENT_CHECK_IN_STATUSES, {
