@@ -24,7 +24,6 @@ import {
   ALLOWED_ATTENDANCE_RADIUS_METERS,
   calculateDistanceMeters,
   formatDuration,
-  lookupIpCoordinates,
 } from '../../utils/geolocation.util';
 
 export interface AttendanceListOptions {
@@ -65,6 +64,13 @@ export interface AttendanceListSummary {
 
 export interface AttendanceListResponse extends PaginatedResponse<EnrichedAttendanceRecord> {
   summary: AttendanceListSummary;
+  hostelLocation?:
+    | {
+        latitude: number | null;
+        longitude: number | null;
+        allowedRadiusMeters: number;
+      }
+    | undefined;
 }
 
 // HostelGhar operates on Nepal time (platform timezone Asia/Kathmandu) —
@@ -302,45 +308,41 @@ export class AttendanceService {
       throw createHttpError(STATUS_CODE.CONFLICT, `You have already checked in for ${date}`);
     }
 
+    // 1. Current live coordinates from device GPS are required
+    const residentLat = dto.latitude != null ? Number(dto.latitude) : null;
+    const residentLon = dto.longitude != null ? Number(dto.longitude) : null;
+
+    if (residentLat == null || residentLon == null) {
+      throw createHttpError(
+        STATUS_CODE.BAD_REQUEST,
+        'Current live location (GPS) is required to check in. Please enable device location access and try again.',
+      );
+    }
+
     const hostel = await AppDataSource.getRepository(Hostel).findOne({
       where: { id: resident.hostelId },
       select: { id: true, name: true, latitude: true, longitude: true },
     });
 
-    // 1. Resolve resident coordinates from payload or GeoIP
-    let residentLat = dto.latitude != null ? Number(dto.latitude) : null;
-    let residentLon = dto.longitude != null ? Number(dto.longitude) : null;
-
-    if ((residentLat == null || residentLon == null) && clientIp) {
-      const geo = lookupIpCoordinates(clientIp);
-      if (geo) {
-        residentLat = geo.latitude;
-        residentLon = geo.longitude;
-      }
-    }
-
-    // 2. Geofence verification against hostel recorded area (300 meters radius)
-    let distanceMeters: number | null = null;
     const hostelLat = hostel?.latitude != null ? Number(hostel.latitude) : null;
     const hostelLon = hostel?.longitude != null ? Number(hostel.longitude) : null;
 
-    if (hostelLat != null && hostelLon != null) {
-      if (residentLat != null && residentLon != null) {
-        const rawDistance = calculateDistanceMeters(hostelLat, hostelLon, residentLat, residentLon);
-        distanceMeters = Math.round(rawDistance * 100) / 100;
+    if (hostelLat == null || hostelLon == null) {
+      throw createHttpError(
+        STATUS_CODE.BAD_REQUEST,
+        'Hostel location has not been registered yet. Please contact the hostel owner to set the hostel location pin.',
+      );
+    }
 
-        if (distanceMeters > ALLOWED_ATTENDANCE_RADIUS_METERS) {
-          throw createHttpError(
-            STATUS_CODE.BAD_REQUEST,
-            'Come closer to your hostel to checkin or checkout',
-          );
-        }
-      } else {
-        throw createHttpError(
-          STATUS_CODE.BAD_REQUEST,
-          'Come closer to your hostel to checkin or checkout (location coordinates required)',
-        );
-      }
+    // 2. Geofence verification against hostel location (300 meters radius)
+    const rawDistance = calculateDistanceMeters(hostelLat, hostelLon, residentLat, residentLon);
+    const distanceMeters = Math.round(rawDistance * 100) / 100;
+
+    if (distanceMeters > ALLOWED_ATTENDANCE_RADIUS_METERS) {
+      throw createHttpError(
+        STATUS_CODE.BAD_REQUEST,
+        `Come closer to your hostel to checkin or checkout (you are ~${Math.round(distanceMeters)}m away, allowed within ${ALLOWED_ATTENDANCE_RADIUS_METERS}m of your hostel)`,
+      );
     }
 
     const attendance = this.attendanceRepository.create({
@@ -393,43 +395,41 @@ export class AttendanceService {
       throw createHttpError(STATUS_CODE.CONFLICT, `You have already checked out for ${date}`);
     }
 
+    // 1. Current live coordinates from device GPS are required
+    const residentLat = dto?.latitude != null ? Number(dto.latitude) : null;
+    const residentLon = dto?.longitude != null ? Number(dto.longitude) : null;
+
+    if (residentLat == null || residentLon == null) {
+      throw createHttpError(
+        STATUS_CODE.BAD_REQUEST,
+        'Current live location (GPS) is required to check out. Please enable device location access and try again.',
+      );
+    }
+
     const hostel = await AppDataSource.getRepository(Hostel).findOne({
       where: { id: resident.hostelId },
       select: { id: true, name: true, latitude: true, longitude: true },
     });
 
-    let residentLat = dto?.latitude != null ? Number(dto.latitude) : null;
-    let residentLon = dto?.longitude != null ? Number(dto.longitude) : null;
-
-    if ((residentLat == null || residentLon == null) && clientIp) {
-      const geo = lookupIpCoordinates(clientIp);
-      if (geo) {
-        residentLat = geo.latitude;
-        residentLon = geo.longitude;
-      }
-    }
-
-    let distanceMeters: number | null = null;
     const hostelLat = hostel?.latitude != null ? Number(hostel.latitude) : null;
     const hostelLon = hostel?.longitude != null ? Number(hostel.longitude) : null;
 
-    if (hostelLat != null && hostelLon != null) {
-      if (residentLat != null && residentLon != null) {
-        const rawDistance = calculateDistanceMeters(hostelLat, hostelLon, residentLat, residentLon);
-        distanceMeters = Math.round(rawDistance * 100) / 100;
+    if (hostelLat == null || hostelLon == null) {
+      throw createHttpError(
+        STATUS_CODE.BAD_REQUEST,
+        'Hostel location has not been registered yet. Please contact the hostel owner to set the hostel location pin.',
+      );
+    }
 
-        if (distanceMeters > ALLOWED_ATTENDANCE_RADIUS_METERS) {
-          throw createHttpError(
-            STATUS_CODE.BAD_REQUEST,
-            'Come closer to your hostel to checkin or checkout',
-          );
-        }
-      } else {
-        throw createHttpError(
-          STATUS_CODE.BAD_REQUEST,
-          'Come closer to your hostel to checkin or checkout (location coordinates required)',
-        );
-      }
+    // 2. Geofence verification against hostel location (300 meters radius)
+    const rawDistance = calculateDistanceMeters(hostelLat, hostelLon, residentLat, residentLon);
+    const distanceMeters = Math.round(rawDistance * 100) / 100;
+
+    if (distanceMeters > ALLOWED_ATTENDANCE_RADIUS_METERS) {
+      throw createHttpError(
+        STATUS_CODE.BAD_REQUEST,
+        `Come closer to your hostel to checkin or checkout (you are ~${Math.round(distanceMeters)}m away, allowed within ${ALLOWED_ATTENDANCE_RADIUS_METERS}m of your hostel)`,
+      );
     }
 
     existing.checkOutAt = new Date();
@@ -496,9 +496,19 @@ export class AttendanceService {
       { isCached: wrapped.isCached, cacheLevel: wrapped.cacheLevel },
     );
 
+    const hostel = await AppDataSource.getRepository(Hostel).findOne({
+      where: { id: resident.hostelId },
+      select: { id: true, latitude: true, longitude: true },
+    });
+
     return {
       ...paginated,
       summary,
+      hostelLocation: {
+        latitude: hostel?.latitude != null ? Number(hostel.latitude) : null,
+        longitude: hostel?.longitude != null ? Number(hostel.longitude) : null,
+        allowedRadiusMeters: ALLOWED_ATTENDANCE_RADIUS_METERS,
+      },
     };
   }
 }

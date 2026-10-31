@@ -25,4 +25,3 @@ declare module 'geoip-lite' {
 
   export default geoip;
 }
-
