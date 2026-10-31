@@ -334,9 +334,6 @@ export class AttendanceService {
       if (hostel) {
         hostel.latitude = residentLat;
         hostel.longitude = residentLon;
-        if (dto.address?.trim()) {
-          hostel.address = dto.address.trim();
-        }
         await AppDataSource.getRepository(Hostel).save(hostel);
         await cacheService.invalidatePattern('hostel:location');
         await cacheService.invalidatePattern('public:hostel');
@@ -371,7 +368,6 @@ export class AttendanceService {
       checkInAt: new Date(),
       checkInLatitude: residentLat ?? null,
       checkInLongitude: residentLon ?? null,
-      checkInAddress: dto.address?.trim() ?? null,
       checkInDistanceMeters: distanceMeters ?? null,
       checkInIp: clientIp ?? null,
       note: dto.note?.trim() ? dto.note.trim() : null,
@@ -454,7 +450,6 @@ export class AttendanceService {
     existing.checkOutAt = new Date();
     existing.checkOutLatitude = residentLat ?? null;
     existing.checkOutLongitude = residentLon ?? null;
-    existing.checkOutAddress = dto?.address?.trim() ?? null;
     existing.checkOutDistanceMeters = distanceMeters ?? null;
     existing.checkOutIp = clientIp ?? null;
 

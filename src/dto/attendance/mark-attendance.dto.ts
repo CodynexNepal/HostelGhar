@@ -50,11 +50,6 @@ export class MarkAttendanceDto {
   @IsOptional()
   longitude?: number;
 
-  @IsString()
-  @MaxLength(255, { message: 'address must be at most 255 characters' })
-  @IsOptional()
-  address?: string;
-
   @IsBoolean()
   @IsOptional()
   syncHostelLocation?: boolean;
@@ -94,11 +89,6 @@ export class CheckOutAttendanceDto {
   @Max(180, { message: 'longitude must be <= 180' })
   @IsOptional()
   longitude?: number;
-
-  @IsString()
-  @MaxLength(255, { message: 'address must be at most 255 characters' })
-  @IsOptional()
-  address?: string;
 
   @IsString()
   @MaxLength(500, { message: 'note must be at most 500 characters' })

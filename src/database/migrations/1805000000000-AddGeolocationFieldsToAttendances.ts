@@ -12,8 +12,6 @@ export class AddGeolocationFieldsToAttendances1805000000000 implements Migration
       ADD COLUMN IF NOT EXISTS "checkOutLongitude" numeric(10, 7) DEFAULT null,
       ADD COLUMN IF NOT EXISTS "checkInIp" varchar(45) DEFAULT null,
       ADD COLUMN IF NOT EXISTS "checkOutIp" varchar(45) DEFAULT null,
-      ADD COLUMN IF NOT EXISTS "checkInAddress" varchar(255) DEFAULT null,
-      ADD COLUMN IF NOT EXISTS "checkOutAddress" varchar(255) DEFAULT null,
       ADD COLUMN IF NOT EXISTS "checkInDistanceMeters" numeric(10, 2) DEFAULT null,
       ADD COLUMN IF NOT EXISTS "checkOutDistanceMeters" numeric(10, 2) DEFAULT null
     `);
