@@ -5,6 +5,7 @@
 
 import { SubscriptionRepository } from '../../repository/subscription/subscription.repository';
 import {
+  PlanFeatureDetails,
   SUBSCRIPTION_PLANS,
   SubscriptionPlanDefinition,
   getPlanDefinition,
@@ -86,11 +87,7 @@ export class SubscriptionService {
       return {
         ...plan,
         isCurrent,
-        buttonText: isCurrent
-          ? plan.id === SubscriptionPlan.FREE
-            ? 'Current Plan'
-            : 'Current Plan'
-          : plan.buttonText,
+        buttonText: isCurrent ? 'Current Plan' : plan.buttonText,
       };
     });
   }
@@ -463,6 +460,86 @@ export class SubscriptionService {
       planName: planDef.name,
       limit: maxHostels,
       currentCount,
+    };
+  }
+
+  /**
+   * Returns a human-friendly display name for a plan feature.
+   */
+  public getFeatureDisplayName(feature: keyof PlanFeatureDetails): string {
+    const names: Partial<Record<keyof PlanFeatureDetails, string>> = {
+      staffManagement: 'Staff management',
+      basicPayments: 'Basic payments',
+      expensesTracking: 'Expenses tracking',
+      advancedAnalytics: 'Advanced analytics',
+      reportsAndExports: 'Reports & exports',
+      invoicesAndReminders: 'Invoices & reminders',
+      multipleHostels: 'Multiple hostels',
+      advancedAdministration: 'Advanced administration',
+      prioritySupport: 'Priority support',
+      customIntegrations: 'Custom integrations',
+      roomManagement: 'Room management',
+      basicDashboard: 'Basic dashboard',
+      reportsAndAnalytics: 'Reports & analytics',
+    };
+    return names[feature] || String(feature);
+  }
+
+  /**
+   * Returns the minimum plan required to unlock a specific feature.
+   */
+  public getMinimumPlanForFeature(feature: keyof PlanFeatureDetails): string {
+    if (SUBSCRIPTION_PLANS[SubscriptionPlan.BASIC].featureFlags[feature]) {
+      return 'Basic';
+    }
+    if (SUBSCRIPTION_PLANS[SubscriptionPlan.PRO].featureFlags[feature]) {
+      return 'Pro';
+    }
+    if (SUBSCRIPTION_PLANS[SubscriptionPlan.ENTERPRISE].featureFlags[feature]) {
+      return 'Enterprise';
+    }
+    return 'a higher tier';
+  }
+
+  /**
+   * Checks whether a feature is permitted under the active subscription.
+   */
+  public async checkFeatureAccess(
+    ownerId: string,
+    feature: keyof PlanFeatureDetails,
+    hostelId?: string,
+  ): Promise<{
+    allowed: boolean;
+    currentPlan: SubscriptionPlan;
+    planName: string;
+    feature: keyof PlanFeatureDetails;
+    message?: string;
+  }> {
+    const activeSub = await this.subscriptionRepository.findActiveSubscription({
+      ownerId,
+      hostelId,
+    });
+    const currentPlan = activeSub ? activeSub.plan : SubscriptionPlan.FREE;
+    const planDef = getPlanDefinition(currentPlan);
+    const allowed = Boolean(planDef.featureFlags[feature]);
+
+    if (!allowed) {
+      const requiredPlan = this.getMinimumPlanForFeature(feature);
+      const featureName = this.getFeatureDisplayName(feature);
+      return {
+        allowed: false,
+        currentPlan,
+        planName: planDef.name,
+        feature,
+        message: `${featureName} is not available on the ${planDef.name} plan. Upgrade to ${requiredPlan} to unlock this feature.`,
+      };
+    }
+
+    return {
+      allowed: true,
+      currentPlan,
+      planName: planDef.name,
+      feature,
     };
   }
 }

@@ -193,6 +193,43 @@ class SubscriptionController {
                 next(error);
             }
         };
+        /**
+         * GET /subscriptions/check-hostel-limit
+         * Checks if owner has capacity to add/manage more hostels under their current plan.
+         */
+        this.checkHostelLimit = async (req, res, next) => {
+            try {
+                const ownerId = req.user.userId;
+                const count = req.query.count ? parseInt(req.query.count, 10) : 1;
+                const result = await this.subscriptionService.checkHostelLimit(ownerId, count);
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                    success: true,
+                    data: result,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        /**
+         * GET /subscriptions/check-feature/:feature
+         * Checks if current owner has access to a specific feature flag under their active plan.
+         */
+        this.checkFeatureAccess = async (req, res, next) => {
+            try {
+                const ownerId = req.user.userId;
+                const feature = req.params.feature;
+                const hostelId = req.hostelId || req.query.hostelId;
+                const result = await this.subscriptionService.checkFeatureAccess(ownerId, feature, hostelId);
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                    success: true,
+                    data: result,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
     }
 }
 exports.SubscriptionController = SubscriptionController;

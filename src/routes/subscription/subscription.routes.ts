@@ -110,4 +110,20 @@ subscriptionRouter.get(
   subscriptionController.checkResidentLimit,
 );
 
+subscriptionRouter.get(
+  '/check-hostel-limit',
+  authenticate,
+  requireRoles(IROLES.OWNER, IROLES.ADMIN),
+  subscriptionController.checkHostelLimit,
+);
+
+subscriptionRouter.get(
+  '/check-feature/:feature',
+  authenticate,
+  requireRoles(IROLES.OWNER, IROLES.ADMIN),
+  resolveHostelId,
+  requireParam('feature'),
+  subscriptionController.checkFeatureAccess,
+);
+
 export { subscriptionRouter };

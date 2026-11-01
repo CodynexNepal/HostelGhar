@@ -26,22 +26,21 @@ describe('Subscription Plans Definition', () => {
 
     it('has correct pricing and metadata', () => {
       expect(plan.name).toBe('Free');
-      expect(plan.tagline).toBe('Get started with hostel basics.');
+      expect(plan.tagline).toBe('Get started with hostel basics');
       expect(plan.price).toBe(0);
       expect(plan.formattedPrice).toBe('Free/mo');
       expect(plan.badge).toBe('Current');
-      expect(plan.buttonText).toBe('Current Plan');
+      expect(plan.buttonText).toBe('Get Started Free');
+      expect(plan.ctaUrl).toBe('https://hostelghar.com/register');
       expect(plan.limits.maxResidents).toBe(10);
       expect(plan.limits.maxHostels).toBe(1);
     });
 
     it('has all required features listed in exact order', () => {
       expect(plan.features).toEqual([
-        'Basic dashboard',
-        'Basic hostel profile',
         'Up to 10 residents',
+        'Basic dashboard',
         'Room management',
-        'Staff management',
         'Reports & analytics',
       ]);
     });
@@ -52,10 +51,11 @@ describe('Subscription Plans Definition', () => {
 
     it('has correct pricing and metadata', () => {
       expect(plan.name).toBe('Basic');
-      expect(plan.tagline).toBe('For small hostels getting organized.');
+      expect(plan.tagline).toBe('For small hostels getting organized');
       expect(plan.price).toBe(999);
-      expect(plan.formattedPrice).toBe('Rs. 999/mo');
+      expect(plan.formattedPrice).toBe('NPR 999/mo');
       expect(plan.buttonText).toBe('Upgrade to Basic');
+      expect(plan.ctaUrl).toBe('https://hostelghar.com/register');
       expect(plan.limits.maxResidents).toBe(60);
       expect(plan.limits.maxHostels).toBe(1);
     });
@@ -66,7 +66,6 @@ describe('Subscription Plans Definition', () => {
         'Room management',
         'Basic payments',
         'Expenses tracking',
-        'Reports & analytics',
       ]);
     });
   });
@@ -76,11 +75,12 @@ describe('Subscription Plans Definition', () => {
 
     it('has correct pricing and metadata', () => {
       expect(plan.name).toBe('Pro');
-      expect(plan.tagline).toBe('For growing hostels that need automation.');
-      expect(plan.badge).toBe('Popular');
+      expect(plan.tagline).toBe('For growing hostels needing automation');
+      expect(plan.badge).toBe('Most Popular');
       expect(plan.price).toBe(1999);
-      expect(plan.formattedPrice).toBe('Rs. 1,999/mo');
-      expect(plan.buttonText).toBe('Upgrade to Pro');
+      expect(plan.formattedPrice).toBe('NPR 1,999/mo');
+      expect(plan.buttonText).toBe('Get Pro Plan');
+      expect(plan.ctaUrl).toBe('https://hostelghar.com/register');
       expect(plan.limits.maxResidents).toBeNull(); // Unlimited
       expect(plan.limits.maxHostels).toBe(1);
     });
@@ -101,10 +101,11 @@ describe('Subscription Plans Definition', () => {
 
     it('has correct pricing and metadata', () => {
       expect(plan.name).toBe('Enterprise');
-      expect(plan.tagline).toBe('For groups and multi-hostel operators.');
+      expect(plan.tagline).toBe('For groups & multi-hostel operators');
       expect(plan.price).toBe(4999);
-      expect(plan.formattedPrice).toBe('Rs. 4,999/mo');
+      expect(plan.formattedPrice).toBe('NPR 4,999/mo');
       expect(plan.buttonText).toBe('Contact Sales');
+      expect(plan.ctaUrl).toBe('https://hostelghar.com/contact');
       expect(plan.limits.maxResidents).toBeNull(); // Unlimited
       expect(plan.limits.maxHostels).toBeNull(); // Multiple hostels
     });
@@ -113,7 +114,6 @@ describe('Subscription Plans Definition', () => {
       expect(plan.features).toEqual([
         'Multiple hostels',
         'Advanced administration',
-        'Advanced reporting',
         'Priority support',
         'Custom integrations',
       ]);
@@ -155,7 +155,57 @@ describe('SubscriptionService', () => {
 
       const pro = plans.find((p) => p.id === SubscriptionPlan.PRO);
       expect(pro?.isCurrent).toBe(false);
-      expect(pro?.buttonText).toBe('Upgrade to Pro');
+      expect(pro?.buttonText).toBe('Get Pro Plan');
+      expect(pro?.ctaUrl).toBe('https://hostelghar.com/register');
+    });
+  });
+
+  describe('checkFeatureAccess', () => {
+    it('disallows staffManagement on Free and Basic plans', async () => {
+      mockRepo.findActiveSubscription = vi.fn().mockResolvedValue(null); // Defaults to FREE
+      const freeCheck = await service.checkFeatureAccess('owner-1', 'staffManagement');
+      expect(freeCheck.allowed).toBe(false);
+      expect(freeCheck.message).toContain('Staff management is not available on the Free plan');
+      expect(freeCheck.message).toContain('Upgrade to Pro');
+
+      mockRepo.findActiveSubscription = vi.fn().mockResolvedValue({
+        plan: SubscriptionPlan.BASIC,
+        status: SubscriptionStatus.ACTIVE,
+      });
+      const basicCheck = await service.checkFeatureAccess('owner-1', 'staffManagement');
+      expect(basicCheck.allowed).toBe(false);
+      expect(basicCheck.message).toContain('Upgrade to Pro');
+    });
+
+    it('allows staffManagement on Pro and Enterprise plans', async () => {
+      mockRepo.findActiveSubscription = vi.fn().mockResolvedValue({
+        plan: SubscriptionPlan.PRO,
+        status: SubscriptionStatus.ACTIVE,
+      });
+      const proCheck = await service.checkFeatureAccess('owner-1', 'staffManagement');
+      expect(proCheck.allowed).toBe(true);
+
+      mockRepo.findActiveSubscription = vi.fn().mockResolvedValue({
+        plan: SubscriptionPlan.ENTERPRISE,
+        status: SubscriptionStatus.ACTIVE,
+      });
+      const entCheck = await service.checkFeatureAccess('owner-1', 'staffManagement');
+      expect(entCheck.allowed).toBe(true);
+    });
+
+    it('disallows expensesTracking on Free plan but allows on Basic, Pro, and Enterprise', async () => {
+      mockRepo.findActiveSubscription = vi.fn().mockResolvedValue(null); // FREE
+      const freeCheck = await service.checkFeatureAccess('owner-1', 'expensesTracking');
+      expect(freeCheck.allowed).toBe(false);
+      expect(freeCheck.message).toContain('Expenses tracking is not available on the Free plan');
+      expect(freeCheck.message).toContain('Upgrade to Basic');
+
+      mockRepo.findActiveSubscription = vi.fn().mockResolvedValue({
+        plan: SubscriptionPlan.BASIC,
+        status: SubscriptionStatus.ACTIVE,
+      });
+      const basicCheck = await service.checkFeatureAccess('owner-1', 'expensesTracking');
+      expect(basicCheck.allowed).toBe(true);
     });
   });
 

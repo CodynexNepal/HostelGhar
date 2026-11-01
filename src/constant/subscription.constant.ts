@@ -37,6 +37,7 @@ export interface SubscriptionPlanDefinition {
   isCurrentDefault?: boolean;
   features: string[];
   buttonText: string;
+  ctaUrl: string;
   limits: {
     maxResidents: number | null;
     maxHostels: number | null;
@@ -48,22 +49,16 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanDefini
   [SubscriptionPlan.FREE]: {
     id: SubscriptionPlan.FREE,
     name: 'Free',
-    tagline: 'Get started with hostel basics.',
+    tagline: 'Get started with hostel basics',
     price: 0,
     currency: 'NPR',
     billingPeriod: 'month',
     formattedPrice: 'Free/mo',
     badge: 'Current',
     isCurrentDefault: true,
-    buttonText: 'Current Plan',
-    features: [
-      'Basic dashboard',
-      'Basic hostel profile',
-      'Up to 10 residents',
-      'Room management',
-      'Staff management',
-      'Reports & analytics',
-    ],
+    buttonText: 'Get Started Free',
+    ctaUrl: 'https://hostelghar.com/register',
+    features: ['Up to 10 residents', 'Basic dashboard', 'Room management', 'Reports & analytics'],
     limits: {
       maxResidents: 10,
       maxHostels: 1,
@@ -74,7 +69,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanDefini
       maxResidents: 10,
       maxHostels: 1,
       roomManagement: true,
-      staffManagement: true,
+      staffManagement: false,
       reportsAndAnalytics: true,
       basicPayments: false,
       expensesTracking: false,
@@ -91,19 +86,14 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanDefini
   [SubscriptionPlan.BASIC]: {
     id: SubscriptionPlan.BASIC,
     name: 'Basic',
-    tagline: 'For small hostels getting organized.',
+    tagline: 'For small hostels getting organized',
     price: 999,
     currency: 'NPR',
     billingPeriod: 'month',
-    formattedPrice: 'Rs. 999/mo',
+    formattedPrice: 'NPR 999/mo',
     buttonText: 'Upgrade to Basic',
-    features: [
-      'Up to 60 residents',
-      'Room management',
-      'Basic payments',
-      'Expenses tracking',
-      'Reports & analytics',
-    ],
+    ctaUrl: 'https://hostelghar.com/register',
+    features: ['Up to 60 residents', 'Room management', 'Basic payments', 'Expenses tracking'],
     limits: {
       maxResidents: 60,
       maxHostels: 1,
@@ -131,13 +121,14 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanDefini
   [SubscriptionPlan.PRO]: {
     id: SubscriptionPlan.PRO,
     name: 'Pro',
-    tagline: 'For growing hostels that need automation.',
-    badge: 'Popular',
+    tagline: 'For growing hostels needing automation',
+    badge: 'Most Popular',
     price: 1999,
     currency: 'NPR',
     billingPeriod: 'month',
-    formattedPrice: 'Rs. 1,999/mo',
-    buttonText: 'Upgrade to Pro',
+    formattedPrice: 'NPR 1,999/mo',
+    buttonText: 'Get Pro Plan',
+    ctaUrl: 'https://hostelghar.com/register',
     features: [
       'Unlimited residents',
       'Staff management',
@@ -164,7 +155,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanDefini
       invoicesAndReminders: true,
       multipleHostels: false,
       advancedAdministration: false,
-      advancedReporting: false,
+      advancedReporting: true,
       prioritySupport: false,
       customIntegrations: false,
     },
@@ -172,16 +163,16 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, SubscriptionPlanDefini
   [SubscriptionPlan.ENTERPRISE]: {
     id: SubscriptionPlan.ENTERPRISE,
     name: 'Enterprise',
-    tagline: 'For groups and multi-hostel operators.',
+    tagline: 'For groups & multi-hostel operators',
     price: 4999,
     currency: 'NPR',
     billingPeriod: 'month',
-    formattedPrice: 'Rs. 4,999/mo',
+    formattedPrice: 'NPR 4,999/mo',
     buttonText: 'Contact Sales',
+    ctaUrl: 'https://hostelghar.com/contact',
     features: [
       'Multiple hostels',
       'Advanced administration',
-      'Advanced reporting',
       'Priority support',
       'Custom integrations',
     ],

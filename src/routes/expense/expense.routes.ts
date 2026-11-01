@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ExpenseFactory } from '../../factory/expense/expense.factory';
 import { authenticate, requireRoles } from '../../middleware/auth.middleware';
+import { requirePlanFeature } from '../../middleware/subscription.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { validateDto } from '../../middleware/validate-dto.middleware';
 import { CreateExpenseDto } from '../../dto/expense/create-expense.dto';
@@ -10,7 +11,11 @@ import { requireParam } from '../../decorators/http.decorator';
 const expenseRouter = Router();
 const expenseController = ExpenseFactory.create();
 
-expenseRouter.use(authenticate, requireRoles(IROLES.OWNER, IROLES.ADMIN));
+expenseRouter.use(
+  authenticate,
+  requireRoles(IROLES.OWNER, IROLES.ADMIN),
+  requirePlanFeature('expensesTracking'),
+);
 
 expenseRouter.get('/', expenseController.list);
 expenseRouter.post('/', validateDto(CreateExpenseDto), expenseController.create);

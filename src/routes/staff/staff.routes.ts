@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { StaffFactory } from '../../factory/staff/staff.factory';
 import { authenticate, requireRoles } from '../../middleware/auth.middleware';
+import { requirePlanFeature } from '../../middleware/subscription.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { validateDto } from '../../middleware/validate-dto.middleware';
 import { CreateStaffDto } from '../../dto/staff/create-staff.dto';
@@ -16,7 +17,11 @@ import {
 const staffRouter = Router();
 const staffController = StaffFactory.create();
 
-staffRouter.use(authenticate, requireRoles(IROLES.OWNER, IROLES.ADMIN));
+staffRouter.use(
+  authenticate,
+  requireRoles(IROLES.OWNER, IROLES.ADMIN),
+  requirePlanFeature('staffManagement'),
+);
 
 staffRouter.get('/', apiReadLimiter, staffController.list);
 staffRouter.post(

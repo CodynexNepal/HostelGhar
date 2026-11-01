@@ -231,4 +231,52 @@ export class SubscriptionController {
       next(error);
     }
   };
+
+  /**
+   * GET /subscriptions/check-hostel-limit
+   * Checks if owner has capacity to add/manage more hostels under their current plan.
+   */
+  public checkHostelLimit = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const ownerId = req.user!.userId;
+      const count = req.query.count ? parseInt(req.query.count as string, 10) : 1;
+      const result = await this.subscriptionService.checkHostelLimit(ownerId, count);
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /subscriptions/check-feature/:feature
+   * Checks if current owner has access to a specific feature flag under their active plan.
+   */
+  public checkFeatureAccess = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const ownerId = req.user!.userId;
+      const feature = req.params.feature as never;
+      const hostelId = req.hostelId || (req.query.hostelId as string | undefined);
+
+      const result = await this.subscriptionService.checkFeatureAccess(ownerId, feature, hostelId);
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

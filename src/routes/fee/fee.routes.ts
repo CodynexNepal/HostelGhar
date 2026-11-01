@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { FeeFactory } from '../../factory/fee/fee.factory';
 import { InvoiceController } from '../../controller/fee/invoice.controller';
 import { authenticate, requireRoles } from '../../middleware/auth.middleware';
+import { requirePlanFeature } from '../../middleware/subscription.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { requireParam } from '../../decorators/http.decorator';
 import { validateDto } from '../../middleware/validate-dto.middleware';
@@ -25,6 +26,7 @@ feeRouter.get('/nepali-status', ...ownerOrAdmin, feeController.nepaliBillingStat
 feeRouter.post(
   '/invoices',
   ...ownerOrAdmin,
+  requirePlanFeature('invoicesAndReminders'),
   normalizeInvoiceFields,
   validateDto(CreateInvoiceDto),
   invoiceController.createInvoice,
