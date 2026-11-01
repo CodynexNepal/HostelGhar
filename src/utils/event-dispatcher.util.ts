@@ -409,11 +409,18 @@ class AppEventDispatcher extends EventEmitter {
     try {
       if (event.userId) {
         socketServer.toUser(event.userId, event.type, event.payload);
-      } else if (event.hostelId) {
+      }
+      if (event.hostelId) {
         socketServer.toHostel(event.hostelId, event.type, event.payload);
-      } else if (event.role) {
+      }
+      if (event.role) {
         socketServer.toRole(event.role, event.type, event.payload);
-      } else {
+      }
+      // Broadcast domain events to admin rooms for live dashboard sync
+      socketServer.toRole('ADMIN', event.type, event.payload);
+      socketServer.toRole('SUPER_ADMIN', event.type, event.payload);
+
+      if (!event.userId && !event.hostelId && !event.role) {
         socketServer.broadcast(event.type, event.payload);
       }
     } catch (err: any) {

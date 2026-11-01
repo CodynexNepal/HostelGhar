@@ -20,12 +20,7 @@ exports.SUBSCRIPTION_PLANS = {
         isCurrentDefault: true,
         buttonText: 'Get Started Free',
         ctaUrl: 'https://hostelghar.com/register',
-        features: [
-            'Up to 10 residents',
-            'Basic dashboard',
-            'Room management',
-            'Reports & analytics',
-        ],
+        features: ['Up to 10 residents', 'Basic dashboard', 'Room management', 'Reports & analytics'],
         limits: {
             maxResidents: 10,
             maxHostels: 1,
@@ -60,12 +55,7 @@ exports.SUBSCRIPTION_PLANS = {
         formattedPrice: 'NPR 999/mo',
         buttonText: 'Upgrade to Basic',
         ctaUrl: 'https://hostelghar.com/register',
-        features: [
-            'Up to 60 residents',
-            'Room management',
-            'Basic payments',
-            'Expenses tracking',
-        ],
+        features: ['Up to 60 residents', 'Room management', 'Basic payments', 'Expenses tracking'],
         limits: {
             maxResidents: 60,
             maxHostels: 1,

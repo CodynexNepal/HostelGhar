@@ -333,13 +333,16 @@ class AppEventDispatcher extends events_1.EventEmitter {
             if (event.userId) {
                 socket_server_1.socketServer.toUser(event.userId, event.type, event.payload);
             }
-            else if (event.hostelId) {
+            if (event.hostelId) {
                 socket_server_1.socketServer.toHostel(event.hostelId, event.type, event.payload);
             }
-            else if (event.role) {
+            if (event.role) {
                 socket_server_1.socketServer.toRole(event.role, event.type, event.payload);
             }
-            else {
+            // Broadcast domain events to admin rooms for live dashboard sync
+            socket_server_1.socketServer.toRole('ADMIN', event.type, event.payload);
+            socket_server_1.socketServer.toRole('SUPER_ADMIN', event.type, event.payload);
+            if (!event.userId && !event.hostelId && !event.role) {
                 socket_server_1.socketServer.broadcast(event.type, event.payload);
             }
         }

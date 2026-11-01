@@ -326,6 +326,7 @@ export class PaymentProofService {
     await cacheService.invalidatePattern(`hostel:residents`);
     await cacheService.invalidatePattern(`owner:dashboard`);
     await cacheService.invalidatePattern(`owner:residents`);
+    await cacheService.invalidatePattern(`analytics`);
     await eventDispatcher.dispatch({
       type: SocketEvent.PAYMENT_PROCESSED,
       payload: fee,
