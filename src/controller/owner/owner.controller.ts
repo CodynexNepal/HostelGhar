@@ -648,6 +648,14 @@ export class OwnerController {
       let user = await this.ownerRepository.findUserByEmail(dto.email);
       const tempPassword = dto.password || 'Hostel@123';
 
+      if (user && (user.role === IROLES.OWNER || user.role === IROLES.ADMIN)) {
+        res.status(STATUS_CODE.CONFLICT).json({
+          success: false,
+          message: `This email belongs to an existing ${user.role} account. A resident must use their own resident account.`,
+        });
+        return;
+      }
+
       if (!user) {
         const hashedPassword = await PasswordHasher.hash(tempPassword);
         user = await this.ownerRepository.createUser({

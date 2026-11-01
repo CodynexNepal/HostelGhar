@@ -487,6 +487,13 @@ class OwnerController {
                 // Check if user already exists
                 let user = await this.ownerRepository.findUserByEmail(dto.email);
                 const tempPassword = dto.password || 'Hostel@123';
+                if (user && (user.role === roles_enum_1.IROLES.OWNER || user.role === roles_enum_1.IROLES.ADMIN)) {
+                    res.status(statusCode_interface_1.STATUS_CODE.CONFLICT).json({
+                        success: false,
+                        message: `This email belongs to an existing ${user.role} account. A resident must use their own resident account.`,
+                    });
+                    return;
+                }
                 if (!user) {
                     const hashedPassword = await password_hasher_util_1.PasswordHasher.hash(tempPassword);
                     user = await this.ownerRepository.createUser({

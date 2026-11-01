@@ -53,15 +53,41 @@ class SearchService {
         const userRepo = database_source_1.AppDataSource.getRepository(user_entity_1.User);
         const hostelRepo = database_source_1.AppDataSource.getRepository(hostel_entity_1.Hostel);
         const bookingRepo = database_source_1.AppDataSource.getRepository(booking_entity_1.Booking);
-        // 1. Search Users
+        const residentRepo = database_source_1.AppDataSource.getRepository(resident_entity_1.Resident);
+        const roomRepo = database_source_1.AppDataSource.getRepository(room_entity_1.Room);
+        // 1. Search Residents (Platform-wide)
+        if (!category || category === 'all' || category === 'residents') {
+            const residents = await residentRepo
+                .createQueryBuilder('r')
+                .leftJoinAndSelect('r.user', 'u')
+                .leftJoinAndSelect('r.hostel', 'h')
+                .where('(u.firstName ILIKE :term OR u.lastName ILIKE :term OR u.email ILIKE :term OR u.phone ILIKE :term OR r.roomNumber ILIKE :term OR r.bedNumber ILIKE :term OR h.name ILIKE :term)', { term })
+                .take(limit)
+                .getMany();
+            for (const r of residents) {
+                const fullName = `${r.user?.firstName || ''} ${r.user?.lastName || ''}`.trim() || 'Resident';
+                results.push({
+                    id: r.id,
+                    title: fullName,
+                    subtitle: `Hostel: ${r.hostel?.name || 'N/A'} • Room: ${r.roomNumber || 'N/A'}${r.bedNumber ? ` • Bed: ${r.bedNumber}` : ''} • Phone: ${r.user?.phone || 'N/A'}`,
+                    category: 'residents',
+                    badge: r.isActive ? 'Active' : 'Former',
+                    url: `/admin/residents`,
+                });
+            }
+        }
+        // 2. Search Users / Platform Owners
         if (!category || category === 'all' || category === 'users' || category === 'owners') {
-            const users = await userRepo
+            const userQb = userRepo
                 .createQueryBuilder('u')
                 .where('u.firstName ILIKE :term OR u.lastName ILIKE :term OR u.email ILIKE :term OR u.phone ILIKE :term', {
                 term,
-            })
-                .take(limit)
-                .getMany();
+            });
+            // When searching 'all', exclude residents so they appear under 'residents' category with hostel details
+            if (!category || category === 'all') {
+                userQb.andWhere('u.role != :residentRole', { residentRole: enum_constant_1.IROLES.RESIDENT });
+            }
+            const users = await userQb.take(limit).getMany();
             for (const u of users) {
                 const isOwnerRole = u.role === enum_constant_1.IROLES.OWNER || String(u.role).includes('OWNER');
                 results.push({
@@ -74,7 +100,7 @@ class SearchService {
                 });
             }
         }
-        // 2. Search Hostels
+        // 3. Search Hostels
         if (!category || category === 'all' || category === 'hostels') {
             const hostels = await hostelRepo
                 .createQueryBuilder('h')
@@ -94,7 +120,7 @@ class SearchService {
                 });
             }
         }
-        // 3. Search Bookings
+        // 4. Search Bookings
         if (!category || category === 'all' || category === 'bookings') {
             const bookings = await bookingRepo
                 .createQueryBuilder('b')
@@ -112,6 +138,25 @@ class SearchService {
                     category: 'bookings',
                     badge: b.status,
                     url: `/admin`,
+                });
+            }
+        }
+        // 5. Search Rooms (Platform-wide)
+        if (!category || category === 'all' || category === 'rooms') {
+            const rooms = await roomRepo
+                .createQueryBuilder('rm')
+                .leftJoinAndSelect('rm.hostel', 'h')
+                .where('(rm.roomNumber ILIKE :term OR h.name ILIKE :term)', { term })
+                .take(limit)
+                .getMany();
+            for (const rm of rooms) {
+                results.push({
+                    id: rm.id,
+                    title: `Room ${rm.roomNumber}`,
+                    subtitle: `Hostel: ${rm.hostel?.name || 'N/A'} • Floor: ${rm.floor ?? 'N/A'} • Status: ${rm.status}`,
+                    category: 'rooms',
+                    badge: rm.status,
+                    url: `/admin/hostels`,
                 });
             }
         }
