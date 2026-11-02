@@ -139,7 +139,7 @@ export class SaveDailyMealsDto {
   dayOfWeek?: string;
 
   @IsArray({ message: 'meals must be an array' })
-  @ArrayMaxSize(20, { message: 'meals cannot contain more than 20 daily items' })
+  @ArrayMaxSize(28, { message: 'meals cannot contain more than 28 daily items' })
   @ValidateNested({ each: true })
   @Type(() => DailyMealItemDto)
   meals!: DailyMealItemDto[];

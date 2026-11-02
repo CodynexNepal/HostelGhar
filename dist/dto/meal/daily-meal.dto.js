@@ -167,7 +167,7 @@ __decorate([
 ], SaveDailyMealsDto.prototype, "dayOfWeek", void 0);
 __decorate([
     (0, class_validator_1.IsArray)({ message: 'meals must be an array' }),
-    (0, class_validator_1.ArrayMaxSize)(20, { message: 'meals cannot contain more than 20 daily items' }),
+    (0, class_validator_1.ArrayMaxSize)(28, { message: 'meals cannot contain more than 28 daily items' }),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => DailyMealItemDto),
     __metadata("design:type", Array)

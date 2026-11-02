@@ -225,7 +225,7 @@ class MealService {
         return { data: empty };
     }
     // ─── DAILY MEAL SCHEDULE (दैनिक भोजन तालिका) ─────────────────────────────
-    async getDailySchedule(hostelId, user, dayOfWeek) {
+    async getDailySchedule(hostelId, user, dayOfWeek, allDays) {
         if (!(0, exports.isUuidV4)(hostelId)) {
             return {
                 error: { status: statusCode_interface_1.STATUS_CODE.BAD_REQUEST, message: 'Invalid hostel id — must be UUID v4' },
@@ -261,6 +261,40 @@ class MealService {
         const allRawMeals = await this.repo.findAllDailyMealsRaw(hostelId);
         const configuredDays = Array.from(new Set(allRawMeals.map((m) => m.dayOfWeek || 'ALL')));
         const normDay = dayOfWeek ? dayOfWeek.toUpperCase().trim() : 'ALL';
+        // If all days are requested (e.g. for owner dashboard slots table), return all raw items
+        if (allDays || normDay === 'ALL_RAW' || normDay === 'ANY') {
+            let maxUpdated = null;
+            const schedule = allRawMeals.map((m) => {
+                if (m.updatedAt && (!maxUpdated || new Date(m.updatedAt) > new Date(maxUpdated))) {
+                    maxUpdated = m.updatedAt;
+                }
+                return {
+                    id: m.id,
+                    dayOfWeek: m.dayOfWeek,
+                    mealName: m.mealName,
+                    mealNameEn: m.mealNameEn,
+                    time: m.time,
+                    menuDescription: m.menuDescription,
+                    isActive: m.isActive,
+                    orderIndex: m.orderIndex,
+                    createdAt: m.createdAt,
+                    updatedAt: m.updatedAt,
+                };
+            });
+            return {
+                data: {
+                    hostelId,
+                    dayOfWeek: 'ALL',
+                    hasSchedule: schedule.length > 0,
+                    isConfigured: configuredDays.length > 0,
+                    lastUpdatedAt: maxUpdated,
+                    schedule: schedule.length > 0
+                        ? schedule
+                        : exports.DEFAULT_DAILY_MEAL_SLOTS.map((s) => ({ ...s, dayOfWeek: 'ALL' })),
+                    configuredDays,
+                },
+            };
+        }
         const rawDailyMeals = await this.repo.findDailyMealsByHostelId(hostelId, normDay);
         if (rawDailyMeals.length === 0) {
             return {
