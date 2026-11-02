@@ -64,6 +64,12 @@ export class CreateHostelDto {
   @IsUUID('4', { message: 'Owner ID must be a valid UUID v4' })
   ownerId?: string;
 
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsEmail({}, { message: 'Please provide a valid owner email address' })
+  @MaxLength(255)
+  ownerEmail?: string;
+
   // NOTE: `logo` / `image` are FILE fields, not body strings. Multer extracts
   // them into `req.files` (→ Cloudinary → logoUrl) and they must NOT be
   // declared here. Some clients also send a stray text part with the same

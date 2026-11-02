@@ -32,6 +32,120 @@ export class AdminController {
     }
   };
 
+  public getOwners = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const owners = await this.adminService.getOwners();
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        data: owners,
+        total: owners.length,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public updateOwnerPlan = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const ownerId = getRequiredParam(req, 'id');
+      const plan = req.body?.plan;
+      if (!plan) {
+        res.status(STATUS_CODE.BAD_REQUEST).json({ success: false, message: 'Plan is required' });
+        return;
+      }
+      const result = await this.adminService.updateOwnerPlan(ownerId, plan);
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: `Owner plan updated successfully to ${result.planName}`,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public getOwnerById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const ownerId = getRequiredParam(req, 'id');
+      const owner = await this.adminService.getOwnerById(ownerId);
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        data: owner,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public updateOwner = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const ownerId = getRequiredParam(req, 'id');
+      const adminId = req.user!.userId;
+      const result = await this.adminService.updateOwner(ownerId, req.body, adminId);
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: result.message,
+        data: result.owner,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public suspendOwner = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const ownerId = getRequiredParam(req, 'id');
+      const adminId = req.user!.userId;
+      const reason = req.body?.reason;
+      const result = await this.adminService.suspendOwner(ownerId, adminId, reason);
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: result.message,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public reactivateOwner = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    try {
+      const ownerId = getRequiredParam(req, 'id');
+      const adminId = req.user!.userId;
+      const result = await this.adminService.reactivateOwner(ownerId, adminId);
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: result.message,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public deleteOwner = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const ownerId = getRequiredParam(req, 'id');
+      const adminId = req.user!.userId;
+      const result = await this.adminService.deleteOwner(ownerId, adminId);
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        message: result.message,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   public createHostel = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const dto = req.body as CreateHostelDto;

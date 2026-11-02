@@ -45,6 +45,10 @@ export class OwnerRepository {
     return await this.userRepo.findOne({ where: { email } });
   }
 
+  public async findUserById(id: string): Promise<User | null> {
+    return await this.userRepo.findOne({ where: { id } });
+  }
+
   public async createUser(userData: Partial<User>): Promise<User> {
     const user = this.userRepo.create(userData);
     return await this.userRepo.save(user);

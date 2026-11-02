@@ -144,3 +144,36 @@ export const requireRoles = (...allowedRoles: (IROLES | string)[]) => {
     next();
   };
 };
+
+/**
+ * Dedicated authorization middleware ensuring only administrators (Admin / Super Admin)
+ * can view, edit, suspend, and delete hostel owners.
+ */
+export const requireAdminForOwnerManagement = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
+  if (!req.user) {
+    applyCorsHeaders(req, res);
+    res.status(STATUS_CODE.UNAUTHORIZED).json({
+      success: false,
+      message: 'Authentication required to access owner management.',
+    });
+    return;
+  }
+
+  const userRole = req.user.role?.toLowerCase();
+  const isAdmin = userRole === IROLES.ADMIN.toLowerCase() || userRole === 'super_admin';
+
+  if (!isAdmin) {
+    applyCorsHeaders(req, res);
+    res.status(STATUS_CODE.FORBIDDEN).json({
+      success: false,
+      message: 'Forbidden. Only administrators can view, edit, suspend, or delete hostel owners.',
+    });
+    return;
+  }
+
+  next();
+};

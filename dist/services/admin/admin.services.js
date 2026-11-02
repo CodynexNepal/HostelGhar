@@ -19,6 +19,7 @@ const pagination_util_1 = require("../../utils/pagination.util");
 const hostel_logo_function_1 = require("../../functions/hostel-logo.function");
 const normalize_util_1 = require("../../utils/normalize.util");
 const password_hasher_util_1 = require("../../utils/password-hasher.util");
+const token_blocklist_util_1 = require("../../utils/token-blocklist.util");
 const email_template_1 = require("../../templates/email.template");
 const queue_constants_2 = require("../../constant/queue.constants");
 const smtp_config_1 = require("../../configs/smtp.config");
@@ -26,10 +27,17 @@ const crypto_1 = __importDefault(require("crypto"));
 const createHttpError_1 = require("../../utils/createHttpError");
 const image_upload_service_1 = require("../../services/upload/image-upload.service");
 const notification_service_1 = require("../notification/notification.service");
+const subscription_repository_1 = require("../../repository/subscription/subscription.repository");
+const subscription_service_1 = require("../subscription/subscription.service");
+const subscription_enum_1 = require("../../enum/subscription.enum");
+const subscription_constant_1 = require("../../constant/subscription.constant");
 class AdminService {
-    constructor(adminRepository, userRepository) {
+    constructor(adminRepository, userRepository, subscriptionRepository, subscriptionService) {
         this.adminRepository = adminRepository;
         this.userRepository = userRepository;
+        this.subscriptionRepository = subscriptionRepository || new subscription_repository_1.SubscriptionRepository();
+        this.subscriptionService =
+            subscriptionService || new subscription_service_1.SubscriptionService(this.subscriptionRepository);
     }
     async createOwner(dto, imageFile) {
         (0, smtp_config_1.assertSmtpConfigured)();
@@ -56,6 +64,21 @@ class AdminService {
             owner.avatarUrl = image.url;
             owner.avatarPublicId = image.publicId;
         }
+        // If an initial plan is chosen (e.g. ENTERPRISE), activate it immediately
+        const chosenPlan = dto.plan || subscription_enum_1.SubscriptionPlan.FREE;
+        if (chosenPlan !== subscription_enum_1.SubscriptionPlan.FREE) {
+            const planDef = (0, subscription_constant_1.getPlanDefinition)(chosenPlan);
+            const sub = this.subscriptionRepository.create({
+                ownerId: owner.id,
+                plan: chosenPlan,
+                status: subscription_enum_1.SubscriptionStatus.ACTIVE,
+                billingCycle: subscription_enum_1.BillingCycle.MONTHLY,
+                startDate: new Date(),
+                price: planDef.price,
+                notes: `Assigned upon owner registration by admin`,
+            });
+            await this.subscriptionRepository.save(sub);
+        }
         const template = (0, email_template_1.renderOwnerCredentialsEmail)(owner.firstName, owner.email, temporaryPassword);
         await event_dispatcher_util_1.eventDispatcher.queueEmail(queue_constants_2.JobType.SEND_WELCOME_EMAIL, {
             to: owner.email,
@@ -68,31 +91,310 @@ class AdminService {
             lastName: owner.lastName,
             email: owner.email,
             role: owner.role,
+            plan: chosenPlan,
+        };
+    }
+    /**
+     * Retrieves all registered hostel owners with their plan and owned hostels.
+     */
+    async getOwners() {
+        const owners = await this.userRepository.findOwners();
+        const ownerIds = owners.map((o) => o.id);
+        const hostels = await this.adminRepository.findHostelsByOwnerIds(ownerIds);
+        const hostelsByOwner = new Map();
+        for (const h of hostels) {
+            if (!h.ownerId)
+                continue;
+            const list = hostelsByOwner.get(h.ownerId) ?? [];
+            list.push({
+                id: h.id,
+                name: h.name,
+                type: h.type,
+                city: h.city,
+                address: h.address,
+                phone: h.phone,
+                email: h.email,
+                isActive: h.isActive,
+                logoUrl: h.logoUrl,
+                createdAt: h.createdAt,
+            });
+            hostelsByOwner.set(h.ownerId, list);
+        }
+        const ownersWithDetails = await Promise.all(owners.map(async (o) => {
+            const activeSub = await this.subscriptionRepository.findActiveSubscription({
+                ownerId: o.id,
+            });
+            const ownerHostels = hostelsByOwner.get(o.id) ?? [];
+            const plan = activeSub ? activeSub.plan : subscription_enum_1.SubscriptionPlan.FREE;
+            const planDef = (0, subscription_constant_1.getPlanDefinition)(plan);
+            return {
+                id: o.id,
+                firstName: o.firstName,
+                lastName: o.lastName,
+                name: `${o.firstName} ${o.lastName}`.trim(),
+                email: o.email,
+                phone: o.phone,
+                avatarUrl: o.avatarUrl,
+                role: o.role,
+                plan,
+                planName: planDef.name,
+                isEnterprise: plan === subscription_enum_1.SubscriptionPlan.ENTERPRISE,
+                hostelCount: ownerHostels.length,
+                hostels: ownerHostels,
+                createdAt: o.createdAt,
+            };
+        }));
+        return ownersWithDetails;
+    }
+    /**
+     * Admin can assign or upgrade an owner to Enterprise (or other plans).
+     */
+    async updateOwnerPlan(ownerId, plan) {
+        const owner = await this.userRepository.findById(ownerId);
+        if (!owner || owner.role?.toLowerCase() !== roles_enum_1.IROLES.OWNER.toLowerCase()) {
+            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.NOT_FOUND, 'Owner not found');
+        }
+        await this.subscriptionRepository.deactivateExistingActive(ownerId);
+        const planDef = (0, subscription_constant_1.getPlanDefinition)(plan);
+        const sub = this.subscriptionRepository.create({
+            ownerId,
+            plan,
+            status: subscription_enum_1.SubscriptionStatus.ACTIVE,
+            billingCycle: subscription_enum_1.BillingCycle.MONTHLY,
+            startDate: new Date(),
+            price: planDef.price,
+            notes: `Updated to ${plan} by admin`,
+        });
+        const saved = await this.subscriptionRepository.save(sub);
+        await cache_util_1.cacheService.invalidatePattern('subscriptions');
+        await cache_util_1.cacheService.invalidatePattern(`owner:dashboard:${ownerId}`);
+        return {
+            plan: saved.plan,
+            planName: planDef.name,
+            isEnterprise: saved.plan === subscription_enum_1.SubscriptionPlan.ENTERPRISE,
+        };
+    }
+    /**
+     * Admin: Get a single owner's profile, active subscription, and all owned hostels.
+     */
+    async getOwnerById(ownerId) {
+        const owner = await this.userRepository.findById(ownerId);
+        if (!owner || owner.role?.toLowerCase() !== roles_enum_1.IROLES.OWNER.toLowerCase()) {
+            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.NOT_FOUND, 'Owner not found');
+        }
+        const activeSub = await this.subscriptionRepository.findActiveSubscription({ ownerId });
+        const plan = activeSub ? activeSub.plan : subscription_enum_1.SubscriptionPlan.FREE;
+        const planDef = (0, subscription_constant_1.getPlanDefinition)(plan);
+        const hostels = await this.adminRepository.findHostelsByOwnerId(ownerId);
+        const hostelIds = hostels.map((h) => h.id);
+        const occupancyMap = await this.adminRepository.getHostelOccupancyByHostel(hostelIds);
+        const hostelsWithStats = hostels.map((h) => {
+            const stats = occupancyMap.get(h.id);
+            return {
+                id: h.id,
+                name: h.name,
+                type: h.type,
+                city: h.city,
+                address: h.address,
+                phone: h.phone,
+                email: h.email,
+                logoUrl: h.logoUrl,
+                isActive: h.isActive,
+                suspendedAt: h.suspendedAt,
+                suspendReason: h.suspendReason,
+                rooms: stats?.rooms ?? 0,
+                beds: stats?.beds ?? 0,
+                occupied: stats?.occupied ?? 0,
+                createdAt: h.createdAt,
+            };
+        });
+        return {
+            id: owner.id,
+            firstName: owner.firstName,
+            lastName: owner.lastName,
+            name: `${owner.firstName} ${owner.lastName}`.trim(),
+            email: owner.email,
+            phone: owner.phone,
+            avatarUrl: owner.avatarUrl,
+            role: owner.role,
+            plan,
+            planName: planDef.name,
+            isEnterprise: plan === subscription_enum_1.SubscriptionPlan.ENTERPRISE,
+            subscription: activeSub
+                ? {
+                    id: activeSub.id,
+                    plan: activeSub.plan,
+                    status: activeSub.status,
+                    startDate: activeSub.startDate,
+                    endDate: activeSub.endDate,
+                }
+                : null,
+            totalHostels: hostelsWithStats.length,
+            hostels: hostelsWithStats,
+            createdAt: owner.createdAt,
+            updatedAt: owner.updatedAt,
+        };
+    }
+    /**
+     * Admin: Edit owner profile details (name, email, phone) and subscription plan.
+     */
+    async updateOwner(ownerId, dto, _adminId) {
+        const owner = await this.userRepository.findById(ownerId);
+        if (!owner || owner.role?.toLowerCase() !== roles_enum_1.IROLES.OWNER.toLowerCase()) {
+            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.NOT_FOUND, 'Owner not found');
+        }
+        const updates = {};
+        if (dto.email) {
+            const normalizedEmail = (0, normalize_util_1.normalizeEmail)(dto.email);
+            if (normalizedEmail !== owner.email.toLowerCase()) {
+                const existing = await this.userRepository.findByEmail(normalizedEmail);
+                if (existing && existing.id !== ownerId) {
+                    throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.CONFLICT, `Email "${dto.email}" is already in use by another user`);
+                }
+                updates.email = normalizedEmail;
+            }
+        }
+        if (dto.name) {
+            const parts = dto.name.trim().split(/\s+/);
+            const firstName = parts[0] ?? '';
+            const lastName = parts.slice(1).join(' ') || firstName;
+            if (firstName) {
+                updates.firstName = firstName;
+                updates.lastName = lastName;
+            }
+        }
+        if (dto.phone !== undefined) {
+            updates.phone = dto.phone.trim() || null;
+        }
+        if (Object.keys(updates).length > 0) {
+            await this.userRepository.updateUser(ownerId, updates);
+        }
+        if (dto.plan) {
+            await this.updateOwnerPlan(ownerId, dto.plan);
+        }
+        await cache_util_1.cacheService.invalidatePattern('owners');
+        await cache_util_1.cacheService.invalidatePattern(`owner:dashboard:${ownerId}`);
+        await cache_util_1.cacheService.invalidatePattern('hostels');
+        const updated = await this.getOwnerById(ownerId);
+        return {
+            message: 'Owner details updated successfully',
+            owner: updated,
+        };
+    }
+    /**
+     * Admin: Suspend ("spend") owner and all their owned hostels.
+     */
+    async suspendOwner(ownerId, _adminId, reason) {
+        const owner = await this.userRepository.findById(ownerId);
+        if (!owner || owner.role?.toLowerCase() !== roles_enum_1.IROLES.OWNER.toLowerCase()) {
+            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.NOT_FOUND, 'Owner not found');
+        }
+        const suspendReason = reason?.trim() || 'Owner account suspended by admin';
+        // 1. Suspend all hostels owned by this owner
+        await this.adminRepository.setHostelsActiveStatusByOwnerId(ownerId, false, suspendReason);
+        // 2. Revoke all active owner tokens immediately
+        await (0, token_blocklist_util_1.markUserLoggedOutAll)(ownerId, 7 * 86400);
+        await this.userRepository.updateRefreshToken(ownerId, null);
+        // 3. Invalidate caches
+        await this.invalidateHostelCaches();
+        await cache_util_1.cacheService.invalidatePattern('owners');
+        await cache_util_1.cacheService.invalidatePattern('owner:dashboard');
+        await cache_util_1.cacheService.invalidatePattern(`owner:dashboard:${ownerId}`);
+        return {
+            message: `Owner ${owner.firstName} ${owner.lastName} and all owned hostels have been suspended.`,
+            ownerId,
+            reason: suspendReason,
+        };
+    }
+    /**
+     * Admin: Reactivate a suspended owner and all their owned hostels.
+     */
+    async reactivateOwner(ownerId, _adminId) {
+        const owner = await this.userRepository.findById(ownerId);
+        if (!owner || owner.role?.toLowerCase() !== roles_enum_1.IROLES.OWNER.toLowerCase()) {
+            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.NOT_FOUND, 'Owner not found');
+        }
+        // 1. Reactivate all hostels owned by this owner
+        await this.adminRepository.setHostelsActiveStatusByOwnerId(ownerId, true, null);
+        // 2. Invalidate caches
+        await this.invalidateHostelCaches();
+        await cache_util_1.cacheService.invalidatePattern('owners');
+        await cache_util_1.cacheService.invalidatePattern('owner:dashboard');
+        await cache_util_1.cacheService.invalidatePattern(`owner:dashboard:${ownerId}`);
+        return {
+            message: `Owner ${owner.firstName} ${owner.lastName} and all owned hostels have been reactivated.`,
+            ownerId,
+        };
+    }
+    /**
+     * Admin: Delete owner, cleanly unlinking their hostels and deleting subscription.
+     */
+    async deleteOwner(ownerId, _adminId) {
+        const owner = await this.userRepository.findById(ownerId);
+        if (!owner || owner.role?.toLowerCase() !== roles_enum_1.IROLES.OWNER.toLowerCase()) {
+            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.NOT_FOUND, 'Owner not found');
+        }
+        // 1. Unassign all hostels owned by this owner to preserve hostels without invalid ownerId
+        await this.adminRepository.unassignHostelsByOwnerId(ownerId);
+        // 2. Deactivate subscriptions
+        await this.subscriptionRepository.deactivateExistingActive(ownerId);
+        // 3. Revoke active tokens
+        await (0, token_blocklist_util_1.markUserLoggedOutAll)(ownerId, 7 * 86400);
+        // 4. Delete user record
+        await this.userRepository.deleteUser(ownerId);
+        // 5. Invalidate caches
+        await this.invalidateHostelCaches();
+        await cache_util_1.cacheService.invalidatePattern('owners');
+        await cache_util_1.cacheService.invalidatePattern('owner:dashboard');
+        await cache_util_1.cacheService.invalidatePattern(`owner:dashboard:${ownerId}`);
+        await cache_util_1.cacheService.invalidatePattern('subscriptions');
+        return {
+            message: `Owner ${owner.firstName} ${owner.lastName} has been deleted successfully.`,
+            deletedOwnerId: ownerId,
         };
     }
     /**
      * Create a new hostel with optional logo upload in a single transaction-like step
      */
     async createHostel(adminId, dto, logoFile) {
-        const hostelEmail = dto.email ? (0, normalize_util_1.normalizeEmail)(dto.email) : null;
-        if (!hostelEmail) {
-            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.BAD_REQUEST, 'Hostel email is required and must match the owner email');
+        let owner = null;
+        if (dto.ownerId) {
+            owner = await this.userRepository.findById(dto.ownerId);
+            if (!owner) {
+                throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.NOT_FOUND, 'Owner with the specified ID was not found');
+            }
         }
-        const owner = await this.userRepository.findOwnerByEmail(hostelEmail);
+        else if (dto.ownerEmail) {
+            owner = await this.userRepository.findOwnerByEmail((0, normalize_util_1.normalizeEmail)(dto.ownerEmail));
+            if (!owner) {
+                throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.NOT_FOUND, `Owner with email "${dto.ownerEmail}" was not found. Please create the owner account first.`);
+            }
+        }
+        else if (dto.email) {
+            // Legacy fallback: check if hostel contact email matches an existing owner account
+            owner = await this.userRepository.findOwnerByEmail((0, normalize_util_1.normalizeEmail)(dto.email));
+        }
         if (!owner) {
-            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.BAD_REQUEST, 'Create an owner with this email before creating the hostel');
+            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.BAD_REQUEST, 'Please select an owner or provide a valid owner email to assign this hostel to');
         }
-        if (dto.ownerId && dto.ownerId !== owner.id) {
-            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.BAD_REQUEST, 'Owner ID does not match the hostel email');
+        if (owner.role?.toLowerCase() !== roles_enum_1.IROLES.OWNER.toLowerCase()) {
+            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.BAD_REQUEST, 'The assigned user is not registered as a hostel owner');
         }
-        // 1. Create base hostel record (incl. new city/address/phone/email fields)
+        // Check hostel limit according to owner's subscription plan.
+        // ENTERPRISE allows unlimited hostels; FREE/BASIC/PRO allows 1.
+        const limitCheck = await this.subscriptionService.checkHostelLimit(owner.id, 1);
+        if (!limitCheck.allowed) {
+            throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.FORBIDDEN, limitCheck.message ||
+                'Hostel limit reached for this owner plan. Upgrade to Enterprise to manage multiple hostels.');
+        }
+        // 1. Create base hostel record with its own contact info and link to the selected owner
         const hostel = await this.adminRepository.createHostel({
             name: dto.name,
             type: dto.type,
             city: dto.city ?? null,
             address: dto.address ?? null,
             phone: dto.phone ?? null,
-            email: dto.email ?? null,
+            email: dto.email ? (0, normalize_util_1.normalizeEmail)(dto.email) : null,
             ownerId: owner.id,
             createdByAdminId: adminId,
         });

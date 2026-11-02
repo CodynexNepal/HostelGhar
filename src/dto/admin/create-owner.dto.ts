@@ -1,4 +1,13 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { SubscriptionPlan } from '../../enum/subscription.enum';
 
 export class CreateOwnerDto {
   @IsString()
@@ -15,6 +24,10 @@ export class CreateOwnerDto {
   @IsNotEmpty({ message: 'Phone is required' })
   @MaxLength(20)
   phone!: string;
+
+  @IsOptional()
+  @IsEnum(SubscriptionPlan, { message: 'Invalid subscription plan' })
+  plan?: SubscriptionPlan;
 
   // The actual image is handled by Multer as req.file. This optional DTO
   // field allows multipart clients to include the image field without it

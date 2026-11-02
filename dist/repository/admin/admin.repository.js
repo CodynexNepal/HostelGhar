@@ -125,8 +125,45 @@ class AdminRepository {
             relations: { owner: true },
         });
     }
+    async findHostelsByOwnerIds(ownerIds) {
+        if (ownerIds.length === 0)
+            return [];
+        return await this.hostelRepo.find({
+            where: { ownerId: (0, typeorm_1.In)(ownerIds) },
+            select: {
+                id: true,
+                name: true,
+                type: true,
+                city: true,
+                address: true,
+                phone: true,
+                email: true,
+                ownerId: true,
+                isActive: true,
+                logoUrl: true,
+                createdAt: true,
+            },
+            order: { name: 'ASC' },
+        });
+    }
     async saveHostel(hostel) {
         return this.hostelRepo.save(hostel);
+    }
+    async findHostelsByOwnerId(ownerId) {
+        return await this.hostelRepo.find({
+            where: { ownerId },
+            order: { name: 'ASC' },
+        });
+    }
+    async setHostelsActiveStatusByOwnerId(ownerId, isActive, reason) {
+        await this.hostelRepo.update({ ownerId }, {
+            isActive,
+            suspendedAt: isActive ? null : new Date(),
+            suspendReason: isActive ? null : (reason ?? 'Owner suspended by admin'),
+        });
+    }
+    async unassignHostelsByOwnerId(ownerId) {
+        await this.hostelRepo.update({ ownerId }, { ownerId: null });
     }
 }
 exports.AdminRepository = AdminRepository;

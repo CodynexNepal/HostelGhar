@@ -48,6 +48,12 @@ class UserRepository {
             .andWhere('user.role = :role', { role: enum_constant_1.IROLES.OWNER })
             .getOne();
     }
+    async findOwners() {
+        return this.repository.find({
+            where: { role: enum_constant_1.IROLES.OWNER },
+            order: { createdAt: 'DESC' },
+        });
+    }
     // ─── findById ───────────────────────────────────────────────────────────
     // Looks up a user by their UUID primary key. Used by token verification
     // middleware to load the authenticated user from the token's `sub` claim.
@@ -70,6 +76,13 @@ class UserRepository {
         // `this.repository.save()` performs the actual INSERT query and
         // returns the persisted entity with all auto-generated fields filled.
         return this.repository.save(user);
+    }
+    async updateUser(userId, data) {
+        await this.repository.update(userId, data);
+        return this.findById(userId);
+    }
+    async deleteUser(userId) {
+        await this.repository.delete(userId);
     }
     async updateAvatar(userId, avatarUrl, avatarPublicId) {
         await this.repository.update(userId, { avatarUrl, avatarPublicId });

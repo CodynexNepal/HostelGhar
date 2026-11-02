@@ -62,6 +62,13 @@ export class UserRepository {
       .getOne();
   }
 
+  public async findOwners(): Promise<User[]> {
+    return this.repository.find({
+      where: { role: IROLES.OWNER },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   // ─── findById ───────────────────────────────────────────────────────────
 
   // Looks up a user by their UUID primary key. Used by token verification
@@ -88,6 +95,15 @@ export class UserRepository {
     // `this.repository.save()` performs the actual INSERT query and
     // returns the persisted entity with all auto-generated fields filled.
     return this.repository.save(user);
+  }
+
+  public async updateUser(userId: string, data: Partial<User>): Promise<User | null> {
+    await this.repository.update(userId, data);
+    return this.findById(userId);
+  }
+
+  public async deleteUser(userId: string): Promise<void> {
+    await this.repository.delete(userId);
   }
 
   public async updateAvatar(

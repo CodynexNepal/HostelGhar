@@ -9,7 +9,11 @@ import { AnalyticsFactory } from '../../factory/analytics/analytics.factory';
 import { validateDto } from '../../middleware/validate-dto.middleware';
 import { CreateHostelDto } from '../../dto/hostel/create-hostel.dto';
 import { AssignHostelOwnerDto } from '../../dto/admin/assign-hostel-owner.dto';
-import { authenticate, requireRoles } from '../../middleware/auth.middleware';
+import {
+  authenticate,
+  requireRoles,
+  requireAdminForOwnerManagement,
+} from '../../middleware/auth.middleware';
 import { IROLES } from '../../enum/roles.enum';
 import { requireParam } from '../../decorators/http.decorator';
 import {
@@ -19,6 +23,8 @@ import {
   stripFileFields,
 } from '../../middleware/upload.middleware';
 import { CreateOwnerDto } from '../../dto/admin/create-owner.dto';
+import { UpdateOwnerDto } from '../../dto/admin/update-owner.dto';
+import { SuspendOwnerDto } from '../../dto/admin/suspend-owner.dto';
 import { SuspendHostelDto } from '../../dto/admin/suspend-hostel.dto';
 import { settingsRouter } from '../settings/settings.routes';
 import { platformQrAdminRouter } from '../platform-qr/platform-qr.routes';
@@ -40,14 +46,57 @@ adminRouter.use('/platform-qrs', platformQrAdminRouter);
 // `?refresh=1` forces a live DB read instead of the cached snapshot.
 adminRouter.get('/dashboard', analyticsController.adminDashboard);
 adminRouter.get('/dashboard/summary', analyticsController.adminSummary);
+
+// ─── Owner Management (Admin Only: View, Edit, Suspend, Reactivate, Delete) ──
+adminRouter.get('/owners', requireAdminForOwnerManagement, adminController.getOwners);
+adminRouter.get(
+  '/owners/:id',
+  requireAdminForOwnerManagement,
+  requireParam('id'),
+  adminController.getOwnerById,
+);
 adminRouter.post(
   '/owners',
+  requireAdminForOwnerManagement,
   uploadOwnerImage,
   normalizeOwnerFields,
   stripFileFields('image'),
   validateDto(CreateOwnerDto),
   adminController.createOwner,
 );
+adminRouter.put(
+  '/owners/:id',
+  requireAdminForOwnerManagement,
+  requireParam('id'),
+  validateDto(UpdateOwnerDto),
+  adminController.updateOwner,
+);
+adminRouter.put(
+  '/owners/:id/plan',
+  requireAdminForOwnerManagement,
+  requireParam('id'),
+  adminController.updateOwnerPlan,
+);
+adminRouter.post(
+  '/owners/:id/suspend',
+  requireAdminForOwnerManagement,
+  requireParam('id'),
+  validateDto(SuspendOwnerDto),
+  adminController.suspendOwner,
+);
+adminRouter.post(
+  '/owners/:id/reactivate',
+  requireAdminForOwnerManagement,
+  requireParam('id'),
+  adminController.reactivateOwner,
+);
+adminRouter.delete(
+  '/owners/:id',
+  requireAdminForOwnerManagement,
+  requireParam('id'),
+  adminController.deleteOwner,
+);
+
 adminRouter.post('/cache/hostels/invalidate', adminController.invalidateHostelCache);
 
 // NOTE: `logo`/`image` arrive as FILE parts (multer → req.files → Cloudinary),

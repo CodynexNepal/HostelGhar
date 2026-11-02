@@ -11,6 +11,7 @@ import { CreateLeaveTypeDto } from '../../dto/leave/create-leave-type.dto';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { IROLES } from '../../enum/roles.enum';
 import { FeeStatus } from '../../enum/fee.enum';
+import { SubscriptionPlan } from '../../enum/subscription.enum';
 
 import { PasswordHasher } from '../../utils/password-hasher.util';
 import { cacheService } from '../../utils/cache.util';
@@ -85,13 +86,17 @@ export class OwnerController {
   ): Promise<void> => {
     try {
       const ownerId = req.user!.userId;
-      const cacheKey = cacheService.generateKey('owner:dashboard', ownerId);
+      const hostelId = (req.query.hostelId as string)?.trim() || undefined;
+      const cacheKey = cacheService.generateKey('owner:dashboard', {
+        ownerId,
+        hostelId: hostelId || 'all',
+      });
 
       // 3-Level Caching: L1 Memory LRU -> L2 Redis -> L3 Database Loader
       const { data, isCached, cacheLevel } = await cacheService.wrap(
         cacheKey,
         async () => {
-          return await optimizedHostelQueryService.getOwnerHostelDashboard(ownerId);
+          return await optimizedHostelQueryService.getOwnerHostelDashboard(ownerId, hostelId);
         },
         { l1TtlSeconds: 30, l2TtlSeconds: 60 },
       );
@@ -108,6 +113,47 @@ export class OwnerController {
         roomMix: data.roomMix,
         revenueTrend: data.revenueTrend,
         recentPayments: data.recentPayments,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /owner/my-hostels — Returns the logged-in hostel owner profile, active plan,
+   * and which hostels belong to them (with full room, bed, and occupancy breakdown).
+   */
+  public getMyHostels = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const ownerId = req.user!.userId;
+      const owner = await this.ownerRepository.findUserById(ownerId);
+      if (!owner) {
+        throw createHttpError(STATUS_CODE.NOT_FOUND, 'Owner account not found');
+      }
+
+      const subscriptionInfo = await this.subscriptionService.getCurrentSubscription({ ownerId });
+      const dashboardData = await optimizedHostelQueryService.getOwnerHostelDashboard(ownerId);
+
+      res.status(STATUS_CODE.OK).json({
+        success: true,
+        owner: {
+          id: owner.id,
+          name: `${owner.firstName} ${owner.lastName}`.trim(),
+          firstName: owner.firstName,
+          lastName: owner.lastName,
+          email: owner.email,
+          phone: owner.phone,
+          avatarUrl: owner.avatarUrl,
+          role: owner.role,
+          plan: subscriptionInfo.plan.id,
+          planName: subscriptionInfo.plan.name,
+          isEnterprise: subscriptionInfo.plan.id === SubscriptionPlan.ENTERPRISE,
+          subscriptionStatus: subscriptionInfo.subscription?.status ?? 'FREE',
+          limits: subscriptionInfo.limits,
+        },
+        totalHostels: dashboardData.hostels.length,
+        hostels: dashboardData.hostels,
+        summary: dashboardData.summary,
       });
     } catch (error) {
       next(error);

@@ -24,6 +24,7 @@ const ownerController = owner_factory_1.OwnerFactory.create();
 const attendanceController = attendance_factory_1.AttendanceFactory.create();
 // Protect all owner routes
 ownerRouter.use(auth_middleware_1.authenticate, (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.OWNER, roles_enum_1.IROLES.ADMIN));
+ownerRouter.get('/my-hostels', ownerController.getMyHostels);
 ownerRouter.get('/dashboard', ownerController.getMyHostelsDashboard);
 // DEBUG: remove before production — explains empty rooms dropdowns/lists.
 ownerRouter.get('/debug/rooms-count', ownerController.debugRoomsCount);

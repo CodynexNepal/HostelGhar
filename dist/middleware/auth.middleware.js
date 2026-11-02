@@ -4,9 +4,10 @@
 // PURPOSE: JWT verification & RBAC authorization middleware.
 // ──────────────────────────────────────────────────────────────────────────────
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireRoles = exports.optionalAuthenticate = exports.authenticate = void 0;
+exports.requireAdminForOwnerManagement = exports.requireRoles = exports.optionalAuthenticate = exports.authenticate = void 0;
 const jwt_token_util_1 = require("../utils/jwt-token.util");
 const statusCode_interface_1 = require("../constant/statusCode.interface");
+const roles_enum_1 = require("../enum/roles.enum");
 const token_blocklist_util_1 = require("../utils/token-blocklist.util");
 const cors_config_1 = require("../configs/cors.config");
 /**
@@ -114,3 +115,29 @@ const requireRoles = (...allowedRoles) => {
     };
 };
 exports.requireRoles = requireRoles;
+/**
+ * Dedicated authorization middleware ensuring only administrators (Admin / Super Admin)
+ * can view, edit, suspend, and delete hostel owners.
+ */
+const requireAdminForOwnerManagement = (req, res, next) => {
+    if (!req.user) {
+        (0, cors_config_1.applyCorsHeaders)(req, res);
+        res.status(statusCode_interface_1.STATUS_CODE.UNAUTHORIZED).json({
+            success: false,
+            message: 'Authentication required to access owner management.',
+        });
+        return;
+    }
+    const userRole = req.user.role?.toLowerCase();
+    const isAdmin = userRole === roles_enum_1.IROLES.ADMIN.toLowerCase() || userRole === 'super_admin';
+    if (!isAdmin) {
+        (0, cors_config_1.applyCorsHeaders)(req, res);
+        res.status(statusCode_interface_1.STATUS_CODE.FORBIDDEN).json({
+            success: false,
+            message: 'Forbidden. Only administrators can view, edit, suspend, or delete hostel owners.',
+        });
+        return;
+    }
+    next();
+};
+exports.requireAdminForOwnerManagement = requireAdminForOwnerManagement;

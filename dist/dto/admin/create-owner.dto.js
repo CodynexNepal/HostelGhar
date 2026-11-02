@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateOwnerDto = void 0;
 const class_validator_1 = require("class-validator");
+const subscription_enum_1 = require("../../enum/subscription.enum");
 class CreateOwnerDto {
 }
 exports.CreateOwnerDto = CreateOwnerDto;
@@ -32,6 +33,11 @@ __decorate([
     (0, class_validator_1.MaxLength)(20),
     __metadata("design:type", String)
 ], CreateOwnerDto.prototype, "phone", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsEnum)(subscription_enum_1.SubscriptionPlan, { message: 'Invalid subscription plan' }),
+    __metadata("design:type", String)
+], CreateOwnerDto.prototype, "plan", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

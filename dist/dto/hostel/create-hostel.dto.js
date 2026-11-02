@@ -72,3 +72,10 @@ __decorate([
     (0, class_validator_1.IsUUID)('4', { message: 'Owner ID must be a valid UUID v4' }),
     __metadata("design:type", String)
 ], CreateHostelDto.prototype, "ownerId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(emptyToUndefined),
+    (0, class_validator_1.IsEmail)({}, { message: 'Please provide a valid owner email address' }),
+    (0, class_validator_1.MaxLength)(255),
+    __metadata("design:type", String)
+], CreateHostelDto.prototype, "ownerEmail", void 0);

@@ -28,6 +28,7 @@ const attendanceController = AttendanceFactory.create();
 // Protect all owner routes
 ownerRouter.use(authenticate, requireRoles(IROLES.OWNER, IROLES.ADMIN));
 
+ownerRouter.get('/my-hostels', ownerController.getMyHostels);
 ownerRouter.get('/dashboard', ownerController.getMyHostelsDashboard);
 // DEBUG: remove before production — explains empty rooms dropdowns/lists.
 ownerRouter.get('/debug/rooms-count', ownerController.debugRoomsCount);

@@ -27,6 +27,112 @@ class AdminController {
                 next(error);
             }
         };
+        this.getOwners = async (req, res, next) => {
+            try {
+                const owners = await this.adminService.getOwners();
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                    success: true,
+                    data: owners,
+                    total: owners.length,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        this.updateOwnerPlan = async (req, res, next) => {
+            try {
+                const ownerId = (0, http_decorator_1.getRequiredParam)(req, 'id');
+                const plan = req.body?.plan;
+                if (!plan) {
+                    res.status(statusCode_interface_1.STATUS_CODE.BAD_REQUEST).json({ success: false, message: 'Plan is required' });
+                    return;
+                }
+                const result = await this.adminService.updateOwnerPlan(ownerId, plan);
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                    success: true,
+                    message: `Owner plan updated successfully to ${result.planName}`,
+                    data: result,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        this.getOwnerById = async (req, res, next) => {
+            try {
+                const ownerId = (0, http_decorator_1.getRequiredParam)(req, 'id');
+                const owner = await this.adminService.getOwnerById(ownerId);
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                    success: true,
+                    data: owner,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        this.updateOwner = async (req, res, next) => {
+            try {
+                const ownerId = (0, http_decorator_1.getRequiredParam)(req, 'id');
+                const adminId = req.user.userId;
+                const result = await this.adminService.updateOwner(ownerId, req.body, adminId);
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                    success: true,
+                    message: result.message,
+                    data: result.owner,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        this.suspendOwner = async (req, res, next) => {
+            try {
+                const ownerId = (0, http_decorator_1.getRequiredParam)(req, 'id');
+                const adminId = req.user.userId;
+                const reason = req.body?.reason;
+                const result = await this.adminService.suspendOwner(ownerId, adminId, reason);
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                    success: true,
+                    message: result.message,
+                    data: result,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        this.reactivateOwner = async (req, res, next) => {
+            try {
+                const ownerId = (0, http_decorator_1.getRequiredParam)(req, 'id');
+                const adminId = req.user.userId;
+                const result = await this.adminService.reactivateOwner(ownerId, adminId);
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                    success: true,
+                    message: result.message,
+                    data: result,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        this.deleteOwner = async (req, res, next) => {
+            try {
+                const ownerId = (0, http_decorator_1.getRequiredParam)(req, 'id');
+                const adminId = req.user.userId;
+                const result = await this.adminService.deleteOwner(ownerId, adminId);
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                    success: true,
+                    message: result.message,
+                    data: result,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
         this.createHostel = async (req, res, next) => {
             try {
                 const dto = req.body;

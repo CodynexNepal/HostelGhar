@@ -16,6 +16,8 @@ const roles_enum_1 = require("../../enum/roles.enum");
 const http_decorator_1 = require("../../decorators/http.decorator");
 const upload_middleware_1 = require("../../middleware/upload.middleware");
 const create_owner_dto_1 = require("../../dto/admin/create-owner.dto");
+const update_owner_dto_1 = require("../../dto/admin/update-owner.dto");
+const suspend_owner_dto_1 = require("../../dto/admin/suspend-owner.dto");
 const suspend_hostel_dto_1 = require("../../dto/admin/suspend-hostel.dto");
 const settings_routes_1 = require("../settings/settings.routes");
 const platform_qr_routes_1 = require("../platform-qr/platform-qr.routes");
@@ -33,7 +35,15 @@ adminRouter.use('/platform-qrs', platform_qr_routes_1.platformQrAdminRouter);
 // `?refresh=1` forces a live DB read instead of the cached snapshot.
 adminRouter.get('/dashboard', analyticsController.adminDashboard);
 adminRouter.get('/dashboard/summary', analyticsController.adminSummary);
-adminRouter.post('/owners', upload_middleware_1.uploadOwnerImage, upload_middleware_1.normalizeOwnerFields, (0, upload_middleware_1.stripFileFields)('image'), (0, validate_dto_middleware_1.validateDto)(create_owner_dto_1.CreateOwnerDto), adminController.createOwner);
+// ─── Owner Management (Admin Only: View, Edit, Suspend, Reactivate, Delete) ──
+adminRouter.get('/owners', auth_middleware_1.requireAdminForOwnerManagement, adminController.getOwners);
+adminRouter.get('/owners/:id', auth_middleware_1.requireAdminForOwnerManagement, (0, http_decorator_1.requireParam)('id'), adminController.getOwnerById);
+adminRouter.post('/owners', auth_middleware_1.requireAdminForOwnerManagement, upload_middleware_1.uploadOwnerImage, upload_middleware_1.normalizeOwnerFields, (0, upload_middleware_1.stripFileFields)('image'), (0, validate_dto_middleware_1.validateDto)(create_owner_dto_1.CreateOwnerDto), adminController.createOwner);
+adminRouter.put('/owners/:id', auth_middleware_1.requireAdminForOwnerManagement, (0, http_decorator_1.requireParam)('id'), (0, validate_dto_middleware_1.validateDto)(update_owner_dto_1.UpdateOwnerDto), adminController.updateOwner);
+adminRouter.put('/owners/:id/plan', auth_middleware_1.requireAdminForOwnerManagement, (0, http_decorator_1.requireParam)('id'), adminController.updateOwnerPlan);
+adminRouter.post('/owners/:id/suspend', auth_middleware_1.requireAdminForOwnerManagement, (0, http_decorator_1.requireParam)('id'), (0, validate_dto_middleware_1.validateDto)(suspend_owner_dto_1.SuspendOwnerDto), adminController.suspendOwner);
+adminRouter.post('/owners/:id/reactivate', auth_middleware_1.requireAdminForOwnerManagement, (0, http_decorator_1.requireParam)('id'), adminController.reactivateOwner);
+adminRouter.delete('/owners/:id', auth_middleware_1.requireAdminForOwnerManagement, (0, http_decorator_1.requireParam)('id'), adminController.deleteOwner);
 adminRouter.post('/cache/hostels/invalidate', adminController.invalidateHostelCache);
 // NOTE: `logo`/`image` arrive as FILE parts (multer → req.files → Cloudinary),
 // never as body strings. `stripFileFields` drops any stray text part with the

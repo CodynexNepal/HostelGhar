@@ -150,7 +150,54 @@ export class AdminRepository {
     });
   }
 
+  public async findHostelsByOwnerIds(ownerIds: string[]): Promise<Hostel[]> {
+    if (ownerIds.length === 0) return [];
+    return await this.hostelRepo.find({
+      where: { ownerId: In(ownerIds) },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        city: true,
+        address: true,
+        phone: true,
+        email: true,
+        ownerId: true,
+        isActive: true,
+        logoUrl: true,
+        createdAt: true,
+      },
+      order: { name: 'ASC' },
+    });
+  }
+
   public async saveHostel(hostel: Hostel): Promise<Hostel> {
     return this.hostelRepo.save(hostel);
+  }
+
+  public async findHostelsByOwnerId(ownerId: string): Promise<Hostel[]> {
+    return await this.hostelRepo.find({
+      where: { ownerId },
+      order: { name: 'ASC' },
+    });
+  }
+
+  public async setHostelsActiveStatusByOwnerId(
+    ownerId: string,
+    isActive: boolean,
+    reason?: string | null,
+  ): Promise<void> {
+    await this.hostelRepo.update(
+      { ownerId },
+      {
+        isActive,
+        suspendedAt: isActive ? null : new Date(),
+        suspendReason: isActive ? null : (reason ?? 'Owner suspended by admin'),
+      },
+    );
+  }
+
+  public async unassignHostelsByOwnerId(ownerId: string): Promise<void> {
+    await this.hostelRepo.update({ ownerId }, { ownerId: null });
   }
 }

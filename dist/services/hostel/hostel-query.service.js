@@ -50,7 +50,7 @@ class OptimizedHostelQueryService {
      * because it can be manually synced higher — same rule as the Add-Resident
      * form-options dropdowns, so the dashboard and the dropdowns never disagree).
      */
-    async getOwnerHostelDashboard(ownerId) {
+    async getOwnerHostelDashboard(ownerId, filterHostelId) {
         const hostelRows = await this.hostelRepo
             .createQueryBuilder('hostel')
             .leftJoin('hostel.residents', 'resident', 'resident.isActive = :isActive', { isActive: true })
@@ -59,6 +59,10 @@ class OptimizedHostelQueryService {
             'hostel.id AS "hostelId"',
             'hostel.name AS "hostelName"',
             'hostel.type AS "hostelType"',
+            'hostel.city AS "city"',
+            'hostel.address AS "address"',
+            'hostel.phone AS "phone"',
+            'hostel.email AS "email"',
             'COUNT(DISTINCT resident.id) AS "totalActiveResidents"',
             'COUNT(DISTINCT leave.id) AS "residentsOnLeaveToday"',
         ])
@@ -70,6 +74,10 @@ class OptimizedHostelQueryService {
             hostelId: String(row.hostelId),
             hostelName: String(row.hostelName),
             hostelType: String(row.hostelType),
+            city: row.city ?? null,
+            address: row.address ?? null,
+            phone: row.phone ?? null,
+            email: row.email ?? null,
             totalActiveResidents: Number(row.totalActiveResidents) || 0,
             residentsOnLeaveToday: Number(row.residentsOnLeaveToday) || 0,
         }));
@@ -80,8 +88,7 @@ class OptimizedHostelQueryService {
         const residentRepo = database_source_1.AppDataSource.getRepository(resident_entity_1.Resident);
         const roomRepo = database_source_1.AppDataSource.getRepository(room_entity_1.Room);
         const feeRepo = database_source_1.AppDataSource.getRepository(fee_entity_1.Fee);
-        // ── Room inventory owned by this login (includes hostelId=NULL rooms that
-        //    were created before linking a hostel — same scope as /rooms) ──────────
+        // ── Room inventory owned by this login ──────────────────────────────────
         const ownerRooms = await roomRepo.find({
             where: { ownerId },
             select: {
@@ -95,27 +102,57 @@ class OptimizedHostelQueryService {
                 status: true,
             },
         });
-        const totalRooms = ownerRooms.length;
-        const totalBeds = ownerRooms.reduce((sum, room) => sum + (Number(room.capacity) || 0), 0);
+        // Populate per-hostel bed & room metrics for all owned hostels
+        const roomsByHostel = new Map();
+        for (const room of ownerRooms) {
+            if (room.hostelId) {
+                const list = roomsByHostel.get(room.hostelId) ?? [];
+                list.push(room);
+                roomsByHostel.set(room.hostelId, list);
+            }
+        }
+        for (const h of hostels) {
+            const hRooms = roomsByHostel.get(h.hostelId) ?? [];
+            const hTotalRooms = hRooms.length;
+            const hTotalBeds = hRooms.reduce((sum, r) => sum + (Number(r.capacity) || 0), 0);
+            const hOccupied = Math.max(h.totalActiveResidents, hRooms.reduce((sum, r) => sum + (Number(r.occupied) || 0), 0));
+            const hAvailable = Math.max(hTotalBeds - hOccupied, 0);
+            const hRate = hTotalBeds > 0 ? Math.round((hOccupied / hTotalBeds) * 1000) / 10 : 0;
+            h.totalRooms = hTotalRooms;
+            h.totalBeds = hTotalBeds;
+            h.occupiedBeds = hOccupied;
+            h.availableBeds = hAvailable;
+            h.occupancyRate = hRate;
+        }
+        // Determine target hostels for the aggregated summary cards & charts
+        const isFiltered = Boolean(filterHostelId &&
+            filterHostelId !== 'all' &&
+            hostels.some((h) => h.hostelId === filterHostelId));
+        const targetHostelIds = isFiltered ? [filterHostelId] : hostels.map((h) => h.hostelId);
+        const targetRooms = isFiltered
+            ? ownerRooms.filter((r) => r.hostelId === filterHostelId)
+            : ownerRooms;
+        const totalRooms = targetRooms.length;
+        const totalBeds = targetRooms.reduce((sum, room) => sum + (Number(room.capacity) || 0), 0);
         let occupiedFromResidents = 0;
-        if (hostelIds.length > 0) {
+        if (targetHostelIds.length > 0) {
             occupiedFromResidents = await residentRepo.count({
-                where: { hostelId: (0, typeorm_1.In)(hostelIds), isActive: true },
+                where: { hostelId: (0, typeorm_1.In)(targetHostelIds), isActive: true },
             });
         }
-        const occupiedFromRooms = ownerRooms.reduce((sum, room) => sum + (Number(room.occupied) || 0), 0);
+        const occupiedFromRooms = targetRooms.reduce((sum, room) => sum + (Number(room.occupied) || 0), 0);
         const occupiedBeds = Math.max(occupiedFromResidents, occupiedFromRooms);
         const availableBeds = Math.max(totalBeds - occupiedBeds, 0);
         // Rounded to 1 decimal (e.g. 66.7) so the UI can print "66.7%" directly.
         const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 1000) / 10 : 0;
-        const availableRooms = ownerRooms.filter((room) => {
+        const availableRooms = targetRooms.filter((room) => {
             const freeBeds = (Number(room.capacity) || 0) - (Number(room.occupied) || 0);
             return String(room.status) === room_enum_1.RoomStatus.AVAILABLE && freeBeds > 0;
         }).length;
-        const occupiedRooms = ownerRooms.filter((room) => String(room.status) === room_enum_1.RoomStatus.OCCUPIED).length;
+        const occupiedRooms = targetRooms.filter((room) => String(room.status) === room_enum_1.RoomStatus.OCCUPIED).length;
         // ── Floor overview (flat = Room.floor alias; NULL → "Unassigned") ─────────
         const floorMap = new Map();
-        for (const room of ownerRooms) {
+        for (const room of targetRooms) {
             const key = room.floor == null ? 'null' : String(room.floor);
             const entry = floorMap.get(key) ?? {
                 floor: room.floor ?? null,
@@ -128,7 +165,7 @@ class OptimizedHostelQueryService {
         const floorOverview = [...floorMap.values()].sort((a, b) => (a.floor ?? -1) - (b.floor ?? -1));
         // ── Room mix by type ──────────────────────────────────────────────────────
         const mixMap = new Map();
-        for (const room of ownerRooms) {
+        for (const room of targetRooms) {
             const type = String(room.type ?? 'UNKNOWN');
             mixMap.set(type, (mixMap.get(type) ?? 0) + 1);
         }
@@ -141,14 +178,14 @@ class OptimizedHostelQueryService {
         let pendingCount = 0;
         let revenueTrend = [];
         let recentPayments = [];
-        if (hostelIds.length > 0) {
+        if (targetHostelIds.length > 0) {
             const [monthRow, pendingRow, trendRows, recentFees] = await Promise.all([
                 // "Monthly Revenue — collected this month": fee rows billed for the
                 // CURRENT AD month/year (billing is stored on the AD calendar).
                 feeRepo
                     .createQueryBuilder('fee')
                     .select('COALESCE(SUM(fee.paidAmount), 0)', 'collected')
-                    .where('fee.hostelId IN (:...hostelIds)', { hostelIds })
+                    .where('fee.hostelId IN (:...targetHostelIds)', { targetHostelIds })
                     .andWhere('fee.billingMonth = :billingMonth', { billingMonth })
                     .andWhere('fee.billingYear = :billingYear', { billingYear })
                     .getRawOne(),
@@ -159,7 +196,7 @@ class OptimizedHostelQueryService {
                     .createQueryBuilder('fee')
                     .select('COALESCE(SUM(fee.totalPayable - fee.paidAmount), 0)', 'outstanding')
                     .addSelect('COUNT(fee.id)', 'cnt')
-                    .where('fee.hostelId IN (:...hostelIds)', { hostelIds })
+                    .where('fee.hostelId IN (:...targetHostelIds)', { targetHostelIds })
                     .andWhere('fee.status != :paid', { paid: fee_enum_1.FeeStatus.PAID })
                     .getRawOne(),
                 // Last 6 billing periods (AD month/year), oldest → newest for charting.
@@ -169,7 +206,7 @@ class OptimizedHostelQueryService {
                     .addSelect('fee.billingMonth', 'billingMonth')
                     .addSelect('COALESCE(SUM(fee.paidAmount), 0)', 'collected')
                     .addSelect('COALESCE(SUM(fee.totalPayable - fee.paidAmount), 0)', 'outstanding')
-                    .where('fee.hostelId IN (:...hostelIds)', { hostelIds })
+                    .where('fee.hostelId IN (:...targetHostelIds)', { targetHostelIds })
                     .groupBy('fee.billingYear')
                     .addGroupBy('fee.billingMonth')
                     .orderBy('fee.billingYear', 'DESC')
@@ -178,7 +215,7 @@ class OptimizedHostelQueryService {
                     .getRawMany(),
                 // Latest movements so the "Recent payments" list is never empty.
                 feeRepo.find({
-                    where: { hostelId: (0, typeorm_1.In)(hostelIds) },
+                    where: { hostelId: (0, typeorm_1.In)(targetHostelIds) },
                     relations: { resident: { user: true }, hostel: true },
                     order: { updatedAt: 'DESC' },
                     take: 5,
@@ -214,9 +251,16 @@ class OptimizedHostelQueryService {
                 updatedAt: fee.updatedAt,
             }));
         }
+        const totalResidents = isFiltered
+            ? (hostels.find((h) => h.hostelId === filterHostelId)?.totalActiveResidents ??
+                occupiedFromResidents)
+            : hostels.reduce((sum, h) => sum + h.totalActiveResidents, 0);
+        const residentsOnLeaveToday = isFiltered
+            ? (hostels.find((h) => h.hostelId === filterHostelId)?.residentsOnLeaveToday ?? 0)
+            : hostels.reduce((sum, h) => sum + h.residentsOnLeaveToday, 0);
         const summary = {
-            totalResidents: hostels.reduce((sum, h) => sum + h.totalActiveResidents, 0),
-            residentsOnLeaveToday: hostels.reduce((sum, h) => sum + h.residentsOnLeaveToday, 0),
+            totalResidents,
+            residentsOnLeaveToday,
             totalBeds,
             occupiedBeds,
             availableBeds,

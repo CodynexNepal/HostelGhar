@@ -9,6 +9,7 @@ exports.ownerController = exports.OwnerController = void 0;
 const statusCode_interface_1 = require("../../constant/statusCode.interface");
 const roles_enum_1 = require("../../enum/roles.enum");
 const fee_enum_1 = require("../../enum/fee.enum");
+const subscription_enum_1 = require("../../enum/subscription.enum");
 const password_hasher_util_1 = require("../../utils/password-hasher.util");
 const cache_util_1 = require("../../utils/cache.util");
 const pagination_util_1 = require("../../utils/pagination.util");
@@ -46,10 +47,14 @@ class OwnerController {
         this.getMyHostelsDashboard = async (req, res, next) => {
             try {
                 const ownerId = req.user.userId;
-                const cacheKey = cache_util_1.cacheService.generateKey('owner:dashboard', ownerId);
+                const hostelId = req.query.hostelId?.trim() || undefined;
+                const cacheKey = cache_util_1.cacheService.generateKey('owner:dashboard', {
+                    ownerId,
+                    hostelId: hostelId || 'all',
+                });
                 // 3-Level Caching: L1 Memory LRU -> L2 Redis -> L3 Database Loader
                 const { data, isCached, cacheLevel } = await cache_util_1.cacheService.wrap(cacheKey, async () => {
-                    return await hostel_query_service_1.optimizedHostelQueryService.getOwnerHostelDashboard(ownerId);
+                    return await hostel_query_service_1.optimizedHostelQueryService.getOwnerHostelDashboard(ownerId, hostelId);
                 }, { l1TtlSeconds: 30, l2TtlSeconds: 60 });
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({
                     success: true,
@@ -63,6 +68,45 @@ class OwnerController {
                     roomMix: data.roomMix,
                     revenueTrend: data.revenueTrend,
                     recentPayments: data.recentPayments,
+                });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        /**
+         * GET /owner/my-hostels — Returns the logged-in hostel owner profile, active plan,
+         * and which hostels belong to them (with full room, bed, and occupancy breakdown).
+         */
+        this.getMyHostels = async (req, res, next) => {
+            try {
+                const ownerId = req.user.userId;
+                const owner = await this.ownerRepository.findUserById(ownerId);
+                if (!owner) {
+                    throw (0, createHttpError_1.createHttpError)(statusCode_interface_1.STATUS_CODE.NOT_FOUND, 'Owner account not found');
+                }
+                const subscriptionInfo = await this.subscriptionService.getCurrentSubscription({ ownerId });
+                const dashboardData = await hostel_query_service_1.optimizedHostelQueryService.getOwnerHostelDashboard(ownerId);
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({
+                    success: true,
+                    owner: {
+                        id: owner.id,
+                        name: `${owner.firstName} ${owner.lastName}`.trim(),
+                        firstName: owner.firstName,
+                        lastName: owner.lastName,
+                        email: owner.email,
+                        phone: owner.phone,
+                        avatarUrl: owner.avatarUrl,
+                        role: owner.role,
+                        plan: subscriptionInfo.plan.id,
+                        planName: subscriptionInfo.plan.name,
+                        isEnterprise: subscriptionInfo.plan.id === subscription_enum_1.SubscriptionPlan.ENTERPRISE,
+                        subscriptionStatus: subscriptionInfo.subscription?.status ?? 'FREE',
+                        limits: subscriptionInfo.limits,
+                    },
+                    totalHostels: dashboardData.hostels.length,
+                    hostels: dashboardData.hostels,
+                    summary: dashboardData.summary,
                 });
             }
             catch (error) {

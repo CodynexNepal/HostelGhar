@@ -35,6 +35,9 @@ class OwnerRepository {
     async findUserByEmail(email) {
         return await this.userRepo.findOne({ where: { email } });
     }
+    async findUserById(id) {
+        return await this.userRepo.findOne({ where: { id } });
+    }
     async createUser(userData) {
         const user = this.userRepo.create(userData);
         return await this.userRepo.save(user);
