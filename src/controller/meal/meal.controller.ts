@@ -145,7 +145,8 @@ export class MealController {
         : undefined;
 
       const dayOfWeek = (req.query.dayOfWeek || req.query.day) as string | undefined;
-      const result = await this.mealService.getDailySchedule(hostelId, user, dayOfWeek);
+      const allDays = req.query.allDays === 'true' || req.query.all === 'true';
+      const result = await this.mealService.getDailySchedule(hostelId, user, dayOfWeek, allDays);
       if (result.error) {
         res.status(result.error.status).json({ success: false, message: result.error.message });
         return;

@@ -124,12 +124,28 @@ export class MealRepository {
     const normDay = (dayOfWeek || 'ALL').toUpperCase().trim();
     return AppDataSource.transaction(async (manager) => {
       const repo = manager.getRepository(HostelDailyMeal);
-      await repo.delete({ hostelId, dayOfWeek: normDay });
+
+      const targetDays = new Set<string>();
+      if (normDay !== 'ANY' && normDay !== 'ALL_RAW') {
+        targetDays.add(normDay);
+      }
+      for (const m of meals) {
+        if (m.dayOfWeek) {
+          targetDays.add(m.dayOfWeek.toUpperCase().trim());
+        }
+      }
+      if (targetDays.size === 0) {
+        targetDays.add('ALL');
+      }
+
+      for (const d of Array.from(targetDays)) {
+        await repo.delete({ hostelId, dayOfWeek: d });
+      }
 
       const entities = meals.map((m, idx) =>
         repo.create({
           hostelId,
-          dayOfWeek: normDay,
+          dayOfWeek: (m.dayOfWeek || normDay).toUpperCase().trim(),
           mealName: m.mealName.trim(),
           mealNameEn: m.mealNameEn?.trim() || null,
           time: m.time.trim(),
@@ -141,7 +157,7 @@ export class MealRepository {
 
       await repo.save(entities);
       return repo.find({
-        where: { hostelId, dayOfWeek: normDay },
+        where: { hostelId },
         order: { orderIndex: 'ASC', createdAt: 'ASC' },
       });
     });
