@@ -16,6 +16,11 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL environment variable is required in configuration.');
 }
 
+const isTsNode =
+  Symbol.for('ts-node.register.instance') in process ||
+  Boolean(process.env.TS_NODE_DEV) ||
+  process.argv.some((arg) => arg.includes('ts-node'));
+
 /**
  * Production-ready PostgreSQL TypeORM configuration options.
  */
@@ -30,11 +35,15 @@ export const psqlDbConfig: DataSourceOptions = {
 
   // ─── Entities, Migrations & Subscribers ────────────────────────────────────
   // Supports both direct entity imports and glob patterns for dynamic loading
-  entities: [isProduction ? 'dist/entities/**/*.entity.js' : 'src/entities/**/*.entity.ts'],
-  migrations: [
-    isProduction ? 'dist/database/migrations/**/*.js' : 'src/database/migrations/**/*.ts',
+  entities: [
+    isTsNode || !isProduction ? 'src/entities/**/*.entity.ts' : 'dist/entities/**/*.entity.js',
   ],
-  subscribers: [isProduction ? 'dist/subscribers/**/*.js' : 'src/subscribers/**/*.ts'],
+  migrations: [
+    isTsNode || !isProduction
+      ? 'src/database/migrations/**/*.ts'
+      : 'dist/database/migrations/**/*.js',
+  ],
+  subscribers: [isTsNode || !isProduction ? 'src/subscribers/**/*.ts' : 'dist/subscribers/**/*.js'],
 
   // Run pending migrations automatically upon connection initialization in production
   migrationsRun: isProduction,

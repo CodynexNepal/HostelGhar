@@ -20,6 +20,8 @@ import { subscriptionRouter } from './subscription/subscription.routes';
 import { staffRouter } from './staff/staff.routes';
 import { notificationRouter } from './notification/notification.routes';
 import { searchRouter } from './search/search.routes';
+import { contactRouter } from './contact/contact.routes';
+import { newsletterRouter } from './newsletter/newsletter.routes';
 
 const routes = Router();
 
@@ -44,5 +46,7 @@ routes.use('/subscriptions', subscriptionRouter);
 routes.use('/staff', staffRouter);
 routes.use('/notifications', notificationRouter);
 routes.use('/search', searchRouter);
+routes.use('/contact', contactRouter);
+routes.use('/newsletter', newsletterRouter);
 
 export default routes;
