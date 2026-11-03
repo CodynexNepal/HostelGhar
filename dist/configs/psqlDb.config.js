@@ -29,7 +29,9 @@ exports.psqlDbConfig = {
     logging: !isProduction ? ['query', 'error', 'warn', 'schema'] : ['error', 'warn'],
     // ─── Entities, Migrations & Subscribers ────────────────────────────────────
     // Supports both direct entity imports and glob patterns for dynamic loading
-    entities: [isTsNode || !isProduction ? 'src/entities/**/*.entity.ts' : 'dist/entities/**/*.entity.js'],
+    entities: [
+        isTsNode || !isProduction ? 'src/entities/**/*.entity.ts' : 'dist/entities/**/*.entity.js',
+    ],
     migrations: [
         isTsNode || !isProduction
             ? 'src/database/migrations/**/*.ts'

@@ -16,7 +16,6 @@ const parseOrigins = (value) => {
 const defaultOrigins = [
     'https://dashboard.hostelghar.com',
     'https://hostelghar.com',
-    'https://www.hostelghar.com',
 ];
 const parsedOrigins = parseOrigins(envConfig_1.dotEnvConfig.CORS_ORIGIN);
 const allowedOrigins = Array.from(new Set([...defaultOrigins, ...parsedOrigins]));
@@ -88,6 +87,8 @@ exports.corsConfig = {
         // — which is exactly "only OPTIONS, no GET" in your logs.
         'X-Hostel-Id',
         'X-Request-Id',
+        'X-Client-Id',
+        'x-client-id',
         'Cache-Control',
         'Pragma',
         'Expires',

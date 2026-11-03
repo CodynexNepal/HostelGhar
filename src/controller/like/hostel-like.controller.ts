@@ -10,6 +10,10 @@ export class HostelLikeController {
     if (req.user?.userId) {
       return `usr_${req.user.userId}`;
     }
+    const paramClientId = (req.body?.clientId || req.query?.clientId) as string;
+    if (paramClientId && typeof paramClientId === 'string' && paramClientId.trim().length > 0) {
+      return `cli_${paramClientId.trim()}`;
+    }
     const headerClientId = req.headers['x-client-id'] as string;
     if (headerClientId && headerClientId.trim().length > 0) {
       return `cli_${headerClientId.trim()}`;
