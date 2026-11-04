@@ -191,9 +191,9 @@ export class OptimizedHostelQueryService {
     const roomRepo = AppDataSource.getRepository(Room);
     const feeRepo = AppDataSource.getRepository(Fee);
 
-    // ── Room inventory owned by this login ──────────────────────────────────
+    // ── Room inventory owned by this login or linked to owned hostels ───────
     const ownerRooms = await roomRepo.find({
-      where: { ownerId },
+      where: hostelIds.length > 0 ? [{ ownerId }, { hostelId: In(hostelIds) }] : { ownerId },
       select: {
         id: true,
         hostelId: true,
@@ -411,11 +411,11 @@ export class OptimizedHostelQueryService {
     };
 
     let attendanceOverview: OwnerDashboardAttendanceOverview | undefined;
-    if (hostelIds.length > 0) {
+    if (targetHostelIds.length > 0) {
       try {
         const today = todayAttendanceDate();
         const todayAttendances = await AppDataSource.getRepository(Attendance).find({
-          where: { hostelId: In(hostelIds), date: today },
+          where: { hostelId: In(targetHostelIds), date: today },
           select: { id: true, checkInAt: true, checkOutAt: true, status: true },
         });
 

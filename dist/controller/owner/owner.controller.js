@@ -62,12 +62,14 @@ class OwnerController {
                     cacheLevel,
                     // LEGACY: `data` stays the flat per-hostel array that older clients map over.
                     data: data.hostels,
+                    hostels: data.hostels,
                     // ADDITIVE: the dashboard widgets read these sibling blocks.
                     summary: data.summary,
                     floorOverview: data.floorOverview,
                     roomMix: data.roomMix,
                     revenueTrend: data.revenueTrend,
                     recentPayments: data.recentPayments,
+                    attendanceOverview: data.attendanceOverview,
                 });
             }
             catch (error) {

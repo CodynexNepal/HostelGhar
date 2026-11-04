@@ -13,10 +13,7 @@ const parseOrigins = (value) => {
     }
     return value.split(',').map(normalizeOrigin).filter(Boolean);
 };
-const defaultOrigins = [
-    'https://dashboard.hostelghar.com',
-    'https://hostelghar.com',
-];
+const defaultOrigins = ['https://dashboard.hostelghar.com', 'https://hostelghar.com'];
 const parsedOrigins = parseOrigins(envConfig_1.dotEnvConfig.CORS_ORIGIN);
 const allowedOrigins = Array.from(new Set([...defaultOrigins, ...parsedOrigins]));
 const isDev = envConfig_1.dotEnvConfig.NODE_ENV === 'development';
