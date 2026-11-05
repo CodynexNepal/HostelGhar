@@ -34,6 +34,18 @@ hostelRouter.get(
   requireRoles(IROLES.ADMIN),
   listingController.list,
 );
+hostelRouter.patch(
+  '/listing-requests/:id/status',
+  authenticate,
+  requireRoles(IROLES.ADMIN),
+  listingController.updateStatus,
+);
+hostelRouter.delete(
+  '/listing-requests/:id',
+  authenticate,
+  requireRoles(IROLES.ADMIN),
+  listingController.delete,
+);
 hostelRouter.get('/user/likes', optionalAuthenticate, likeController.getUserLikedHostels);
 
 // Nested facility routes — hostel id comes from :hostelId PARAM.

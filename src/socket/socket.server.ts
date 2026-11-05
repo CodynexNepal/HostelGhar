@@ -127,7 +127,12 @@ class SocketService {
 
         // Role room: 'role:<role>' (e.g. 'role:ADMIN', 'role:OWNER', 'role:RESIDENT')
         if (socket.user.role) {
-          socket.join(`role:${socket.user.role.toUpperCase()}`);
+          const r = socket.user.role.toUpperCase();
+          socket.join(`role:${r}`);
+          if (r === 'HOSTEL_OWNER') socket.join('role:OWNER');
+          if (r === 'OWNER') socket.join('role:HOSTEL_OWNER');
+          if (r === 'SUPER_ADMIN') socket.join('role:ADMIN');
+          if (r === 'ADMIN') socket.join('role:SUPER_ADMIN');
         }
 
         // Hostel room: 'hostel:<hostelId>'
@@ -140,6 +145,11 @@ class SocketService {
       socket.on('join_room', (room: string) => {
         socket.join(room);
         console.log(`Socket ${socket.id} joined room: ${room}`);
+      });
+
+      socket.on('join', (room: string) => {
+        socket.join(room);
+        console.log(`Socket ${socket.id} joined room (via join): ${room}`);
       });
 
       socket.on('leave_room', (room: string) => {

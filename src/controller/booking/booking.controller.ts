@@ -9,6 +9,8 @@ import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { BookingService } from '../../services/booking/booking.service';
 import { getRequiredParam } from '../../decorators/http.decorator';
 import { normalizePagination } from '../../utils/pagination.util';
+import { socketServer } from '../../socket/socket.server';
+import { SocketEvent } from '../../constant/queue.constants';
 
 export class BookingController {
   constructor(private readonly bookingService: BookingService) {}
@@ -33,6 +35,17 @@ export class BookingController {
       if (result.error) {
         res.status(result.error.status).json({ success: false, message: result.error.message });
         return;
+      }
+
+      // Live broadcast to owner, admin, and resident
+      try {
+        socketServer.toHostel(dto.hostelId, SocketEvent.BOOKING_CONFIRMED, result.data);
+        socketServer.toRole('ADMIN', SocketEvent.BOOKING_CONFIRMED, result.data);
+        socketServer.toRole('SUPER_ADMIN', SocketEvent.BOOKING_CONFIRMED, result.data);
+        socketServer.toRole('OWNER', SocketEvent.BOOKING_CONFIRMED, result.data);
+        socketServer.toUser(userId, SocketEvent.BOOKING_CONFIRMED, result.data);
+      } catch {
+        // non-blocking socket emit
       }
 
       res.status(STATUS_CODE.CREATED).json({
@@ -103,6 +116,11 @@ export class BookingController {
       if (result.error) {
         res.status(result.error.status).json({ success: false, message: result.error.message });
         return;
+      }
+      try {
+        socketServer.broadcast(SocketEvent.BOOKING_CONFIRMED, result.data);
+      } catch {
+        // non-blocking
       }
       res.status(STATUS_CODE.OK).json({ success: true, data: result.data });
     } catch (error) {

@@ -3,6 +3,8 @@ import { LeaveService } from '../../services/leave/leave.service';
 import { STATUS_CODE } from '../../constant/statusCode.interface';
 import { getRequiredParam } from '../../decorators/http.decorator';
 import { normalizePagination } from '../../utils/pagination.util';
+import { socketServer } from '../../socket/socket.server';
+import { SocketEvent } from '../../constant/queue.constants';
 
 export class LeaveController {
   constructor(private readonly leaveService: LeaveService) {}
@@ -42,6 +44,11 @@ export class LeaveController {
       if (result.error) {
         res.status(result.error.status).json({ success: false, message: result.error.message });
         return;
+      }
+      try {
+        socketServer.broadcast(SocketEvent.LEAVE_STATUS_CHANGED, result.data);
+      } catch {
+        // non-blocking
       }
       res.status(STATUS_CODE.OK).json({ success: true, data: result.data });
     } catch (error) {

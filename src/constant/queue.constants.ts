@@ -51,4 +51,7 @@ export enum SocketEvent {
   LIVE_ANNOUNCEMENT = 'announcement:broadcast',
   RESIDENT_IMPORT_PROGRESS = 'resident:import_progress',
   RESIDENT_IMPORT_COMPLETED = 'resident:import_completed',
+  LISTING_REQUEST_CREATED = 'listing_request:created',
+  CONTACT_SUBMITTED = 'contact:submitted',
+  NEWSLETTER_SUBSCRIBED = 'newsletter:subscribed',
 }

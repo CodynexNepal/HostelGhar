@@ -11,6 +11,8 @@ import { getRequiredParam } from '../../decorators/http.decorator';
 import { normalizePagination } from '../../utils/pagination.util';
 import { RecordPaymentDto } from '../../dto/payment/record-payment.dto';
 import { PaymentMethod, PaymentStatus } from '../../enum/payment.enum';
+import { socketServer } from '../../socket/socket.server';
+import { SocketEvent } from '../../constant/queue.constants';
 
 export class PaymentController {
   constructor(private readonly service = paymentService) {}
@@ -29,6 +31,15 @@ export class PaymentController {
         feeId,
         body,
       );
+
+      try {
+        socketServer.toRole('ADMIN', SocketEvent.PAYMENT_PROCESSED, result);
+        socketServer.toRole('SUPER_ADMIN', SocketEvent.PAYMENT_PROCESSED, result);
+        socketServer.toRole('OWNER', SocketEvent.PAYMENT_PROCESSED, result);
+        socketServer.broadcast(SocketEvent.PAYMENT_PROCESSED, result);
+      } catch {
+        // non-blocking
+      }
 
       res.status(STATUS_CODE.OK).json({
         success: true,
@@ -56,6 +67,15 @@ export class PaymentController {
         feeId,
         body,
       );
+
+      try {
+        socketServer.toRole('ADMIN', SocketEvent.PAYMENT_PROCESSED, result);
+        socketServer.toRole('SUPER_ADMIN', SocketEvent.PAYMENT_PROCESSED, result);
+        socketServer.toRole('OWNER', SocketEvent.PAYMENT_PROCESSED, result);
+        socketServer.broadcast(SocketEvent.PAYMENT_PROCESSED, result);
+      } catch {
+        // non-blocking
+      }
 
       res.status(STATUS_CODE.OK).json({
         success: true,

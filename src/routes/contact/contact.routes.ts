@@ -20,3 +20,14 @@ contactRouter.get(
   apiReadLimiter,
   contactController.list,
 );
+
+// Admin-only route to update message status
+contactRouter.patch(
+  '/:id/status',
+  authenticate,
+  requireRoles(IROLES.ADMIN),
+  contactController.updateStatus,
+);
+
+// Admin-only route to delete message
+contactRouter.delete('/:id', authenticate, requireRoles(IROLES.ADMIN), contactController.delete);

@@ -10,6 +10,8 @@ const payment_service_1 = require("../../services/payment/payment.service");
 const statusCode_interface_1 = require("../../constant/statusCode.interface");
 const http_decorator_1 = require("../../decorators/http.decorator");
 const pagination_util_1 = require("../../utils/pagination.util");
+const socket_server_1 = require("../../socket/socket.server");
+const queue_constants_1 = require("../../constant/queue.constants");
 class PaymentController {
     constructor(service = payment_service_1.paymentService) {
         this.service = service;
@@ -22,6 +24,15 @@ class PaymentController {
                 const feeId = (0, http_decorator_1.getRequiredParam)(req, 'id');
                 const body = req.body;
                 const result = await this.service.recordPayment(req.user.userId, req.user.role, feeId, body);
+                try {
+                    socket_server_1.socketServer.toRole('ADMIN', queue_constants_1.SocketEvent.PAYMENT_PROCESSED, result);
+                    socket_server_1.socketServer.toRole('SUPER_ADMIN', queue_constants_1.SocketEvent.PAYMENT_PROCESSED, result);
+                    socket_server_1.socketServer.toRole('OWNER', queue_constants_1.SocketEvent.PAYMENT_PROCESSED, result);
+                    socket_server_1.socketServer.broadcast(queue_constants_1.SocketEvent.PAYMENT_PROCESSED, result);
+                }
+                catch {
+                    // non-blocking
+                }
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({
                     success: true,
                     message: result.isDuplicate
@@ -43,6 +54,15 @@ class PaymentController {
                 const feeId = (0, http_decorator_1.getRequiredParam)(req, 'id');
                 const body = req.body;
                 const result = await this.service.recordPayment(req.user.userId, req.user.role, feeId, body);
+                try {
+                    socket_server_1.socketServer.toRole('ADMIN', queue_constants_1.SocketEvent.PAYMENT_PROCESSED, result);
+                    socket_server_1.socketServer.toRole('SUPER_ADMIN', queue_constants_1.SocketEvent.PAYMENT_PROCESSED, result);
+                    socket_server_1.socketServer.toRole('OWNER', queue_constants_1.SocketEvent.PAYMENT_PROCESSED, result);
+                    socket_server_1.socketServer.broadcast(queue_constants_1.SocketEvent.PAYMENT_PROCESSED, result);
+                }
+                catch {
+                    // non-blocking
+                }
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({
                     success: true,
                     message: result.isDuplicate

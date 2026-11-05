@@ -14,3 +14,7 @@ const contactController = new contact_controller_1.ContactController(contactServ
 exports.contactRouter.post('/', contactController.submit);
 // Admin-only route to list messages
 exports.contactRouter.get('/', auth_middleware_1.authenticate, (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.ADMIN), rateLimiter_config_1.apiReadLimiter, contactController.list);
+// Admin-only route to update message status
+exports.contactRouter.patch('/:id/status', auth_middleware_1.authenticate, (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.ADMIN), contactController.updateStatus);
+// Admin-only route to delete message
+exports.contactRouter.delete('/:id', auth_middleware_1.authenticate, (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.ADMIN), contactController.delete);

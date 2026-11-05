@@ -44,5 +44,18 @@ class HostelListingService {
         });
         return { requests, total, page, limit };
     }
+    async updateStatus(id, status, adminNotes) {
+        const item = await this.repo.findOne({ where: { id } });
+        if (!item)
+            return null;
+        item.status = status;
+        if (adminNotes !== undefined)
+            item.adminNotes = adminNotes;
+        return this.repo.save(item);
+    }
+    async deleteRequest(id) {
+        const res = await this.repo.delete({ id });
+        return (res.affected ?? 0) > 0;
+    }
 }
 exports.HostelListingService = HostelListingService;

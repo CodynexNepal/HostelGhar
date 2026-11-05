@@ -60,4 +60,19 @@ export class NewsletterService {
     });
     return { subscribers, total, page, limit };
   }
+
+  public async deleteSubscription(id: string): Promise<boolean> {
+    const res = await this.repo.delete({ id });
+    return (res.affected ?? 0) > 0;
+  }
+
+  public async updateStatus(
+    id: string,
+    status: NewsletterStatus,
+  ): Promise<NewsletterSubscription | null> {
+    const item = await this.repo.findOne({ where: { id } });
+    if (!item) return null;
+    item.status = status;
+    return this.repo.save(item);
+  }
 }

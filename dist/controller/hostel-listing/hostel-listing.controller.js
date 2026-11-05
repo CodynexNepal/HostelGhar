@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HostelListingController = void 0;
 const statusCode_interface_1 = require("../../constant/statusCode.interface");
+const socket_server_1 = require("../../socket/socket.server");
+const queue_constants_1 = require("../../constant/queue.constants");
 class HostelListingController {
     constructor(listingService) {
         this.listingService = listingService;
@@ -55,6 +57,13 @@ class HostelListingController {
                     email,
                     ipAddress,
                 });
+                try {
+                    socket_server_1.socketServer.toRole('ADMIN', queue_constants_1.SocketEvent.LISTING_REQUEST_CREATED, submission);
+                    socket_server_1.socketServer.toRole('SUPER_ADMIN', queue_constants_1.SocketEvent.LISTING_REQUEST_CREATED, submission);
+                }
+                catch {
+                    // non-blocking
+                }
                 res.status(statusCode_interface_1.STATUS_CODE.CREATED).json({
                     success: true,
                     message: 'Your hostel listing request has been submitted successfully! Our team will review and contact you shortly.',
@@ -75,6 +84,50 @@ class HostelListingController {
                 const limit = parseInt(req.query.limit, 10) || 20;
                 const result = await this.listingService.listRequests(page, limit);
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({ success: true, ...result });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        this.updateStatus = async (req, res, next) => {
+            try {
+                const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+                if (!id) {
+                    res.status(statusCode_interface_1.STATUS_CODE.BAD_REQUEST).json({ success: false, message: 'ID is required.' });
+                    return;
+                }
+                const { status, adminNotes } = req.body;
+                const updated = await this.listingService.updateStatus(id, status, adminNotes);
+                if (!updated) {
+                    res.status(statusCode_interface_1.STATUS_CODE.NOT_FOUND).json({ success: false, message: 'Listing request not found.' });
+                    return;
+                }
+                try {
+                    socket_server_1.socketServer.toRole('ADMIN', 'listing_request:updated', updated);
+                    socket_server_1.socketServer.toRole('SUPER_ADMIN', 'listing_request:updated', updated);
+                }
+                catch {
+                    // non-blocking
+                }
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({ success: true, data: updated, message: 'Status updated successfully.' });
+            }
+            catch (error) {
+                next(error);
+            }
+        };
+        this.delete = async (req, res, next) => {
+            try {
+                const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+                if (!id) {
+                    res.status(statusCode_interface_1.STATUS_CODE.BAD_REQUEST).json({ success: false, message: 'ID is required.' });
+                    return;
+                }
+                const deleted = await this.listingService.deleteRequest(id);
+                if (!deleted) {
+                    res.status(statusCode_interface_1.STATUS_CODE.NOT_FOUND).json({ success: false, message: 'Listing request not found.' });
+                    return;
+                }
+                res.status(statusCode_interface_1.STATUS_CODE.OK).json({ success: true, message: 'Listing request deleted successfully.' });
             }
             catch (error) {
                 next(error);

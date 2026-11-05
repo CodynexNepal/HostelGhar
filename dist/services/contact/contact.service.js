@@ -30,5 +30,16 @@ class ContactService {
         });
         return { messages, total, page, limit };
     }
+    async updateStatus(id, status) {
+        const item = await this.repo.findOne({ where: { id } });
+        if (!item)
+            return null;
+        item.status = status;
+        return this.repo.save(item);
+    }
+    async deleteMessage(id) {
+        const res = await this.repo.delete({ id });
+        return (res.affected ?? 0) > 0;
+    }
 }
 exports.ContactService = ContactService;

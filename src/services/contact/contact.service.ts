@@ -43,4 +43,16 @@ export class ContactService {
     });
     return { messages, total, page, limit };
   }
+
+  public async updateStatus(id: string, status: ContactStatus): Promise<ContactSubmission | null> {
+    const item = await this.repo.findOne({ where: { id } });
+    if (!item) return null;
+    item.status = status;
+    return this.repo.save(item);
+  }
+
+  public async deleteMessage(id: string): Promise<boolean> {
+    const res = await this.repo.delete({ id });
+    return (res.affected ?? 0) > 0;
+  }
 }

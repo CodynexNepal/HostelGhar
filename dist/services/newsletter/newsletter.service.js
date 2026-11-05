@@ -46,5 +46,16 @@ class NewsletterService {
         });
         return { subscribers, total, page, limit };
     }
+    async deleteSubscription(id) {
+        const res = await this.repo.delete({ id });
+        return (res.affected ?? 0) > 0;
+    }
+    async updateStatus(id, status) {
+        const item = await this.repo.findOne({ where: { id } });
+        if (!item)
+            return null;
+        item.status = status;
+        return this.repo.save(item);
+    }
 }
 exports.NewsletterService = NewsletterService;

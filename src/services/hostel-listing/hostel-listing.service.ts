@@ -70,4 +70,21 @@ export class HostelListingService {
     });
     return { requests, total, page, limit };
   }
+
+  public async updateStatus(
+    id: string,
+    status: ListingRequestStatus,
+    adminNotes?: string,
+  ): Promise<HostelListingRequest | null> {
+    const item = await this.repo.findOne({ where: { id } });
+    if (!item) return null;
+    item.status = status;
+    if (adminNotes !== undefined) item.adminNotes = adminNotes;
+    return this.repo.save(item);
+  }
+
+  public async deleteRequest(id: string): Promise<boolean> {
+    const res = await this.repo.delete({ id });
+    return (res.affected ?? 0) > 0;
+  }
 }

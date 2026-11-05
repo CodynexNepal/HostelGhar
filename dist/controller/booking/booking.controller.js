@@ -8,6 +8,8 @@ exports.BookingController = void 0;
 const statusCode_interface_1 = require("../../constant/statusCode.interface");
 const http_decorator_1 = require("../../decorators/http.decorator");
 const pagination_util_1 = require("../../utils/pagination.util");
+const socket_server_1 = require("../../socket/socket.server");
+const queue_constants_1 = require("../../constant/queue.constants");
 class BookingController {
     constructor(bookingService) {
         this.bookingService = bookingService;
@@ -22,6 +24,17 @@ class BookingController {
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
                     return;
+                }
+                // Live broadcast to owner, admin, and resident
+                try {
+                    socket_server_1.socketServer.toHostel(dto.hostelId, queue_constants_1.SocketEvent.BOOKING_CONFIRMED, result.data);
+                    socket_server_1.socketServer.toRole('ADMIN', queue_constants_1.SocketEvent.BOOKING_CONFIRMED, result.data);
+                    socket_server_1.socketServer.toRole('SUPER_ADMIN', queue_constants_1.SocketEvent.BOOKING_CONFIRMED, result.data);
+                    socket_server_1.socketServer.toRole('OWNER', queue_constants_1.SocketEvent.BOOKING_CONFIRMED, result.data);
+                    socket_server_1.socketServer.toUser(userId, queue_constants_1.SocketEvent.BOOKING_CONFIRMED, result.data);
+                }
+                catch {
+                    // non-blocking socket emit
                 }
                 res.status(statusCode_interface_1.STATUS_CODE.CREATED).json({
                     success: true,
@@ -78,6 +91,12 @@ class BookingController {
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
                     return;
+                }
+                try {
+                    socket_server_1.socketServer.broadcast(queue_constants_1.SocketEvent.BOOKING_CONFIRMED, result.data);
+                }
+                catch {
+                    // non-blocking
                 }
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({ success: true, data: result.data });
             }

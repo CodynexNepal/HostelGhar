@@ -4,6 +4,8 @@ exports.LeaveController = void 0;
 const statusCode_interface_1 = require("../../constant/statusCode.interface");
 const http_decorator_1 = require("../../decorators/http.decorator");
 const pagination_util_1 = require("../../utils/pagination.util");
+const socket_server_1 = require("../../socket/socket.server");
+const queue_constants_1 = require("../../constant/queue.constants");
 class LeaveController {
     constructor(leaveService) {
         this.leaveService = leaveService;
@@ -28,6 +30,12 @@ class LeaveController {
                 if (result.error) {
                     res.status(result.error.status).json({ success: false, message: result.error.message });
                     return;
+                }
+                try {
+                    socket_server_1.socketServer.broadcast(queue_constants_1.SocketEvent.LEAVE_STATUS_CHANGED, result.data);
+                }
+                catch {
+                    // non-blocking
                 }
                 res.status(statusCode_interface_1.STATUS_CODE.OK).json({ success: true, data: result.data });
             }

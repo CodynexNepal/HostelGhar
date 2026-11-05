@@ -49,4 +49,7 @@ var SocketEvent;
     SocketEvent["LIVE_ANNOUNCEMENT"] = "announcement:broadcast";
     SocketEvent["RESIDENT_IMPORT_PROGRESS"] = "resident:import_progress";
     SocketEvent["RESIDENT_IMPORT_COMPLETED"] = "resident:import_completed";
+    SocketEvent["LISTING_REQUEST_CREATED"] = "listing_request:created";
+    SocketEvent["CONTACT_SUBMITTED"] = "contact:submitted";
+    SocketEvent["NEWSLETTER_SUBSCRIBED"] = "newsletter:subscribed";
 })(SocketEvent || (exports.SocketEvent = SocketEvent = {}));

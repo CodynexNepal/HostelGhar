@@ -28,6 +28,8 @@ hostelRouter.get('/', rateLimiter_config_1.apiReadLimiter, hostelController.list
 // Specific action routes mounted before /:id parameterized routes
 hostelRouter.post('/listing-request', listingController.submit);
 hostelRouter.get('/listing-requests', auth_middleware_1.authenticate, (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.ADMIN), listingController.list);
+hostelRouter.patch('/listing-requests/:id/status', auth_middleware_1.authenticate, (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.ADMIN), listingController.updateStatus);
+hostelRouter.delete('/listing-requests/:id', auth_middleware_1.authenticate, (0, auth_middleware_1.requireRoles)(roles_enum_1.IROLES.ADMIN), listingController.delete);
 hostelRouter.get('/user/likes', auth_middleware_1.optionalAuthenticate, likeController.getUserLikedHostels);
 // Nested facility routes — hostel id comes from :hostelId PARAM.
 // Mounted before generic /:id so /:hostelId/facilities never collides.
